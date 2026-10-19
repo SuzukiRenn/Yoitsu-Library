@@ -50,6 +50,12 @@ $env:BOOKLIST_ENV='development'
 
 恢复绑定 manifest、输入文件和解析代码的指纹。修正内容后新建批次；仅对未改变的失败输入使用 `--resume <batch_id> --retry-failed`。无可信 ID/标准标题整项失败，可选字段失败不会清空旧值；不完整标签集合不会撤销旧关联。管理员覆盖与治理状态保留，导入不自动加入公共书单。阶段 2 验证证据写入 `.runtime/import_verification/<时间>/`，包括全套测试和真实样本对照；克隆后的旧文件保护计数只反映仓库内实际存在的文件。
 
+## 有限网络检查
+
+`python scripts/probe_wenku8.py --location local` 使用标准库执行至多两个无登录 GET：先读 robots.txt，规则可识别且允许时，再隔至少 10 秒读取固定作品详情。遇重定向、拒绝、异常或过大响应即停止，不自动重试、不保存页面，不写数据库。退出 0 只说明收到了 HTML 响应；登录页也可能返回 200，因此不能据此认定作品解析或采集路线已验收。
+
+服务器可用系统 Python 3 执行同一脚本并指定 `--location server`；该参数只标注操作者声明的运行位置，不自动连接服务器或证明位置。密码登录的执行方法见 `项目文档/服务器只读检查操作说明_2026-10-19.md`。连接地址、账号认证材料及实际检查输出不进入仓库。
+
 ## 基础 API
 
 先 GET `/api/v1/csrf/` 获取 `csrf_token` 并保留 Cookie；每次 POST 使用 `Content-Type: application/json` 和 `X-CSRFToken`。登录会轮换 CSRF，后续写入前重新获取。所有写入均同源校验，不能仅以持有链接替代 CSRF。
