@@ -1,9 +1,11 @@
 import {createPublicApi} from './public-api.mjs';
 import {createSearchController} from './catalog-search.mjs';
 import {normalize} from './text.mjs';
+import {createCandidatePreview} from './candidate-preview.mjs';
 
 const form = document.querySelector('#recommend-form');
 if (form) {
+  const preview = createCandidatePreview();
   const write = createPublicApi();
   const query = document.querySelector('#recommend-query'), reason = document.querySelector('#recommend-reason');
   const candidates = document.querySelector('#candidates'), status = document.querySelector('#recommend-status');
@@ -25,7 +27,7 @@ if (form) {
     },
     onStatus: (text, pending) => { searchStatus.textContent = text; if (pending) searchState='searching'; else if (searchState!=='ready') searchState='error'; },
     onResult: payload => {
-      searchState='ready'; candidates.replaceChildren();
+      searchState='ready'; preview.hide(); candidates.replaceChildren();
       for (const work of payload.results) {
         const button = document.createElement('button'); button.type='button'; button.className='candidate'; button.setAttribute('aria-pressed','false');
         const cover = document.createElement('span'); cover.className='book-cover candidate-cover'; cover.setAttribute('aria-hidden','true');
@@ -46,11 +48,12 @@ if (form) {
           selected=work; query.value=work.title; reason.value=work.own_reason || ''; count();
           button.setAttribute('aria-pressed','true'); selectedStatus.textContent=''; status.textContent=''; label();
         });
-        candidates.append(button);
+        preview.bind(button, work); candidates.append(button);
       }
     }
   });
   function invalidate() {
+    preview.hide();
     if (selected && reason.value === selected.own_reason) { reason.value=''; count(); }
     clearTimeout(timer); search.cancel(); selected=null; searchState='idle'; candidates.replaceChildren(); selectedStatus.textContent='';
     searchStatus.textContent=''; status.textContent=''; label();
@@ -64,6 +67,7 @@ if (form) {
   reason.addEventListener('input',count); count(); label();
   form.addEventListener('submit',async event=>{
     event.preventDefault(); if (busy || composing) return;
+    preview.hide();
     let title,text;
     try {title=normalize(query.value,'title',true); text=normalize(reason.value,'reason');}
     catch {status.textContent='书名限 1—300 字，理由限 200 字';return;}

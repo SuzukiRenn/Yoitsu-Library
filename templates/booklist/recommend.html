@@ -1,6 +1,6 @@
 {% extends 'booklist/base.html' %}{% load static %}
 {% block title %}推荐 · {% if activity %}{{ activity.title }}{% else %}公共书单{% endif %}{% endblock %}
-{% block scripts %}<script type="module" src="{% static 'recommend.mjs' %}?v=20261019-4"></script>{% endblock %}
+{% block scripts %}<script type="module" src="{% static 'recommend.mjs' %}?v=20261019-5"></script>{% endblock %}
 {% block content %}<section class="recommend-page"><h1>{% if editing %}编辑理由{% else %}推荐{% endif %}</h1><p class="scope-label">{% if activity %}<a href="/activities/{{ activity.id }}/">推荐活动 · {{ activity.title }}</a><span class="section-note">{{ activity.status_label }}</span>{% else %}<a href="/">公共书单</a>{% endif %}</p>
 {% if readonly %}<p>该活动不可提交</p>{% else %}<form id="recommend-form" data-target="{{ target }}" data-success="{{ success_url }}" data-activity="{{ activity.id|default:'' }}" data-editing="{{ editing|yesno:'true,false' }}" data-work="{{ work.id|default:'' }}" data-in-scope="{{ work.in_scope|yesno:'true,false' }}" data-recommended="{{ work.recommended|yesno:'true,false' }}">
 <label for="recommend-query">书名</label><input id="recommend-query" type="search" value="{{ work.title }}" placeholder="书名或别名" autocomplete="off" required {% if editing %}readonly{% endif %} aria-controls="candidates" aria-describedby="candidate-status">

@@ -44,3 +44,11 @@ button{color:var(--ink);background:white;border:1px solid var(--line);border-rad
 .recommend-control:not([data-tooltip-dismissed]):focus-within>.control-tooltip{opacity:1;visibility:visible}
 @media(hover:hover){.recommend-control:not([data-tooltip-dismissed]):hover>.control-tooltip{opacity:1;visibility:visible}}
 @media(prefers-reduced-motion:no-preference){.control-tooltip{transition:opacity 120ms ease}}
+.candidate-preview{position:fixed;left:12px;top:12px;z-index:30;display:grid;grid-template-columns:88px minmax(0,1fr);gap:16px;width:360px;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);overflow:auto;padding:16px;border:1px solid var(--line);border-radius:7px;background:#fffefa;color:var(--ink);box-shadow:0 8px 28px #243c3224}
+.candidate-preview[hidden]{display:none}
+.candidate-preview .book-cover{width:88px;height:126px}
+.candidate-preview-info{min-width:0;overflow-wrap:anywhere}
+.candidate-preview strong{font-size:16px;line-height:1.6}
+.candidate-preview .book-author{margin:8px 0 12px;font-size:13px}
+.candidate-preview .tag{font-size:11px;line-height:1.4}
+@media(prefers-reduced-motion:no-preference){.candidate-preview:not([hidden]){animation:booklist-fade-in 120ms ease-out}}
