@@ -1,4 +1,4 @@
-"""Monthly participation is separate from public recommendations and likes."""
+"""Activity participation is separate from public recommendations and likes."""
 from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
@@ -26,7 +26,7 @@ def writable(row, now=None):
 def require_open(activity_id):
     row = get(activity_id)
     if not writable(row):
-        raise services.DomainError('activity_readonly', '本期活动不可提交', 409)
+        raise services.DomainError('activity_readonly', '该活动不可提交', 409)
     return row
 
 
@@ -127,7 +127,7 @@ def recommend(activity_id, work_id, client, enabled):
                                       merged_into__isnull=True).first()
     if snap is None or not (recs(activity_id).filter(activity_work=snap).exists()
                             or votes(activity_id).filter(activity_work=snap).exists()):
-        raise services.DomainError('not_in_activity', '请先推荐到本期活动', 409)
+        raise services.DomainError('not_in_activity', '请先推荐到该活动', 409)
     if recs(activity_id).filter(work=work, anonymous_client=client).exists():
         # A repeated +1 is not a reason edit, including retries with a fresh idempotency key.
         return {'status': 'saved', 'activity_id': activity_id, 'work_id': work_id}
@@ -139,7 +139,7 @@ def reason(activity_id, work_id, client, value):
     require_open(activity_id); books.require_work(work_id)
     row = recs(activity_id).filter(work_id=work_id, anonymous_client=client).first()
     if row is None:
-        raise services.DomainError('not_found', '本期推荐不存在', 404)
+        raise services.DomainError('not_found', '活动推荐不存在', 404)
     edit_reason(row, normalize(value, 'reason'))
     return {'status': 'saved'}
 
@@ -153,7 +153,7 @@ def like(activity_id, work_id, client, enabled):
     elif row is None:
         snap = ActivityWork.objects.filter(activity_id=activity_id, work_id=work_id, archived_at__isnull=True, merged_into__isnull=True).first()
         if snap is None or not (recs(activity_id).filter(activity_work=snap).exists() or votes(activity_id).filter(activity_work=snap).exists()):
-            raise services.DomainError('not_in_activity', '请先推荐到本期活动', 409)
+            raise services.DomainError('not_in_activity', '请先推荐到该活动', 409)
         Vote.objects.create(scope='activity', activity_id=activity_id, activity_work=snap, work_id=work_id, anonymous_client=client)
     return {'status': 'saved'}
 

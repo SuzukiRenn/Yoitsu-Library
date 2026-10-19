@@ -105,7 +105,7 @@ class ActivityTests(TestCase):
         page = self.client.get(path+f'?activity={self.period.pk}')
         self.assertContains(page, '<h2>简介</h2>')
         self.assertNotContains(page, 'data-action=')
-        self.assertContains(page, f'href="/activities/{self.period.pk}/recommend/?work={self.work.pk}">推荐到本期</a>')
+        self.assertContains(page, f'href="/activities/{self.period.pk}/recommend/?work={self.work.pk}">推荐到活动</a>')
         self.assertEqual(self.client.get(path).status_code, 200)
 
     def test_monthly_detail_more_reasons_keeps_activity_scope(self):
@@ -291,6 +291,49 @@ class ActivityTests(TestCase):
         data['end_at']=self.period.scheduled_end_at.isoformat();data['start_at']=(self.period.start_at+timedelta(minutes=1)).isoformat()
         with self.assertRaises(services.DomainError):activity_admin.update(self.admin,self.period.pk,data)
 
+    def test_week_long_theme_activity_uses_admin_times_and_automatic_boundaries(self):
+        start = self.now + timedelta(days=2, hours=3)
+        end = start + timedelta(days=7)
+        result = activity_admin.create(self.admin, {'title': '异世界小说推荐', 'theme': '异世界小说',
+            'start_at': start.isoformat(), 'end_at': end.isoformat()})
+        activity_admin.action(self.admin, result['id'], 'schedule', '一周主题活动')
+        row = Activity.objects.get(pk=result['id'])
+        self.assertEqual((row.start_at, row.scheduled_end_at, row.theme), (start, end, '异世界小说'))
+        with patch('django.utils.timezone.now', return_value=start-timedelta(seconds=1)):
+            activities.advance_due(); row.refresh_from_db()
+            self.assertEqual(row.status, 'scheduled')
+        with patch('django.utils.timezone.now', return_value=start):
+            activities.advance_due(); row.refresh_from_db()
+            self.assertTrue(activities.writable(row))
+            activities.submit(row.pk, self.person, {'work_id': self.work.pk, 'title': '群友作品',
+                'reason': '', 'copy_public_reason': False, 'confirmed_unmatched': False})
+        with patch('django.utils.timezone.now', return_value=end):
+            activities.advance_due(); row.refresh_from_db()
+            self.assertEqual((row.status, row.started_at, row.ended_at), ('ended', start, end))
+            self.assertFalse(activities.writable(row))
+        self.assertEqual(PublicRecommendation.objects.count(), 0)
+
+    def test_active_or_paused_deadline_can_shorten_or_extend_with_audit(self):
+        original_start = self.period.start_at
+        for status in ('active', 'paused'):
+            self.period.status = status; self.period.save()
+            for hours in (2, 30):
+                deadline = self.now + timedelta(hours=hours)
+                data = {'title': self.period.title, 'theme': self.period.theme,
+                    'start_at': original_start.isoformat(), 'end_at': deadline.isoformat(), 'reason': '调整截止时间'}
+                with patch('django.utils.timezone.now', return_value=self.now):
+                    activity_admin.update(self.admin, self.period.pk, data)
+                self.period.refresh_from_db()
+                self.assertEqual((self.period.start_at, self.period.scheduled_end_at), (original_start, deadline))
+                audit = AdminAuditLog.objects.filter(action='activity.update').latest('id')
+                self.assertEqual(audit.reason, '调整截止时间')
+                self.assertNotEqual(audit.before_data['end_at'], audit.after_data['end_at'])
+            data['end_at'] = self.now.isoformat()
+            with patch('django.utils.timezone.now', return_value=self.now), self.assertRaises(services.DomainError):
+                activity_admin.update(self.admin, self.period.pk, data)
+            self.period.refresh_from_db()
+            self.assertEqual(self.period.scheduled_end_at, deadline)
+
     def test_pending_hidden_same_title_has_request_owner_but_no_participation(self):
         Work.objects.create(original_submitted_title='隐藏同名',hidden_at=self.now)
         response=self.submit(work_id=None,title='隐藏同名',reason='待核查',copy=True)
@@ -316,7 +359,7 @@ class ActivityTests(TestCase):
         self.assertNotContains(self.client.get('/'),'id="recommend-form"')
         self.assertContains(self.client.get('/recommend/'),'id="recommend-form"')
         self.assertContains(self.client.get(f'/activities/{self.period.pk}/recommend/'),f'data-activity="{self.period.pk}"')
-        self.assertContains(self.client.get('/'),'月度推荐')
+        self.assertContains(self.client.get('/'),'推荐活动')
 
     def test_activity_reason_pagination_sorting_and_public_count_not_used(self):
         for index in range(3):
@@ -335,7 +378,7 @@ class ActivityTests(TestCase):
         self.assertEqual(self.client.get(f'/activities/{draft.pk}/').status_code,404)
         self.period.status='paused';self.period.save()
         self.assertNotContains(self.client.get(f'/activities/{self.period.pk}/'),'data-action="like"')
-        self.assertContains(self.client.get(f'/activities/{self.period.pk}/recommend/'),'本期活动不可提交')
+        self.assertContains(self.client.get(f'/activities/{self.period.pk}/recommend/'),'该活动不可提交')
         self.assertEqual(self.post('/api/v1/admin/activities/',{}).status_code,401)
 
     def test_activity_idempotency_and_csrf_strict_copy_flag(self):

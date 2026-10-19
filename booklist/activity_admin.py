@@ -48,8 +48,8 @@ def update(actor, activity_id, data):
         same_start = start in (row.start_at, row.start_at.replace(microsecond=row.start_at.microsecond//1000*1000))
         if end == row.scheduled_end_at.replace(microsecond=row.scheduled_end_at.microsecond//1000*1000):
             end = row.scheduled_end_at
-        if not same_start or end < row.scheduled_end_at:
-            raise services.DomainError('invalid_time', '进行中只能延期，开始时间锁定', 409)
+        if not same_start:
+            raise services.DomainError('invalid_time', '活动已开始，开始时间不可修改', 409)
         start = row.start_at
     if row.status != 'draft' and (end <= timezone.now() or activities.conflict(row.started_at or start, end, row.pk)):
         raise services.DomainError('activity_conflict', '活动时段无效或冲突', 409)

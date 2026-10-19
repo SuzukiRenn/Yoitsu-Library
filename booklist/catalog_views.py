@@ -15,7 +15,7 @@ def read_limit(request, search=False):
 
 
 def page(request, template, context):
-    context = {**context, 'navigation_monthly': request.path.startswith('/activities/') or bool(context.get('activity'))}
+    context = {**context, 'navigation_activities': request.path.startswith('/activities/') or bool(context.get('activity'))}
     response = render(request, template, context)
     response['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
     return response

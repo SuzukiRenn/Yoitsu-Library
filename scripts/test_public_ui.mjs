@@ -38,6 +38,7 @@ const clicks = [], monthlyRequests = [], actionStatus = {textContent: ''};
 let reloads = 0;
 globalThis.document = {
   querySelector: selector => selector === '#action-status' ? actionStatus : null,
+  querySelectorAll: () => [],
   addEventListener: (event, handler) => { if (event === 'click') clicks.push(handler); }
 };
 globalThis.location = {reload: () => { reloads++; }, assign: () => { throw Error('Unexpected form navigation'); }};
