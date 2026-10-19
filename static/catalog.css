@@ -16,3 +16,8 @@ button{color:var(--ink);background:white;border:1px solid var(--line);border-rad
 :is(.recommend-page,.tag-filter) input[type=checkbox]:checked{background-color:var(--ink);border-color:var(--ink);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='m2 6 2.5 2.5L10 3' fill='none' stroke='white' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
 :is(.recommend-page,.tag-filter) input[type=checkbox]:disabled{opacity:.5;cursor:default}
 @media(forced-colors:active){:is(.recommend-page,.tag-filter) input[type=checkbox]{appearance:auto;background-image:none}}
+.main-nav{gap:4px;padding:4px;border:1px solid var(--line);border-radius:9px;background:var(--wash)}
+.main-nav a{padding:9px 14px;border-radius:6px;font-weight:500;line-height:20px;white-space:nowrap}
+.main-nav a[aria-current]{background:var(--ink);color:white;box-shadow:0 1px 3px #243c321a}
+.main-nav a:not([aria-current]):hover{background:#fffefa}
+@media(max-width:700px){.main-nav{gap:2px;padding:3px}.main-nav a{padding:7px 9px;line-height:18px}}
