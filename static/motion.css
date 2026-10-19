@@ -36,6 +36,13 @@
   button:not(:disabled):active, a.primary:active, .back-link:active, .return-button:active {
     transform: translateY(1px);
   }
+  .public-actions button:not(:disabled):active, .reason-link:active {
+    transform: translateY(1px) scale(.97);
+    box-shadow: none;
+  }
+  .public-actions button:focus-visible, .reason-link:focus-visible {
+    box-shadow: 0 0 0 3px #496c481f;
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
@@ -45,6 +52,11 @@
     box-shadow: 0 5px 15px #243c3210;
   }
   .candidate:hover { border-color: #7b946d; box-shadow: 0 2px 8px #243c320c; }
+  .public-actions button:not(:disabled):hover:not(:active), .reason-link:hover:not(:active) {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 7px #243c321a;
+  }
+  .public-actions button:not(:disabled):hover { border-color: #7b946d; }
 }
 
 @media (prefers-reduced-motion: reduce) {
