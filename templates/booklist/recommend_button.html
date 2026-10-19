@@ -1,0 +1,4 @@
+<span class="recommend-control">
+<button type="button"{% if not work.recommended %} aria-describedby="recommend-tip-{{ activity.id|default:'public' }}-{{ work.id }}"{% endif %} data-action="recommend" data-enabled="{{ work.recommended|yesno:'false,true' }}" aria-pressed="{{ work.recommended|yesno:'true,false' }}">{{ work.recommended|yesno:'取消推荐,+1' }}</button>
+{% if not work.recommended %}<span class="control-tooltip" role="tooltip" id="recommend-tip-{{ activity.id|default:'public' }}-{{ work.id }}">我也推荐这本书</span>{% endif %}
+</span>

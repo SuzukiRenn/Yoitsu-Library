@@ -1,6 +1,18 @@
 import {createPublicApi} from './public-api.mjs';
 const write = createPublicApi();
 const status = document.querySelector('#action-status');
+
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Escape') return;
+  for (const control of document.querySelectorAll('.recommend-control')) {
+    control.setAttribute('data-tooltip-dismissed', '');
+  }
+});
+for (const control of document.querySelectorAll('.recommend-control')) {
+  for (const name of ['pointerleave', 'focusout']) {
+    control.addEventListener(name, () => control.removeAttribute('data-tooltip-dismissed'));
+  }
+}
 document.addEventListener('click', async event => {
   const button=event.target.closest('[data-action]');
   if(!button || button.disabled)return;
