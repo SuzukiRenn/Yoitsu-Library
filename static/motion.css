@@ -19,7 +19,7 @@
   ::view-transition-new(root) { animation: booklist-fade-in 160ms ease-out both; }
 
   main { animation: booklist-content-enter 200ms cubic-bezier(.2,.7,.3,1) backwards; }
-  a, button, input, textarea, select {
+  a, button, input, textarea, select, summary, .tag-filter label {
     transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease,
                 box-shadow 150ms ease, opacity 120ms ease, transform 120ms ease;
   }
@@ -33,16 +33,30 @@
   [role="status"]:not(:empty) { animation: booklist-fade-in 140ms ease-out backwards; }
   details[open] > :not(summary) { animation: booklist-content-enter 160ms ease-out backwards; }
 
-  button:not(:disabled):active, a.primary:active, .back-link:active, .return-button:active {
-    transform: translateY(1px);
-  }
-  .public-actions button:not(:disabled):active, .reason-link:active {
-    transform: translateY(1px) scale(.97);
+  /* All native buttons and links styled as buttons share the same feedback. */
+  :is(button, input[type="submit"], input[type="button"], input[type="reset"], a.primary, .back-link, .return-button, .reason-link):not(:disabled):not([aria-disabled="true"]):active {
+    transform: translateY(1px) scale(.98);
     box-shadow: none;
   }
-  .public-actions button:focus-visible, .reason-link:focus-visible {
-    box-shadow: 0 0 0 3px #496c481f;
+  :is(nav a, .brand, .scope-label a, .source-link, .book-title, summary):active {
+    transform: translateY(1px);
   }
+  input:is([type="checkbox"], [type="radio"]):not(:disabled):active {
+    transform: scale(.9);
+  }
+  :is(button, input[type="submit"], input[type="button"], input[type="reset"]):disabled,
+  [aria-disabled="true"] {
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+/* Inline text links need a box for movement; existing card/button layouts take precedence. */
+:where(nav a, .scope-label a, .source-link, .book-title) { display: inline-block; }
+summary { cursor: pointer; }
+:is(a[href], button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid #496c48;
+  outline-offset: 3px;
 }
 
 @media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
@@ -51,12 +65,16 @@
     border-color: #9cad92;
     box-shadow: 0 5px 15px #243c3210;
   }
-  .candidate:hover { border-color: #7b946d; box-shadow: 0 2px 8px #243c320c; }
-  .public-actions button:not(:disabled):hover:not(:active), .reason-link:hover:not(:active) {
+  .candidate:not(:disabled):not([aria-disabled="true"]):hover { border-color: #7b946d; }
+  :is(button, input[type="submit"], input[type="button"], input[type="reset"], a.primary, .back-link, .return-button, .reason-link):not(:disabled):not([aria-disabled="true"]):hover:not(:active) {
     transform: translateY(-1px);
     box-shadow: 0 3px 7px #243c321a;
   }
-  .public-actions button:not(:disabled):hover { border-color: #7b946d; }
+  :is(nav a, .brand, .scope-label a, .source-link, .book-title, summary):hover:not(:active) {
+    transform: translateY(-1px);
+  }
+  .tag-filter label:hover { box-shadow: 0 2px 6px #243c321a; }
+  input:is([type="checkbox"], [type="radio"]):not(:disabled):hover { box-shadow: 0 0 0 3px #496c481f; }
 }
 
 @media (prefers-reduced-motion: reduce) {
