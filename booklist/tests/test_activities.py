@@ -59,6 +59,85 @@ class ActivityTests(TestCase):
         self.assertEqual(activities.recs(self.period.pk).count(),1)
         self.assertEqual((books.recommendations().count(),books.likes().count(),activities.votes(self.period.pk).count()),(1,1,1))
 
+    def test_list_plus_one_is_a_button_and_adds_only_one_monthly_recommendation(self):
+        self.submit('首位理由')
+        other, person = self.other()
+        page = other.get(f'/activities/{self.period.pk}/')
+        self.assertContains(page, 'data-action="recommend" data-enabled="true" aria-pressed="false">+1</button>')
+        self.assertNotContains(page, f'href="/activities/{self.period.pk}/recommend/?work={self.work.pk}"')
+        for _ in range(2):
+            self.assertEqual(self.action('recommend', {'enabled': True}, browser=other).status_code, 200)
+        row = activities.recs(self.period.pk).get(anonymous_client=person)
+        self.assertEqual(row.reason, '')
+        self.assertEqual((activities.recs(self.period.pk).count(), ActivityWork.objects.count()), (2, 1))
+        self.assertEqual((PublicRecommendation.objects.count(), PublicLike.objects.count(), Vote.objects.count()), (0, 0, 0))
+        page = other.get(f'/activities/{self.period.pk}/')
+        self.assertContains(page, 'data-action="recommend" data-enabled="false" aria-pressed="true">取消推荐</button>')
+        self.assertContains(page, f'href="/activities/{self.period.pk}/recommend/?work={self.work.pk}&amp;edit=1">写理由</a>')
+        self.assertEqual(self.action('recommend', {'enabled': False}, browser=other).status_code, 200)
+        self.assertEqual(activities.recs(self.period.pk).count(), 1)
+
+    def test_repeat_plus_one_preserves_existing_reason_and_update_time(self):
+        self.submit('已有理由', copy=True)
+        original = activities.recs(self.period.pk).get()
+        self.assertEqual(self.action('recommend', {'enabled': True}).status_code, 200)
+        current = activities.recs(self.period.pk).get()
+        self.assertEqual((current.pk, current.reason, current.updated_at), (original.pk, '已有理由', original.updated_at))
+        self.assertEqual(books.reasons().get().reason, '已有理由')
+
+    def test_plus_one_cannot_create_or_revive_a_missing_entry_or_bypass_hidden_work(self):
+        self.assertEqual(self.action('recommend', {'enabled': True}).status_code, 404)
+        self.assertFalse(ActivityWork.objects.exists())
+        self.submit(); self.action('withdraw')
+        self.assertEqual(self.action('recommend', {'enabled': True}).status_code, 409)
+        self.assertEqual(activities.listing(self.period.pk)['total'], 0)
+        self.assertEqual(ActivityWork.objects.count(), 1)
+        self.submit()
+        Work.objects.filter(pk=self.work.pk).update(hidden_at=self.now)
+        other, _ = self.other()
+        self.assertEqual(self.action('recommend', {'enabled': True}, browser=other).status_code, 404)
+        self.assertEqual(activities.recs(self.period.pk).count(), 1)
+
+    def test_plus_one_retries_use_idempotency_and_keep_csrf_and_strict_schema(self):
+        self.submit()
+        other, _ = self.other()
+        key = str(uuid.uuid4())
+        first = self.post(f'/api/v1/activities/{self.period.pk}/works/{self.work.pk}/recommend/', {'enabled': True}, browser=other, key=key)
+        repeat = self.post(f'/api/v1/activities/{self.period.pk}/works/{self.work.pk}/recommend/', {'enabled': True}, browser=other, key=key)
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(first.json(), repeat.json())
+        self.assertEqual(self.post(f'/api/v1/activities/{self.period.pk}/works/{self.work.pk}/recommend/', {'enabled': False}, browser=other, key=key).status_code, 409)
+        for data in ({'enabled': 1}, {'enabled': True, 'reason': ''}):
+            self.assertEqual(self.action('recommend', data, browser=other).status_code, 400)
+        secure = Client(enforce_csrf_checks=True)
+        secure.cookies[settings.ANONYMOUS_COOKIE] = other.cookies[settings.ANONYMOUS_COOKIE].value
+        self.assertEqual(self.action('recommend', {'enabled': True}, browser=secure).status_code, 403)
+        self.assertEqual(activities.recs(self.period.pk).count(), 2)
+
+    def test_plus_one_and_cancel_are_readonly_when_paused_or_expired(self):
+        self.submit()
+        self.period.status = 'paused'; self.period.save()
+        for enabled in (True, False):
+            self.assertEqual(self.action('recommend', {'enabled': enabled}).status_code, 409)
+        self.assertNotContains(self.client.get(f'/activities/{self.period.pk}/'), 'data-action="recommend"')
+        self.period.status = 'active'; self.period.scheduled_end_at = self.now + timedelta(seconds=1); self.period.save()
+        with patch('django.utils.timezone.now', return_value=self.now + timedelta(seconds=2)):
+            self.assertEqual(self.action('recommend', {'enabled': True}).status_code, 409)
+            self.assertEqual(self.action('recommend', {'enabled': False}).status_code, 409)
+        self.assertEqual(activities.recs(self.period.pk).count(), 1)
+
+    def test_plus_one_preserves_moderation_on_a_new_recommendation(self):
+        self.submit('隐藏理由')
+        Recommendation.objects.filter(scope='activity', anonymous_client=self.person).update(text_hidden_at=self.now)
+        other, _ = self.other(); self.submit(browser=other)
+        self.action('withdraw')
+        self.assertEqual(self.action('recommend', {'enabled': True}).status_code, 200)
+        row = activities.recs(self.period.pk).get(anonymous_client=self.person)
+        self.assertEqual((row.reason, row.text_hidden_at), ('', self.now))
+        row.invalidated_at = self.now; row.save()
+        self.assertEqual(self.action('recommend', {'enabled': True}).status_code, 409)
+        self.assertEqual(activities.recs(self.period.pk).count(), 1)
+
     def test_reason_copy_opt_in_nonempty_no_overwrite(self):
         self.submit('仅活动')
         self.assertFalse(books.reasons().exists())

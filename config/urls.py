@@ -22,6 +22,7 @@ urlpatterns = [
     path('api/v1/activities/<int:activity_id>/', activity_views.detail_api),
     path('api/v1/activities/<int:activity_id>/recommendations/', activity_views.submit),
     path('api/v1/activities/<int:activity_id>/works/<int:work_id>/withdraw/', activity_views.withdraw),
+    path('api/v1/activities/<int:activity_id>/works/<int:work_id>/recommend/', activity_views.recommend),
     path('api/v1/activities/<int:activity_id>/works/<int:work_id>/like/', activity_views.like),
     path('api/v1/activities/<int:activity_id>/works/<int:work_id>/reason/', activity_views.reason),
     path('api/v1/activities/<int:activity_id>/works/<int:work_id>/reasons/', activity_views.reasons),

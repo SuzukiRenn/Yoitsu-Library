@@ -131,6 +131,7 @@ GET `/api/v1/public/works/<id>/reasons/?page=1&page_size=20` 分页返回公开�
 |---|---|---|
 | `/api/v1/activities/<id>/` | GET `page,page_size` | 本期可见快照、独立计数及本人状态 |
 | `/api/v1/activities/<id>/recommendations/` | POST 公共推荐四字段 + `copy_public_reason` 布尔 | 新增/更新本期推荐 |
+| `/api/v1/activities/<id>/works/<work>/recommend/` | POST `enabled` 布尔 | 列表直接 +1 / 取消，不跳转理由页、不覆盖理由或复制公共理由；+1 仅限本期当前有效条目 |
 | `/api/v1/activities/<id>/works/<work>/withdraw/` | POST `{}` | 撤回自己的本期推荐 |
 | `/api/v1/activities/<id>/works/<work>/like/` | POST `enabled` 布尔 | 活动点赞/取消 |
 | `/api/v1/activities/<id>/works/<work>/reason/` | POST `reason` | 编辑本期理由 |

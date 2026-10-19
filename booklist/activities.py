@@ -115,6 +115,24 @@ def withdraw(activity_id, work_id, client):
     return {'status': 'saved'}
 
 
+def recommend(activity_id, work_id, client, enabled):
+    if not enabled:
+        return withdraw(activity_id, work_id, client)
+    require_open(activity_id)
+    work = books.require_work(work_id)
+    # A list button can join an existing entry, never revive a stale or missing entry.
+    snap = ActivityWork.objects.filter(activity_id=activity_id, work=work, archived_at__isnull=True,
+                                      merged_into__isnull=True).first()
+    if snap is None or not (recs(activity_id).filter(activity_work=snap).exists()
+                            or votes(activity_id).filter(activity_work=snap).exists()):
+        raise services.DomainError('not_in_activity', '请先推荐到本期活动', 409)
+    if recs(activity_id).filter(work=work, anonymous_client=client).exists():
+        # A repeated +1 is not a reason edit, including retries with a fresh idempotency key.
+        return {'status': 'saved', 'activity_id': activity_id, 'work_id': work_id}
+    return submit(activity_id, client, {'work_id': work_id, 'title': snap.snapshot_title, 'reason': '',
+                                      'confirmed_unmatched': False, 'copy_public_reason': False})
+
+
 def reason(activity_id, work_id, client, value):
     require_open(activity_id); books.require_work(work_id)
     row = recs(activity_id).filter(work_id=work_id, anonymous_client=client).first()

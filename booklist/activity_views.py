@@ -53,6 +53,13 @@ def withdraw(request, data, activity_id, work_id):
 
 
 @endpoint('POST', fields={'enabled': bool})
+def recommend(request, data, activity_id, work_id):
+    activities.advance_due()
+    return write(request, f'activity.recommend.{activity_id}.{work_id}', data,
+                 lambda: activities.recommend(activity_id, work_id, request.anonymous_client, data['enabled']))
+
+
+@endpoint('POST', fields={'enabled': bool})
 def like(request, data, activity_id, work_id):
     activities.advance_due()
     return write(request, f'activity.like.{activity_id}.{work_id}', data, lambda: activities.like(activity_id, work_id, request.anonymous_client, data['enabled']))
