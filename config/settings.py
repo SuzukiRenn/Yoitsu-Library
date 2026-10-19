@@ -1,4 +1,5 @@
 import os
+import mimetypes
 from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
 
@@ -21,7 +22,7 @@ DATA_DIR = Path(os.environ.get('BOOKLIST_DATA_DIR') or BASE_DIR / '.runtime')
 if ENV == 'production' and (not os.environ.get('BOOKLIST_DATA_DIR') or not DATA_DIR.is_absolute() or DATA_DIR == BASE_DIR or BASE_DIR in DATA_DIR.parents):
     raise ImproperlyConfigured('Production data directory must be absolute and outside code')
 DATA_DIR.mkdir(parents=True, exist_ok=True)
-INSTALLED_APPS = ['booklist.apps.BooklistConfig']
+INSTALLED_APPS = ['django.contrib.staticfiles', 'booklist.apps.BooklistConfig']
 MIDDLEWARE = ['django.middleware.security.SecurityMiddleware', 'django.middleware.common.CommonMiddleware',
               'django.middleware.csrf.CsrfViewMiddleware', 'booklist.middleware.IdentityMiddleware']
 ROOT_URLCONF = 'config.urls'
@@ -38,6 +39,9 @@ AUTH_PASSWORD_VALIDATORS = [{'NAME': 'django.contrib.auth.password_validation.Mi
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'}]
 STATIC_URL = '/static/'
+# Some Windows MIME registries label .mjs as text/plain; modules must be JS.
+mimetypes.add_type('text/javascript', '.mjs')
+STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 COOKIE_SECURE = ENV == 'production'
 CSRF_COOKIE_SECURE = COOKIE_SECURE

@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import {createSearchController} from '../static/catalog-search.mjs';
+
+const pending = [], outputs = [], statuses = [];
+const controller = createSearchController({fetcher: (url, options) => new Promise(resolve => pending.push({url, options, resolve})), onResult: result => outputs.push(result), onStatus: (...args) => statuses.push(args)});
+const first = controller.run('旧书名');
+const second = controller.run('新书名');
+assert.equal(pending[0].options.signal.aborted, true);
+pending[1].resolve({ok: true, json: async () => ({results: [{id: 2}]})});
+await second;
+pending[0].resolve({ok: true, json: async () => ({results: [{id: 1}]})});
+await first;
+assert.deepEqual(outputs, [{results: [{id: 2}]}]);
+const cancelled = controller.run('取消查询'); controller.cancel();
+pending[2].resolve({ok: true, json: async () => ({results: [{id: 3}]})}); await cancelled;
+assert.equal(outputs.length, 1);
+const invalid = controller.run('📚'.repeat(301)); await invalid;
+assert.equal(pending.length, 3);
+const errors = [];
+const failing = createSearchController({fetcher: async () => ({ok: false, json: async () => ({error: {message: '请求过于频繁'}})}), onResult: () => assert.fail('Error rendered as candidates'), onStatus: (message, busy) => errors.push([message, busy])});
+await failing.run('书名'); assert.deepEqual(errors.at(-1), ['请求过于频繁', false]);
+const offline = createSearchController({fetcher: async () => {throw Error('offline');}, onResult: () => assert.fail(), onStatus: (message, busy) => errors.push([message, busy])});
+await offline.run('书名'); assert.equal(errors.at(-1)[1], false);
+console.log('5 UI controller checks passed: stale response, cancellation, codepoint limit, HTTP error, network error');

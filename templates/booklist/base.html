@@ -1,0 +1,9 @@
+{% load static %}<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}共享书单 · 查找作品{% endblock %}</title>
+<link rel="stylesheet" href="{% static 'catalog.css' %}">
+{% block scripts %}{% endblock %}</head>
+<body><a class="skip-link" href="#main">跳到内容</a>
+<header class="site-header"><a class="brand" href="/">共享书单</a></header>
+<main id="main">{% block content %}{% endblock %}</main>
+</body></html>
