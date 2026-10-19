@@ -31,7 +31,7 @@ if (form) {
         const title=document.createElement('strong'); title.textContent=work.title;
         const author=document.createElement('span'); author.textContent=work.author;
         const state=document.createElement('span');
-        state.textContent = `${work.in_scope ? activity ? '本期已推荐' : '已推荐' : '未推荐'} · 推荐 ${work.recommendation_count}${work.recommended ? ' · 我已推荐' : ''}`;
+        state.textContent = `${work.recommended ? '我已推荐 · ' : ''}推荐 ${work.recommendation_count}`;
         button.append(title,author,state);
         button.addEventListener('click',()=>{
           if (busy) return;
