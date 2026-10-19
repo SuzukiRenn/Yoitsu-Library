@@ -47,6 +47,21 @@ def detail(book_id=4151):
 
 
 class CollectionTests(TestCase):
+    def test_windows_checkpoint_replace_recovers_from_short_file_lock(self):
+        with TemporaryDirectory() as folder:
+            path = Path(folder)/'state.json'
+            original = os.replace
+            calls = []
+            def briefly_locked(source, target):
+                calls.append(1)
+                if len(calls) < 3:
+                    raise PermissionError('temporary local file lock')
+                return original(source, target)
+            with patch('booklist.collecting.os.name', 'nt'), patch('booklist.collecting.os.replace', side_effect=briefly_locked), patch('booklist.collecting.time.sleep') as wait:
+                collecting.atomic_json(path, {'saved': True})
+            self.assertEqual(json.loads(path.read_text()), {'saved': True})
+            self.assertEqual(wait.call_count, 2)
+
     def test_collection_lock_is_exclusive_and_released(self):
         with TemporaryDirectory() as folder:
             with collecting.collection_lock(Path(folder)):
@@ -68,14 +83,22 @@ class CollectionTests(TestCase):
             self.assertEqual(report.get('error_class'), 'SnapshotError')
             self.assertFalse(untouched.exists())
 
+    def test_discovery_cli_rejects_more_than_three_seeds_before_network(self):
+        root = Path(__file__).absolute().parents[2]
+        result = subprocess.run([sys.executable, '-B', str(root/'scripts/discover_wenku8.py'),
+            '--seed-ids', '1', '2', '3', '4'], cwd=root,
+            capture_output=True, encoding='utf-8', errors='replace', timeout=10)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('1..3 explicit seed IDs', result.stderr)
+
     def test_two_items_import_resume_idempotency_and_no_public_contributions(self):
         state = collecting.new_state([4151, 2951])
         sleeps = []; opener = Opener(robots(), detail(), detail(2951))
         with TemporaryDirectory() as folder:
             result = collecting.run(folder, state, opener=opener, sleeper=sleeps.append)
-            self.assertTrue(result['success'])
+            self.assertTrue(result['success'], result)
             self.assertEqual(result['counts']['imported'], 2)
-            self.assertEqual(sleeps, [15, 15, 15])
+            self.assertEqual(sleeps, [10, 10, 10])
             self.assertEqual(Work.objects.count(), 2)
             self.assertEqual(result['public_contributions'], 0)
             self.assertFalse(Work.objects.filter(public_added_at__isnull=False).exists())
@@ -99,7 +122,7 @@ class CollectionTests(TestCase):
             result = collecting.run(folder, state, opener=opener, sleeper=sleeps.append)
             self.assertTrue(result['success'])
             self.assertEqual(opener.urls[-1], 'https://www.wenku8.net/book/2951.htm')
-            self.assertEqual(sleeps, [15,20,15,20])
+            self.assertEqual(sleeps, [10,20,10,20])
 
     def test_denied_policy_and_failed_transport_stop_without_retry_or_html(self):
         with TemporaryDirectory() as folder:
@@ -162,6 +185,12 @@ class CollectionTests(TestCase):
         raw = ('<html><head><meta charset="utf-8"></head><body><a href="https://evil.invalid/book/999.htm">bad</a>'+
                ''.join(f'<a href="/book/{index}.htm">title</a>' for index in range(1,30))+'</body></html>').encode()
         self.assertEqual(collecting.discover_ids(raw,url), list(range(1,21)))
+        self.assertEqual(collecting.discover_ids(raw,url,[1,2,3]), list(range(4,24)))
+        self.assertEqual(collecting.listing_url('https://www.wenku8.net/'), 'https://www.wenku8.net/')
+        state = collecting.new_state(discover='https://www.wenku8.net/', exclude_ids=[1,2,3])
+        self.assertEqual(state['exclude_ids'], [1,2,3])
+        with self.assertRaises(SnapshotError):
+            collecting.new_state([1], exclude_ids=[2])
         for invalid in ('https://evil.invalid/modules/article/articlelist.php', 'http://www.wenku8.net/modules/article/articlelist.php',
                         url+'&page=2', 'https://www.wenku8.net/login.php'):
             with self.assertRaises(SnapshotError):

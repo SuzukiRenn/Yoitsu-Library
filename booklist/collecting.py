@@ -22,7 +22,7 @@ from integrations.wenku8.offline import extract, fingerprint, parser, SnapshotEr
 from scripts import probe_wenku8 as source
 
 MAX_ITEMS = 20
-MIN_INTERVAL = 15
+MIN_INTERVAL = 10
 
 
 def code_fingerprint():
@@ -37,7 +37,16 @@ def atomic_json(path, value):
     with temporary.open('w', encoding='utf-8') as stream:
         json.dump(value, stream, ensure_ascii=True, indent=2)
         stream.write('\n'); stream.flush(); os.fsync(stream.fileno())
-    os.replace(temporary, path)
+    for attempt in range(5):
+        try:
+            os.replace(temporary, path)
+            return
+        except PermissionError:
+            # Windows readers/indexers can briefly hold the destination open.
+            # Retry only the local atomic rename, never a source request.
+            if os.name != 'nt' or attempt == 4:
+                raise
+            time.sleep(.05 * 2**attempt)
 
 
 @contextmanager
@@ -80,7 +89,7 @@ def listing_url(url):
     value = urlsplit(url)
     if value.scheme != 'https' or value.netloc != 'www.wenku8.net' or value.fragment:
         raise SnapshotError('invalid_listing_url')
-    allowed = {'/modules/article/articlelist.php': {'fullflag'}, '/modules/article/toplist.php': {'sort'}}
+    allowed = {'/': set(), '/modules/article/articlelist.php': {'fullflag'}, '/modules/article/toplist.php': {'sort'}}
     query = parse_qsl(value.query, keep_blank_values=True)
     if value.path not in allowed or len(query) > 1 or any(key not in allowed[value.path] for key, _ in query):
         raise SnapshotError('invalid_listing_url')
@@ -89,7 +98,7 @@ def listing_url(url):
     return url
 
 
-def discover_ids(raw, url):
+def discover_ids(raw, url, exclude_ids=()):
     """Only discover IDs; all identity/title/fields must come from validated detail pages."""
     p = parser()
     text, _ = p.LEGACY.decode_html(raw)
@@ -100,7 +109,7 @@ def discover_ids(raw, url):
         match = re.fullmatch(r'/book/([1-9][0-9]{0,7})\.htm', value.path)
         if value.scheme == 'https' and value.netloc == 'www.wenku8.net' and not value.query and not value.fragment and match:
             book_id = int(match[1])
-            if book_id not in ids:
+            if book_id not in ids and book_id not in exclude_ids:
                 ids.append(book_id)
             if len(ids) == MAX_ITEMS:
                 break
@@ -109,11 +118,15 @@ def discover_ids(raw, url):
     return ids
 
 
-def new_state(ids=None, discover=None):
+def new_state(ids=None, discover=None, exclude_ids=None):
     if (ids is None) == (discover is None):
         raise SnapshotError('choose_ids_or_listing')
+    if exclude_ids and discover is None:
+        raise SnapshotError('exclusions_require_discovery')
+    excluded = validate_ids(exclude_ids) if exclude_ids else []
     return {'version': 1, 'fingerprint': code_fingerprint(), 'created_at': datetime.now(timezone.utc).isoformat(),
             'listing_url': listing_url(discover) if discover else None,
+            'exclude_ids': excluded,
             'items': [{'book_id': value, 'status': 'pending'} for value in validate_ids(ids)] if ids is not None else [],
             'requests': [], 'stop_reason': '', 'scope': 'isolated local catalog; metadata only; no public contributions'}
 
@@ -123,6 +136,8 @@ def validate_state(state):
         raise SnapshotError('collector_or_parser_changed_start_new_batch')
     if state.get('listing_url'):
         listing_url(state['listing_url'])
+    if state.get('exclude_ids'):
+        validate_ids(state['exclude_ids'])
     if state.get('items'):
         validate_ids([item['book_id'] for item in state['items']])
     elif not state.get('listing_url'):
@@ -178,7 +193,7 @@ def run(directory, state, *, max_items=MAX_ITEMS, retry_failed=False, opener=Non
         if raw is None or record['media_type'] != 'text/html':
             state['stop_reason'] = 'listing_fetch_failed'; save(); return report(directory, state)
         try:
-            state['items'] = [{'book_id': value, 'status': 'pending'} for value in discover_ids(raw, url)]
+            state['items'] = [{'book_id': value, 'status': 'pending'} for value in discover_ids(raw, url, state.get('exclude_ids', []))]
         except (SnapshotError, ValueError):
             state['stop_reason'] = 'listing_unrecognized'; save(); return report(directory, state)
         pending = state['items']

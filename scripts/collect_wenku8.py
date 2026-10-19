@@ -22,6 +22,7 @@ def main():
     group.add_argument('--discover-url', help='An observed Wenku8 listing URL; one page only, max 20 IDs')
     group.add_argument('--resume', type=Path)
     args_parser.add_argument('--max-items', type=int, default=20)
+    args_parser.add_argument('--skip-ids', type=int, nargs='+', help='Exclude up to 20 previously collected IDs from one discovery page')
     args_parser.add_argument('--retry-failed', action='store_true')
     args_parser.add_argument('--refresh', action='store_true', help='Explicitly refresh a fully completed batch in its existing catalog')
     args = args_parser.parse_args()
@@ -29,6 +30,8 @@ def main():
         args_parser.error('max-items must be 1..20; retry-failed requires resume')
     if args.refresh and (not args.resume or args.retry_failed):
         args_parser.error('refresh requires resume and cannot combine with retry-failed')
+    if args.skip_ids and not args.discover_url:
+        args_parser.error('skip-ids requires discover-url')
     sys.path.insert(0, str(ROOT))
     # Resolve and constrain output before configuring Django. Never inherit an existing data directory.
     directory = args.resume.absolute().resolve() if args.resume else OUTPUT_ROOT/(
@@ -60,7 +63,7 @@ def main():
                     state['stop_reason'] = ''
                     atomic_json(directory/'state.json', state)
             else:
-                state = new_state(args.ids, args.discover_url)
+                state = new_state(args.ids, args.discover_url, args.skip_ids)
                 atomic_json(directory/'state.json', state)
             print('BATCH:', directory, flush=True)
             with (directory/'migrate.log').open('a', encoding='utf-8') as log:
