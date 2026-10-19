@@ -37,7 +37,7 @@ if (form) {
           if (busy) return;
           for (const item of candidates.querySelectorAll('button')) item.setAttribute('aria-pressed','false');
           selected=work; query.value=work.title; reason.value=work.own_reason || ''; count();
-          button.setAttribute('aria-pressed','true'); selectedStatus.textContent=''; label();
+          button.setAttribute('aria-pressed','true'); selectedStatus.textContent=''; status.textContent=''; label();
         });
         candidates.append(button);
       }
@@ -46,7 +46,7 @@ if (form) {
   function invalidate() {
     if (selected && reason.value === selected.own_reason) { reason.value=''; count(); }
     clearTimeout(timer); search.cancel(); selected=null; searchState='idle'; candidates.replaceChildren(); selectedStatus.textContent='';
-    searchStatus.textContent=''; label();
+    searchStatus.textContent=''; status.textContent=''; label();
     if (!composing && query.value.trim()) { searchState='pending'; timer=setTimeout(()=>search.run(query.value),300); }
   }
   if (!editing) {
