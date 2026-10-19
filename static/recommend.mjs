@@ -28,11 +28,18 @@ if (form) {
       searchState='ready'; candidates.replaceChildren();
       for (const work of payload.results) {
         const button = document.createElement('button'); button.type='button'; button.className='candidate'; button.setAttribute('aria-pressed','false');
+        const cover = document.createElement('span'); cover.className='book-cover candidate-cover'; cover.setAttribute('aria-hidden','true');
+        const placeholder = () => { const rule=document.createElement('span'); rule.className='cover-rule'; return rule; };
+        if (work.cover_url) {
+          const image=document.createElement('img'); image.src=work.cover_url; image.alt=''; image.loading='lazy'; image.referrerPolicy='no-referrer';
+          image.addEventListener('error',()=>image.replaceWith(placeholder()),{once:true}); cover.append(image);
+        } else cover.append(placeholder());
+        const info=document.createElement('span'); info.className='candidate-info';
         const title=document.createElement('strong'); title.textContent=work.title;
         const author=document.createElement('span'); author.textContent=work.author;
         const state=document.createElement('span');
         state.textContent = `${work.recommended ? '我已推荐 · ' : ''}推荐 ${work.recommendation_count}`;
-        button.append(title,author,state);
+        info.append(title,author,state); button.append(cover,info);
         button.addEventListener('click',()=>{
           if (busy) return;
           for (const item of candidates.querySelectorAll('button')) item.setAttribute('aria-pressed','false');
