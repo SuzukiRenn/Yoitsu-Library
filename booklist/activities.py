@@ -49,11 +49,13 @@ def summary(row):
         'end_label': timezone.localtime(row.ended_at or row.scheduled_end_at, ZoneInfo('Asia/Shanghai')).strftime('%Y-%m-%d %H:%M')}
 
 
-def listing(activity_id, client=None, page=1, page_size=20):
+def listing(activity_id, client=None, page=1, page_size=20, *, work_id=None):
     activity = get(activity_id)
     offset, size = pagination(page, page_size)
     snaps = ActivityWork.objects.filter(activity=activity, archived_at__isnull=True, merged_into__isnull=True,
                                        work_id__in=catalog.visible_works().values('id'))
+    if work_id is not None:
+        snaps = snaps.filter(work_id=work_id)
     recommendations, likes = recs(activity_id), votes(activity_id)
     counts = lambda query: dict(query.values('activity_work_id').annotate(total=Count('id')).values_list('activity_work_id', 'total'))
     rc, lc = counts(recommendations), counts(likes)

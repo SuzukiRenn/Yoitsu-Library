@@ -46,6 +46,75 @@ class ActivityTests(TestCase):
         self.assertEqual(books.listing()['total'],0)
         self.assertEqual(books.listing()['results'],[])
 
+    def test_monthly_cover_and_title_open_details_with_monthly_actions_and_return(self):
+        self.work.description_overridden = True; self.work.description_override = '简介内容<script>不执行</script>'; self.work.save()
+        self.submit('本期理由独有')
+        other, _ = self.other(); self.submit(browser=other)
+        self.post('/api/v1/public/recommendations/', {'work_id': self.work.pk, 'title': self.work.display_title,
+                  'reason': '公共理由独有', 'confirmed_unmatched': False})
+        path = f'/works/{self.work.pk}/?activity={self.period.pk}'
+        self.assertContains(self.client.get(f'/activities/{self.period.pk}/'), f'href="{path}"', count=2)
+        page = self.client.get(path)
+        self.assertContains(page, '简介内容&lt;script&gt;不执行&lt;/script&gt;')
+        self.assertNotContains(page, '<script>不执行</script>')
+        self.assertContains(page, f'class="back-link" href="/activities/{self.period.pk}/"')
+        self.assertContains(page, f'data-activity="{self.period.pk}"')
+        self.assertContains(page, '推荐 <strong>2</strong>')
+        self.assertContains(page, '本期理由独有')
+        self.assertNotContains(page, '公共理由独有')
+        self.assertContains(self.client.get(f'/works/{self.work.pk}/'), '公共理由独有')
+
+    def test_monthly_detail_preserves_snapshot_and_uses_current_introduction(self):
+        self.submit()
+        self.work.title_overridden = True; self.work.title_override = '新书名'
+        self.work.author_overridden = True; self.work.author_override = '新作者'
+        self.work.description_overridden = True; self.work.description_override = '当前作品简介'; self.work.save()
+        page = self.client.get(f'/works/{self.work.pk}/?activity={self.period.pk}')
+        self.assertContains(page, '<h1>群友作品</h1>')
+        self.assertContains(page, '原作者')
+        self.assertNotContains(page, '新书名')
+        self.assertNotContains(page, '新作者')
+        self.assertContains(page, '当前作品简介')
+
+    def test_ended_monthly_detail_can_read_introduction_without_write_buttons(self):
+        self.submit('历史理由')
+        self.period.status = 'ended'; self.period.ended_at = self.now; self.period.save()
+        page = self.client.get(f'/works/{self.work.pk}/?activity={self.period.pk}')
+        self.assertContains(page, '已结束')
+        self.assertContains(page, '历史理由')
+        self.assertContains(page, '<h2>简介</h2>')
+        self.assertContains(page, f'class="back-link" href="/activities/{self.period.pk}/"')
+        self.assertNotContains(page, 'data-action=')
+        self.assertNotContains(page, '&amp;edit=1')
+
+    def test_monthly_detail_rejects_invalid_context_and_invisible_entries_but_keeps_zero_entry_readable(self):
+        self.submit()
+        path = f'/works/{self.work.pk}/'
+        for query in ('activity=0', 'activity=01', 'activity=abc', 'activity=1&activity=2', 'unknown=1'):
+            self.assertEqual(self.client.get(path+'?'+query).status_code, 400)
+        self.assertEqual(self.client.get(path+'?activity=99999').status_code, 404)
+        draft = Activity.objects.create(title='草稿', start_at=self.now, scheduled_end_at=self.now+timedelta(days=1), created_by=self.admin)
+        self.assertEqual(self.client.get(path+f'?activity={draft.pk}').status_code, 404)
+        unrelated = Work.objects.create(original_submitted_title='未参加的作品')
+        self.assertEqual(self.client.get(f'/works/{unrelated.pk}/?activity={self.period.pk}').status_code, 404)
+        for fields in ({'hidden_at': self.now}, {'review_status': 'pending'}):
+            Work.objects.filter(pk=self.work.pk).update(**fields)
+            self.assertEqual(self.client.get(path+f'?activity={self.period.pk}').status_code, 404)
+            Work.objects.filter(pk=self.work.pk).update(hidden_at=None, review_status='clear')
+        self.action('withdraw')
+        page = self.client.get(path+f'?activity={self.period.pk}')
+        self.assertContains(page, '<h2>简介</h2>')
+        self.assertNotContains(page, 'data-action=')
+        self.assertContains(page, f'href="/activities/{self.period.pk}/recommend/?work={self.work.pk}">推荐到本期</a>')
+        self.assertEqual(self.client.get(path).status_code, 200)
+
+    def test_monthly_detail_more_reasons_keeps_activity_scope(self):
+        for index in range(3):
+            other, _ = self.other(); self.submit(f'本期理由{index}', browser=other)
+        page = self.client.get(f'/works/{self.work.pk}/?activity={self.period.pk}')
+        self.assertContains(page, f'data-url="/api/v1/activities/{self.period.pk}/works/{self.work.pk}/reasons/"')
+        self.assertNotContains(page, f'data-url="/api/v1/public/works/{self.work.pk}/reasons/"')
+
     def test_scope_statistics_and_cancellation_do_not_cross(self):
         self.submit('活动理由')
         other,_=self.other();self.submit(browser=other)
