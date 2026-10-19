@@ -113,7 +113,7 @@ $env:BOOKLIST_ENV='development'
 | `/api/v1/public/works/<id>/like/` | `enabled`（布尔） | 独立点赞 / 取消 |
 | `/api/v1/public/works/<id>/reason/` | `reason` | 编辑 / 清空自己的理由，不改变推荐或点赞 |
 
-GET `/api/v1/public/works/<id>/reasons/?page=1&page_size=20` 分页返回公开理由。公共列表每部最多展示两条。用户编辑不能解除隐藏/失效治理；被隐藏的理由改写或清空时保留历史原文。原公共 Vote 与非空理由在迁移 0005 中按明确身份去重迁入推荐关系，不迁成点赞；原表保留。已有收录时间但无明确身份的数据不凭空补首次推荐者。
+GET `/api/v1/public/works/<id>/reasons/?page=1&page_size=20` 分页返回公开理由。公共与月度列表卡片的理由区域固定高度，只显示一条最多两行的摘要；完整理由通过“查看理由”进入对应范围详情，列表不原地展开，无理由卡片保留相同空间。接口原有最多两条预览和详情分页保持兼容。用户编辑不能解除隐藏/失效治理；被隐藏的理由改写或清空时保留历史原文。原公共 Vote 与非空理由在迁移 0005 中按明确身份去重迁入推荐关系，不迁成点赞；原表保留。已有收录时间但无明确身份的数据不凭空补首次推荐者。
 
 推荐页自动补齐候选使用 GET `/api/v1/recommend/candidates/?q=书名`；活动范围另加 `activity=<id>`。查询结果区分 `in_scope`、`recommended`、`recommendation_count` 和当前身份的理由；这些字段不会跨公共/活动范围取值。查询中、失败或尚未选择候选时不能把数据库候选当作零条直接提交。公共理由编辑入口为 `/recommend/?work=<id>&edit=1`。
 
