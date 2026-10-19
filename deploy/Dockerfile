@@ -15,7 +15,8 @@ WORKDIR /app
 COPY requirements/runtime.lock requirements/production-linux-amd64-cp314.lock /app/requirements/
 RUN python -m pip install --no-cache-dir --only-binary=:all: --require-hashes -r requirements/production-linux-amd64-cp314.lock
 COPY . /app
-RUN BOOKLIST_ENV=development BOOKLIST_DATA_DIR=/tmp/static-build python manage.py collectstatic --noinput \
+RUN chmod -R a+rX /app \
+ && BOOKLIST_ENV=development BOOKLIST_DATA_DIR=/tmp/static-build python manage.py collectstatic --noinput \
  && groupadd --gid 10001 booklist && useradd --uid 10001 --gid 10001 --no-create-home --shell /usr/sbin/nologin booklist
 USER 10001:10001
 CMD ["gunicorn", "--config", "deploy/gunicorn.conf.py", "config.wsgi:application"]
