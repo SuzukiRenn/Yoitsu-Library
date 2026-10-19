@@ -21,3 +21,9 @@ button{color:var(--ink);background:white;border:1px solid var(--line);border-rad
 .main-nav a[aria-current]{background:var(--ink);color:white;box-shadow:0 1px 3px #243c321a}
 .main-nav a:not([aria-current]):hover{background:#fffefa}
 @media(max-width:700px){.main-nav{gap:2px;padding:3px}.main-nav a{padding:7px 9px;line-height:18px}}
+.period{display:flex;align-items:center;flex-wrap:wrap;gap:8px 20px}
+.period strong{margin-right:0;min-width:0}
+.period-status{white-space:nowrap}
+.period-dates{display:flex;align-items:center;flex-wrap:wrap;gap:0 6px}
+.period p{flex-basis:100%;margin:0}
+@media(max-width:700px){.period-dates{flex-basis:100%}}
