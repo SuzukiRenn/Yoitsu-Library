@@ -5,7 +5,7 @@
 <script type="module" src="{% static 'public.mjs' %}"></script>
 {% block scripts %}{% endblock %}</head>
 <body><a class="skip-link" href="#main">跳到内容</a>
-<header class="site-header"><a class="brand" href="/">共享书单</a><nav class="main-nav" aria-label="主导航"><a href="/">公共书单</a><a href="/activities/">月度推荐</a>{% if not activity or activity.writable %}<a class="primary" href="{% if activity %}/activities/{{ activity.id }}/recommend/{% else %}/recommend/{% endif %}">推荐</a>{% endif %}</nav></header>
+<header class="site-header"><a class="brand" href="/">共享书单</a><nav class="main-nav" aria-label="主导航"><a href="/">公共书单</a><a href="/activities/">月度推荐</a></nav></header>
 <main id="main">{% block content %}{% endblock %}</main>
 <p id="action-status" class="action-status" role="status"></p>
 {% include 'booklist/legal_footer.html' %}
