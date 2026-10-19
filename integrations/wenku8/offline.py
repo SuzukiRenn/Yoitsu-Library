@@ -60,8 +60,9 @@ def field(state, value=None, raw=None, complete=None, code=''):
 def document_diagnostics(text, errors):
     """Ignore only observed URL-attribute entity noise, never text/structure.
 
-    Use lexical positions from the original input, rather than a recovered DOM,
-    to prove both genuine closing tags and the context of an lxml diagnostic.
+    Use lexical positions from the original input, rather than a recovered DOM.
+    Newer libxml2 HTML tokenizers omit legacy missing-semicolon diagnostics, so
+    enforce that collection policy independently and deduplicate native errors.
     """
     offsets = [0, *(match.end() for match in re.finditer('\n', text))]
 
@@ -70,8 +71,34 @@ def document_diagnostics(text, errors):
             super().__init__(convert_charrefs=False)
             self.hrefs = []
             self.ends = []
+            self.entity_errors = []
+            self.rawtext_tag = None
+            self.unverified_attribute = False
+
+        def check_entities(self, fragment, start):
+            for match in re.finditer(r'&(?:#[xX][0-9a-fA-F]+|#[0-9]+|[A-Za-z][A-Za-z0-9]*);?', fragment):
+                if not match[0].endswith(';'):
+                    kind = 'ERR_CHARREF_SEMICOL_MISSING' if match[0].startswith('&#') else 'ERR_ENTITYREF_SEMICOL_MISSING'
+                    self.entity_errors.append((kind, start+match.start(), start+match.end()))
+
+        def handle_data(self, data):
+            if self.rawtext_tag is None:
+                line, column = self.getpos()
+                self.check_entities(data, offsets[line-1]+column)
+
+        def handle_entityref(self, name):
+            line, column = self.getpos()
+            start = offsets[line-1]+column
+            self.check_entities(text[start:start+len(name)+2], start)
+
+        def handle_charref(self, name):
+            line, column = self.getpos()
+            start = offsets[line-1]+column
+            self.check_entities(text[start:start+len(name)+3], start)
 
         def handle_starttag(self, tag, attrs):
+            if tag in ('script', 'style'):
+                self.rawtext_tag = tag
             line, column = self.getpos()
             start = offsets[line-1] + column
             original = self.get_starttag_text()
@@ -82,9 +109,14 @@ def document_diagnostics(text, errors):
             while original[cursor:].strip() not in ('>', '/>'):
                 match = attribute.match(original, cursor)
                 if not match:
+                    self.unverified_attribute = True
+                    self.check_entities(original[cursor:], start+cursor)
                     return
                 cursor = match.end()
                 group = 2 if match[2] is not None else 3 if match[3] is not None else None
+                value_group = group or (4 if match[4] is not None else None)
+                if value_group is not None:
+                    self.check_entities(match[value_group], start+match.start(value_group))
                 if match[1].lower() == 'href' and group is not None:
                     value = match[group]
                     if '<' not in value and '>' not in value:
@@ -92,6 +124,8 @@ def document_diagnostics(text, errors):
             self.hrefs.extend(hrefs)
 
         def handle_endtag(self, tag):
+            if tag == self.rawtext_tag:
+                self.rawtext_tag = None
             if tag in ('body', 'html'):
                 self.ends.append(tag)
 
@@ -106,19 +140,31 @@ def document_diagnostics(text, errors):
                 and bool(re.search(r'</body>\s*</html>\s*$', text, re.I)))
     ignored = 0
     blocking = set()
+    if scan.unverified_attribute:
+        blocking.add('unverified_attribute_syntax')
+    diagnostic_count = len(scan.entity_errors)
+    for kind, start, end in scan.entity_errors:
+        if lexical_ok and kind == 'ERR_ENTITYREF_SEMICOL_MISSING' and any(left <= start and end <= right for left, right in scan.hrefs):
+            ignored += 1
+        else:
+            blocking.add(kind)
     for error in errors:
         position = offsets[error.line-1]+error.column-1 if 1 <= error.line <= len(offsets) else -1
+        if any(kind == error.type_name and start <= position <= end for kind, start, end in scan.entity_errors):
+            continue
+        diagnostic_count += 1
         if (lexical_ok and error.type_name == 'ERR_ENTITYREF_SEMICOL_MISSING'
                 and any(start <= position < end for start, end in scan.hrefs)):
             ignored += 1
         else:
             blocking.add(error.type_name)
     # Do not certify a page with a flood of diagnostics; logs may be bounded.
-    if len(errors) > 50:
+    if diagnostic_count > 50:
         blocking.add('diagnostic_limit_exceeded')
     complete = explicit and not blocking
     return {'complete': complete, 'explicit_end_tags': explicit,
             'parser_error_count': len(errors), 'ignored_href_entity_errors': ignored,
+            'lexical_entity_error_count': len(scan.entity_errors),
             'blocking_error_types': sorted(blocking),
             'reason': '' if complete else ('missing_explicit_end' if not explicit else 'blocking_parser_diagnostic')}
 

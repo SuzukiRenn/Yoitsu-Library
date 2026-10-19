@@ -21,9 +21,18 @@ RUN chmod -R a+rX /app \
 USER 10001:10001
 CMD ["gunicorn", "--config", "deploy/gunicorn.conf.py", "config.wsgi:application"]
 
-FROM runtime AS verification
-USER root
+FROM python:3.14.8-slim-bookworm@sha256:a66d3a463d0be3cc537c269b0d3418746dda512417a975559a0eaa8a6406baaf AS verification_tools
 RUN apt-get update && apt-get install --no-install-recommends -y nodejs && rm -rf /var/lib/apt/lists/*
+
+FROM verification_tools AS verification
+ENV LD_LIBRARY_PATH=/opt/sqlite/lib PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+# Both stages use the same pinned base. Test the runtime's exact Python,
+# installed packages, SQLite library and application, with Node added separately.
+COPY --from=runtime /usr/local /usr/local
+COPY --from=runtime /opt/sqlite /opt/sqlite
+COPY --from=runtime /app /app
+WORKDIR /app
+RUN groupadd --gid 10001 booklist && useradd --uid 10001 --gid 10001 --no-create-home --shell /usr/sbin/nologin booklist
 USER 10001:10001
 ENV BOOKLIST_ENV=test BOOKLIST_DATA_DIR=/tmp/verification
 CMD ["python", "manage.py", "test", "booklist.tests", "--noinput"]

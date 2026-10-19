@@ -271,7 +271,7 @@ class TextTests(TestCase):
                 expected.append({'ok':True,'value':normalize(**case)})
             except ValidationError:
                 expected.append({'ok':False})
-        js = "import {normalize} from './static/text.mjs'; let s=''; for await (const c of process.stdin) s+=c; console.log(JSON.stringify(JSON.parse(s).map(x=>{try{return {ok:true,value:normalize(x.value,x.field,x.required)}}catch{return {ok:false}}})));"
+        js = "import {normalize} from './static/text.mjs'; String.prototype.isWellFormed = undefined; let s=''; for await (const c of process.stdin) s+=c; console.log(JSON.stringify(JSON.parse(s).map(x=>{try{return {ok:true,value:normalize(x.value,x.field,x.required)}}catch{return {ok:false}}})));"
         run = subprocess.run(['node', '--input-type=module', '-e', js], input=json.dumps(cases), capture_output=True, encoding='utf-8', cwd=settings.BASE_DIR, timeout=20)
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(json.loads(run.stdout), expected)
