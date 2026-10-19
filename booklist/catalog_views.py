@@ -50,4 +50,7 @@ def home(request, data):
 def work_page(request, data, work_id):
     parameters(request, ())
     read_limit(request)
-    return page(request, 'booklist/work.html', {'work': catalog.work_detail(work_id)})
+    from . import public_booklist as books
+    work = catalog.work_detail(work_id)
+    interaction = books.serialize([books.require_work(work_id)], request.anonymous_client)[0] if work['is_public'] else None
+    return page(request, 'booklist/work.html', {'work': work, 'interaction': interaction})

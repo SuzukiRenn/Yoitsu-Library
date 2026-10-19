@@ -232,6 +232,32 @@ class Vote(ScopedContribution):
             models.UniqueConstraint(fields=['activity', 'work', 'anonymous_client'], condition=Q(scope='activity', archived_at__isnull=True, cancelled_at__isnull=True), name='activity_vote_active_unique')]
 
 
+class PublicRecommendation(Timestamped):
+    work = models.ForeignKey(Work, on_delete=P)
+    anonymous_client = models.ForeignKey(AnonymousClient, on_delete=P)
+    origin = models.CharField(max_length=20, default='submit')
+    withdrawn_at = models.DateTimeField(null=True)
+    invalidated_at = models.DateTimeField(null=True)
+    archived_at = models.DateTimeField(null=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(origin__in=['submit', 'plus_one', 'legacy']), name='public_rec_origin'),
+            models.UniqueConstraint(fields=['work', 'anonymous_client'], condition=Q(withdrawn_at__isnull=True, invalidated_at__isnull=True, archived_at__isnull=True), name='public_rec_person_unique'),
+        ]
+
+
+class PublicLike(Timestamped):
+    work = models.ForeignKey(Work, on_delete=P)
+    anonymous_client = models.ForeignKey(AnonymousClient, on_delete=P)
+    cancelled_at = models.DateTimeField(null=True)
+    invalidated_at = models.DateTimeField(null=True)
+    archived_at = models.DateTimeField(null=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['work', 'anonymous_client'], condition=Q(cancelled_at__isnull=True, invalidated_at__isnull=True, archived_at__isnull=True), name='public_like_person_unique')]
+
+
 class WorkMergeOperation(models.Model):
     primary_work = models.ForeignKey(Work, on_delete=P, related_name='primary_operations')
     merged_work = models.ForeignKey(Work, on_delete=P, related_name='merged_operations')

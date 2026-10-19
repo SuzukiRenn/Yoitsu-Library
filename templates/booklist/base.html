@@ -1,9 +1,12 @@
 {% load static %}<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{% block title %}共享书单 · 查找作品{% endblock %}</title>
+<title>{% block title %}共享书单{% endblock %}</title>
 <link rel="stylesheet" href="{% static 'catalog.css' %}">
+<script type="module" src="{% static 'public.mjs' %}"></script>
 {% block scripts %}{% endblock %}</head>
 <body><a class="skip-link" href="#main">跳到内容</a>
-<header class="site-header"><a class="brand" href="/">共享书单</a></header>
+<header class="site-header"><a class="brand" href="/">共享书单</a><button class="primary" type="button" data-open-recommend>推荐</button></header>
 <main id="main">{% block content %}{% endblock %}</main>
+<dialog id="recommend-dialog" aria-labelledby="recommend-title"><form id="recommend-form"><div class="dialog-heading"><h2 id="recommend-title">推荐</h2><button type="button" data-close-dialog aria-label="关闭">×</button></div><label for="recommend-query">书名</label><input id="recommend-query" type="search" placeholder="书名或别名" autocomplete="off" required><div id="candidate-status" role="status"></div><div id="candidates"></div><label for="recommend-reason">理由（可选）</label><textarea id="recommend-reason" rows="3"></textarea><output id="reason-length">0 / 200</output><label id="distinct-option" hidden><input id="distinct-work" type="checkbox">同名不同作品</label><p id="recommend-status" role="status"></p><button class="primary" id="recommend-submit" type="submit">推荐</button></form></dialog>
+<p id="action-status" class="action-status" role="status"></p>
 </body></html>

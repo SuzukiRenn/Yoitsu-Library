@@ -34,7 +34,8 @@ def endpoint(method, admin=False, fields=()):
                     if len(body) > 32768:
                         return error('request_too_large', '请求体过大', 413)
                     data = json.loads(body.decode('utf-8'))
-                    if not isinstance(data, dict) or set(data) != set(fields) or any(not isinstance(data[k], str) for k in fields):
+                    types = fields if isinstance(fields, dict) else {key: str for key in fields}
+                    if not isinstance(data, dict) or set(data) != set(types) or any(type(data[k]) not in (kind if isinstance(kind, tuple) else (kind,)) for k, kind in types.items()):
                         return error('invalid_request', '字段缺失、类型错误或含未知字段', 400)
                 return fn(request, data, *args, **kwargs)
             except services.DomainError as exc:

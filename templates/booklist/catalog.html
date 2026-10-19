@@ -2,7 +2,7 @@
 {% block scripts %}<script type="module" src="{% static 'catalog.mjs' %}"></script>{% endblock %}
 {% block content %}
 <section class="search-area"><h1 class="sr-only">作品查询</h1>
-<form id="search-form" class="search-form" method="get" action="/" role="search"><label for="book-query" class="sr-only">书名</label><div class="search-box"><input id="book-query" name="q" type="search" value="{{ query }}" autocomplete="off" placeholder="书名或别名" aria-describedby="search-status"><button type="submit">搜索</button></div></form></section>
+<form id="search-form" class="search-form" method="get" action="/catalog/" role="search"><label for="book-query" class="sr-only">书名</label><div class="search-box"><input id="book-query" name="q" type="search" value="{{ query }}" autocomplete="off" placeholder="书名或别名" aria-describedby="search-status"><button type="submit">搜索</button></div></form></section>
 <section class="shelf" aria-labelledby="results-title"><div class="section-heading"><h2 id="results-title">{% if searched %}搜索结果{% else %}最近入库{% endif %}</h2><span class="section-note" id="search-status" role="status" aria-live="polite">{{ works|length }} 条</span></div>
 <div id="search-results" class="book-grid" aria-busy="false">{% for work in works %}{% include 'booklist/card.html' %}{% empty %}<div class="empty-state"><h3>{% if searched %}无结果{% else %}暂无作品{% endif %}</h3></div>{% endfor %}</div>
 </section>

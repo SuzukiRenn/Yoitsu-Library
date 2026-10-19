@@ -143,14 +143,14 @@ class CatalogTests(TestCase):
         with patch('booklist.services.time.time', return_value=120):
             for _ in range(60):
                 self.assertEqual(self.search('图书').status_code, 200)
-            response = self.client.get('/', {'q': '图书'})
+            response = self.client.get('/catalog/', {'q': '图书'})
             self.assertEqual(response.status_code, 429)
             self.assertEqual(response['Retry-After'], '60')
 
     def test_html_escaping_ssr_fallback_and_csp(self):
         title='<img src=x onerror=alert(1)>'
         work=self.work(title, wenku8_description='<script>alert(1)</script>\n简介')
-        home=self.client.get('/', {'q': title})
+        home=self.client.get('/catalog/', {'q': title})
         self.assertContains(home, '&lt;img')
         self.assertNotContains(home, '<img src=x')
         self.assertContains(home, f'/works/{work.pk}/')
@@ -165,7 +165,8 @@ class CatalogTests(TestCase):
         for text in ('好故事', '故事的入口', '从一个书名', '把好故事留在一起', 'THE SHARED SHELF', '找到相似书名', '同名作品可能'):
             self.assertNotContains(page, text)
         self.assertContains(page, '书名或别名')
-        self.assertContains(page, '>搜索</button>')
+        self.assertContains(page, '>推荐</button>')
+        self.assertNotContains(page, 'id="search-form"')
 
     def test_javascript_request_race_and_error_suite(self):
         result = subprocess.run(['node', str(Path(settings.BASE_DIR)/'scripts/test_catalog_ui.mjs')], capture_output=True, timeout=20)
