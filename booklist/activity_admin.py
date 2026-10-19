@@ -11,7 +11,7 @@ def timestamp(value):
     result = parse_datetime(value)
     if result is None or timezone.is_naive(result):
         raise services.DomainError('invalid_time', '需要带时区的时间')
-    return result.replace(microsecond=result.microsecond//1000*1000)
+    return result
 
 
 def state(row):
@@ -43,8 +43,14 @@ def update(actor, activity_id, data):
     before = state(row); start, end = timestamp(data['start_at']), timestamp(data['end_at'])
     if start >= end:
         raise services.DomainError('invalid_time', '开始时间须早于结束时间')
-    if row.status in ('active', 'paused') and (start != row.start_at or end < row.scheduled_end_at):
-        raise services.DomainError('invalid_time', '进行中只能延期，开始时间锁定', 409)
+    if row.status in ('active', 'paused'):
+        # Public API timestamps use milliseconds; internally retain the original precise boundary.
+        same_start = start in (row.start_at, row.start_at.replace(microsecond=row.start_at.microsecond//1000*1000))
+        if end == row.scheduled_end_at.replace(microsecond=row.scheduled_end_at.microsecond//1000*1000):
+            end = row.scheduled_end_at
+        if not same_start or end < row.scheduled_end_at:
+            raise services.DomainError('invalid_time', '进行中只能延期，开始时间锁定', 409)
+        start = row.start_at
     if row.status != 'draft' and (end <= timezone.now() or activities.conflict(row.started_at or start, end, row.pk)):
         raise services.DomainError('activity_conflict', '活动时段无效或冲突', 409)
     row.title = normalize(data['title'], 'activity_title', required=True)

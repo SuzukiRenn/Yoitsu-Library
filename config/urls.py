@@ -1,7 +1,18 @@
 from django.urls import path
-from booklist import views, catalog_views, public_views, activity_views, recommend_views
+from booklist import views, catalog_views, public_views, activity_views, recommend_views, admin_views
 
 urlpatterns = [
+    path('manage/login/', admin_views.login),
+    path('manage/', admin_views.index),
+    path('manage/works/<int:work_id>/', admin_views.work),
+    path('manage/activities/<int:activity_id>/', admin_views.activity),
+    path('manage/merge/', admin_views.merge_preview),
+    path('api/v1/admin/works/<int:work_id>/action/', admin_views.work_action),
+    path('api/v1/admin/works/', admin_views.create_work),
+    path('api/v1/admin/reasons/<int:reason_id>/action/', admin_views.reason_action),
+    path('api/v1/admin/relations/<str:kind>/<int:record_id>/invalidate/', admin_views.relation_action),
+    path('api/v1/admin/merges/', admin_views.merge),
+    path('api/v1/admin/merges/<int:operation_id>/undo/', admin_views.undo),
     path('', public_views.home), path('catalog/', catalog_views.home), path('health/', views.health),
     path('recommend/', recommend_views.recommend),
     path('api/v1/recommend/candidates/', recommend_views.candidates),
