@@ -1,0 +1,60 @@
+/* Shared, optional motion. Content stays usable without animation support or JavaScript. */
+@keyframes booklist-content-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes booklist-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes booklist-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+  ::view-transition-group(root) { animation-duration: 160ms; }
+  ::view-transition-old(root) { animation: booklist-fade-out 100ms ease-out both; }
+  ::view-transition-new(root) { animation: booklist-fade-in 160ms ease-out both; }
+
+  main { animation: booklist-content-enter 200ms cubic-bezier(.2,.7,.3,1) backwards; }
+  a, button, input, textarea, select {
+    transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease,
+                box-shadow 150ms ease, opacity 120ms ease, transform 120ms ease;
+  }
+  .public-card, .book-card, .period, .candidate {
+    transition: border-color 160ms ease, background-color 160ms ease,
+                box-shadow 160ms ease, transform 160ms ease;
+  }
+  #candidates > .candidate, .reason-text {
+    animation: booklist-content-enter 160ms ease-out backwards;
+  }
+  [role="status"]:not(:empty) { animation: booklist-fade-in 140ms ease-out backwards; }
+  details[open] > :not(summary) { animation: booklist-content-enter 160ms ease-out backwards; }
+
+  button:not(:disabled):active, a.primary:active, .back-link:active, .return-button:active {
+    transform: translateY(1px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+  .public-card:hover, .book-card:hover, .period:hover {
+    transform: translateY(-2px);
+    border-color: #9cad92;
+    box-shadow: 0 5px 15px #243c3210;
+  }
+  .candidate:hover { border-color: #7b946d; box-shadow: 0 2px 8px #243c320c; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition { navigation: none; }
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  ::view-transition-group(root), ::view-transition-old(root), ::view-transition-new(root) {
+    animation: none !important;
+  }
+}
