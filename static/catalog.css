@@ -27,3 +27,8 @@ button{color:var(--ink);background:white;border:1px solid var(--line);border-rad
 .period-dates{display:flex;align-items:center;flex-wrap:wrap;gap:0 6px}
 .period p{flex-basis:100%;margin:0}
 @media(max-width:700px){.period-dates{flex-basis:100%}}
+.public-actions{display:block}
+.work-stats{display:flex;align-items:baseline;flex-wrap:wrap;gap:8px 22px;font-size:13px;line-height:24px}
+.work-stats strong{font-size:16px;font-weight:650;font-variant-numeric:tabular-nums}
+.action-buttons{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:10px}
+@media(max-width:700px){.action-buttons{gap:6px}}
