@@ -46,9 +46,9 @@ export BOOKLIST_RELEASE="$release"
 export GIT_TERMINAL_PROMPT=0
 echo 'PHASE build_private_runtime'
 timeout 300 docker pull python:3.14.8-slim-bookworm@sha256:a66d3a463d0be3cc537c269b0d3418746dda512417a975559a0eaa8a6406baaf
-timeout 1200 docker build --target runtime -t "shared-booklist:$release" -f deploy/Dockerfile .
+timeout 7200 docker build --target runtime -t "shared-booklist:$release" -f deploy/Dockerfile .
 echo 'PHASE linux_regression_before_live_data'
-timeout 600 docker build --target verification -t "shared-booklist-verify:$release" -f deploy/Dockerfile .
+timeout 3600 docker build --target verification -t "shared-booklist-verify:$release" -f deploy/Dockerfile .
 docker run --rm --network none --memory 512m --cpus 1 --read-only --tmpfs /tmp:size=128m "shared-booklist-verify:$release"
 docker run --rm --network none --memory 128m --read-only --tmpfs /tmp:size=32m "shared-booklist-verify:$release" python scripts/test_deploy.py
 echo 'PHASE initialize_private_configuration'
