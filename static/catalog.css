@@ -52,3 +52,4 @@ button{color:var(--ink);background:white;border:1px solid var(--line);border-rad
 .candidate-preview .book-author{margin:8px 0 12px;font-size:13px}
 .candidate-preview .tag{font-size:11px;line-height:1.4}
 @media(prefers-reduced-motion:no-preference){.candidate-preview:not([hidden]){animation:booklist-fade-in 120ms ease-out}}
+.recommend-page #candidates:not(:empty){padding:10px;margin:0 -10px -10px}
