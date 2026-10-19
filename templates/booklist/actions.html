@@ -2,5 +2,5 @@
 <span>推荐 <strong>{{ work.recommendation_count }}</strong></span>
 <button type="button" data-action="recommend" data-enabled="{% if work.recommended %}false{% else %}true{% endif %}" aria-pressed="{{ work.recommended|yesno:'true,false' }}">{% if work.recommended %}取消推荐{% else %}+1{% endif %}</button>
 <button type="button" data-action="like" data-enabled="{% if work.liked %}false{% else %}true{% endif %}" aria-pressed="{{ work.liked|yesno:'true,false' }}">{% if work.liked %}已赞{% else %}点赞{% endif %} {{ work.like_count }}</button>
-<button type="button" data-edit-reason data-work-id="{{ work.id }}" data-title="{{ work.title }}" data-reason="{{ work.own_reason }}">{% if work.own_reason %}编辑理由{% else %}写理由{% endif %}</button>
+<a href="/recommend/?work={{ work.id }}&amp;edit=1">{% if work.own_reason %}编辑理由{% else %}写理由{% endif %}</a>
 </div>

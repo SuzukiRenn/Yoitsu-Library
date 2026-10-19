@@ -258,6 +258,17 @@ class PublicLike(Timestamped):
         constraints = [models.UniqueConstraint(fields=['work', 'anonymous_client'], condition=Q(cancelled_at__isnull=True, invalidated_at__isnull=True, archived_at__isnull=True), name='public_like_person_unique')]
 
 
+class PendingActivitySubmission(Timestamped):
+    activity = models.ForeignKey(Activity, on_delete=P)
+    work = models.ForeignKey(Work, on_delete=P)
+    anonymous_client = models.ForeignKey(AnonymousClient, on_delete=P)
+    reason = models.TextField(default='')
+    copy_public_reason = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [models.CheckConstraint(condition=Q(reason__length__lte=200), name='pending_activity_reason_limit')]
+
+
 class WorkMergeOperation(models.Model):
     primary_work = models.ForeignKey(Work, on_delete=P, related_name='primary_operations')
     merged_work = models.ForeignKey(Work, on_delete=P, related_name='merged_operations')

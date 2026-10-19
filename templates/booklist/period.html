@@ -1,0 +1,1 @@
+<a class="period" href="/activities/{{ period.id }}/"><strong>{{ period.title }}</strong><span>{{ period.status_label }}{% if period.corrected %} · 已修正{% endif %}</span>{% if period.theme %}<p>{{ period.theme }}</p>{% endif %}<time>{{ period.start_label }}</time><span> — </span><time>{{ period.end_label }}</time></a>

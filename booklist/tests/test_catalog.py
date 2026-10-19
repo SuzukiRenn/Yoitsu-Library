@@ -164,8 +164,8 @@ class CatalogTests(TestCase):
         page=self.client.get('/')
         for text in ('好故事', '故事的入口', '从一个书名', '把好故事留在一起', 'THE SHARED SHELF', '找到相似书名', '同名作品可能'):
             self.assertNotContains(page, text)
-        self.assertContains(page, '书名或别名')
-        self.assertContains(page, '>推荐</button>')
+        self.assertNotContains(page, 'id="recommend-form"')
+        self.assertContains(page, '>推荐</a>')
         self.assertNotContains(page, 'id="search-form"')
 
     def test_javascript_request_race_and_error_suite(self):

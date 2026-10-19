@@ -1,8 +1,22 @@
 from django.urls import path
-from booklist import views, catalog_views, public_views
+from booklist import views, catalog_views, public_views, activity_views, recommend_views
 
 urlpatterns = [
     path('', public_views.home), path('catalog/', catalog_views.home), path('health/', views.health),
+    path('recommend/', recommend_views.recommend),
+    path('api/v1/recommend/candidates/', recommend_views.candidates),
+    path('activities/', activity_views.index),
+    path('activities/<int:activity_id>/', activity_views.detail),
+    path('activities/<int:activity_id>/recommend/', recommend_views.recommend),
+    path('api/v1/activities/<int:activity_id>/', activity_views.detail_api),
+    path('api/v1/activities/<int:activity_id>/recommendations/', activity_views.submit),
+    path('api/v1/activities/<int:activity_id>/works/<int:work_id>/withdraw/', activity_views.withdraw),
+    path('api/v1/activities/<int:activity_id>/works/<int:work_id>/like/', activity_views.like),
+    path('api/v1/activities/<int:activity_id>/works/<int:work_id>/reason/', activity_views.reason),
+    path('api/v1/activities/<int:activity_id>/works/<int:work_id>/reasons/', activity_views.reasons),
+    path('api/v1/admin/activities/', activity_views.create),
+    path('api/v1/admin/activities/<int:activity_id>/update/', activity_views.update),
+    path('api/v1/admin/activities/<int:activity_id>/action/', activity_views.action),
     path('api/v1/public/works/', public_views.listing),
     path('api/v1/public/recommendations/', public_views.submit),
     path('api/v1/public/works/<int:work_id>/recommend/', public_views.recommend),

@@ -118,8 +118,8 @@ def set_relation(work, client, kind, enabled, origin='plus_one'):
         row.save(update_fields=[field, 'updated_at'])
 
 
-def submit(client, data):
-    title, reason = normalize(data['title'], 'title', required=True), normalize(data['reason'], 'reason')
+def resolve_submission(data):
+    title = normalize(data['title'], 'title', required=True)
     if data['work_id'] is not None:
         work = require_work(data['work_id'], public=False)
     else:
@@ -132,10 +132,21 @@ def submit(client, data):
             raise services.DomainError('existing_candidate', '请选择已有作品，或确认同名不同作品', 409)
         pending = matches.filter(Q(hidden_at__isnull=False) | Q(review_status='pending')).exists()
         work = Work.objects.create(original_submitted_title=title, review_status='pending' if pending else 'clear')
+    return work
+
+
+def enroll(work):
     pending = work.review_status == 'pending'
     if not pending and work.public_added_at is None:
         work.public_added_at = timezone.now()
         work.save(update_fields=['public_added_at', 'updated_at'])
+
+
+def submit(client, data):
+    reason = normalize(data['reason'], 'reason')
+    work = resolve_submission(data)
+    pending = work.review_status == 'pending'
+    enroll(work)
     set_relation(work, client, 'recommend', True, origin='submit')
     # Empty optional input must not erase an existing reason during a repeat recommendation.
     if reason:
