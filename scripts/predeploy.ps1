@@ -12,6 +12,33 @@ New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 $outputFile=Join-Path $outputDir ('predeploy-'+$Release+'.log')
 # Strict host verification and password entry remain with the existing local SSH client.
 $script=([IO.File]::ReadAllText($scriptPath)).Replace("`r`n","`n")
+# Bundle only committed Git objects reachable from the requested release, never workspace files.
+$bundlePath=Join-Path $outputDir ('release-'+$Release+'-'+[Guid]::NewGuid().ToString('N')+'.bundle')
+try {
+    $localRelease=git -C $repoRoot rev-parse HEAD
+    if ($LASTEXITCODE -ne 0 -or $localRelease -ne $Release) { throw 'Requested release must equal the local committed HEAD.' }
+    git -C $repoRoot bundle create $bundlePath HEAD
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot prepare the requested committed release.' }
+    $bundleHash=(Get-FileHash -LiteralPath $bundlePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $bundleBase64=[Convert]::ToBase64String([IO.File]::ReadAllBytes($bundlePath))
+} finally {
+    if (Test-Path -LiteralPath $bundlePath) { Remove-Item -LiteralPath $bundlePath }
+}
+$bundleScript=@'
+echo 'PHASE receive_committed_release_via_ssh'
+python3 - "$checkout/.git/predeploy.bundle" <<'RELEASE_BUNDLE_PY'
+import base64, hashlib, os, sys
+payload = base64.b64decode('__BUNDLE_BASE64__', validate=True)
+if hashlib.sha256(payload).hexdigest() != '__BUNDLE_SHA256__':
+    raise SystemExit('Release transfer checksum mismatch')
+with os.fdopen(os.open(sys.argv[1], os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600), 'wb') as output:
+    output.write(payload)
+print('release_transfer_verified')
+RELEASE_BUNDLE_PY
+'@
+$bundleScript=$bundleScript.Replace('__BUNDLE_BASE64__',$bundleBase64).Replace('__BUNDLE_SHA256__',$bundleHash).Replace("`r`n","`n")
+if (-not $script.Contains('# LOCAL_RELEASE_BUNDLE')) { throw 'Deployment script lacks release transfer support.' }
+$script=$script.Replace('# LOCAL_RELEASE_BUNDLE',$bundleScript)
 $predeployErrorPreference=$ErrorActionPreference
 try {
     # Merge remote stderr before SSH so Git/Docker progress is retained in the log.

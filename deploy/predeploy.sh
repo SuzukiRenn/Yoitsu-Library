@@ -35,8 +35,17 @@ if [[ ! -d "$checkout" ]]; then
   git -C "$checkout" init -q
   git -C "$checkout" remote add origin https://github.com/SuzukiRenn/shared-booklist.git
 fi
-echo 'PHASE fetch_fixed_release (up to 120 seconds)'
-GIT_TERMINAL_PROMPT=0 timeout 120 git -c credential.helper= -C "$checkout" fetch --depth 1 origin "$release"
+# LOCAL_RELEASE_BUNDLE
+if [[ -f "$checkout/.git/predeploy.bundle" ]]; then
+  echo 'PHASE import_fixed_release_from_ssh'
+  git -C "$checkout" bundle verify "$checkout/.git/predeploy.bundle"
+  git -C "$checkout" fetch "$checkout/.git/predeploy.bundle" HEAD </dev/null
+  [[ $(git -C "$checkout" rev-parse FETCH_HEAD) == "$release" ]] || { echo 'Transferred release does not match requested commit'; exit 2; }
+  rm -- "$checkout/.git/predeploy.bundle"
+else
+  echo 'PHASE fetch_fixed_release (up to 120 seconds)'
+  GIT_TERMINAL_PROMPT=0 timeout 120 git -c credential.helper= -C "$checkout" fetch --depth 1 origin "$release"
+fi
 git -C "$checkout" checkout --detach "$release"
 [[ $(git -C "$checkout" rev-parse HEAD) == "$release" ]]
 git -C "$checkout" diff --exit-code >/dev/null
@@ -45,7 +54,10 @@ cd "$checkout"
 export BOOKLIST_RELEASE="$release"
 export GIT_TERMINAL_PROMPT=0
 echo 'PHASE build_private_runtime'
-timeout 300 docker pull python:3.14.8-slim-bookworm@sha256:a66d3a463d0be3cc537c269b0d3418746dda512417a975559a0eaa8a6406baaf
+base_image=python:3.14.8-slim-bookworm@sha256:a66d3a463d0be3cc537c269b0d3418746dda512417a975559a0eaa8a6406baaf
+if ! docker image inspect "$base_image" >/dev/null 2>&1; then
+  timeout 300 docker pull "$base_image"
+fi
 timeout 7200 docker build --target runtime -t "shared-booklist:$release" -f deploy/Dockerfile .
 echo 'PHASE linux_regression_before_live_data'
 timeout 3600 docker build --target verification -t "shared-booklist-verify:$release" -f deploy/Dockerfile .
