@@ -23,7 +23,7 @@ if ENV == 'production' and (not os.environ.get('BOOKLIST_DATA_DIR') or not DATA_
     raise ImproperlyConfigured('Production data directory must be absolute and outside code')
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 INSTALLED_APPS = ['django.contrib.staticfiles', 'booklist.apps.BooklistConfig']
-MIDDLEWARE = ['django.middleware.security.SecurityMiddleware', 'django.middleware.common.CommonMiddleware',
+MIDDLEWARE = ['django.middleware.security.SecurityMiddleware', 'django.middleware.clickjacking.XFrameOptionsMiddleware', 'django.middleware.common.CommonMiddleware',
               'django.middleware.csrf.CsrfViewMiddleware', 'booklist.middleware.IdentityMiddleware']
 ROOT_URLCONF = 'config.urls'
 WSGI_APPLICATION = 'config.wsgi.application'

@@ -1,0 +1,45 @@
+name: shared-booklist-predeploy
+x-common: &common
+  image: shared-booklist:${BOOKLIST_RELEASE:?release_required}
+  env_file: /etc/shared-booklist/predeploy.env
+  user: '10001:10001'
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ['no-new-privileges:true']
+  tmpfs: ['/tmp:size=32m,mode=1777']
+  volumes: ['/var/lib/shared-booklist/predeploy/data:/var/lib/shared-booklist']
+  networks: [private]
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: {max-size: '5m', max-file: '2'}
+services:
+  app:
+    <<: *common
+    build: {context: '..', dockerfile: deploy/Dockerfile, target: runtime}
+    mem_limit: 256m
+    cpus: 0.75
+    healthcheck:
+      test: ['CMD', 'python', 'scripts/predeploy_health.py']
+      interval: 15s
+      timeout: 10s
+      retries: 4
+      start_period: 15s
+  scheduler:
+    <<: *common
+    command: ['python', 'scripts/production_tasks.py', 'scheduler']
+    mem_limit: 128m
+    cpus: 0.25
+    depends_on: {app: {condition: service_healthy}}
+  backup:
+    <<: *common
+    command: ['python', 'scripts/production_tasks.py', 'backup']
+    volumes:
+      - /var/lib/shared-booklist/predeploy/data:/var/lib/shared-booklist
+      - /var/lib/shared-booklist/predeploy/backups:/backups
+    mem_limit: 128m
+    cpus: 0.25
+    depends_on: {app: {condition: service_healthy}}
+# No published ports. Public TLS and reverse proxy are a separate deployment step.
+networks:
+  private: {internal: true}
