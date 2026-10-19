@@ -1,1 +1,79 @@
-# shared-booklist
+# 共享书单
+
+当前交付阶段 1 基础服务和阶段 2 离线导入：数据库、匿名身份、管理员认证、元数据导入队列、来源字段与标签同步。公开推荐、点赞、活动和合并业务尚未开放，首页仅说明当前阶段。网站仍在开发中。
+
+## 本地运行
+
+需要受支持的 Python 3.14 及其实际链接的 SQLite >= 3.51.3；本机验证为 Python 3.14.6 / SQLite 3.53.2。不要升级或复用 `tests/wenku8_browser/.venv`，它用于保留旧采集回归。
+
+```powershell
+# 首次创建独立环境；如系统 TEMP 不可写，先指向项目 .runtime/tmp。
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --index-url https://pypi.org/simple --require-hashes -r .\requirements\runtime.lock
+$env:BOOKLIST_ENV='development'
+.\.venv\Scripts\python.exe -B manage.py migrate --noinput
+.\.venv\Scripts\python.exe -B manage.py init_admin owner
+.\.venv\Scripts\python.exe -B manage.py runserver 127.0.0.1:8000 --noreload
+```
+
+初始化密码交互输入，不使用命令行密码参数；自动化可通过临时环境变量 `BOOKLIST_INITIAL_PASSWORD` 传入并在运行后清除。再次初始化不创建新账号或重置密码。首次管理员只可本地初始化，后续账号由已登录管理员创建。测试源码中的密码仅用于测试库。
+
+遗失密码时由服务器操作者运行 `manage.py reset_admin_password <username>`，交互输入新密码（自动化可临时使用 `BOOKLIST_RESET_PASSWORD`）。该操作记录系统恢复审计并撤销全部旧会话，不启用已停用账号；没有公开重置接口。
+
+开发数据默认 `.runtime/booklist.sqlite3`。`BOOKLIST_DATA_DIR` 可指定独立目录；测试使用该目录内的 `test_booklist.sqlite3`，不要将它指向生产目录运行测试。运行 `scripts/verify_stage1.py` 会新建独立验证目录，不使用开发或生产库。
+
+```powershell
+$env:BOOKLIST_ENV='development'
+.\.venv\Scripts\python.exe -B manage.py check
+.\.venv\Scripts\python.exe -B manage.py test booklist.tests --noinput
+# 还需要 Node.js 来比较前后端文本黄金样例。
+.\.venv\Scripts\python.exe -B scripts/verify_stage1.py
+```
+
+阶段 1 验证脚本包含本机回环 HTTP 请求；不访问文库8/DeepSeek，不启动 Chrome，不部署服务器。新证据保存在 `.runtime/verification/<时间>/`，不进入 Git。原工作区的历史采集材料保持不变；本仓库只包含运行所需的两个旧解析器及明确选出的元数据样本。
+
+## 离线小样本导入
+
+当前解析依赖锁仅验证 Windows x64 / Python 3.14；Linux 安装与服务器采集路线仍待验证。先安装解析依赖，再迁移：
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install --index-url https://pypi.org/simple --require-hashes -r requirements/parsing-win_amd64-cp314.lock
+$env:BOOKLIST_ENV='development'
+.\.venv\Scripts\python.exe -B manage.py migrate --noinput
+.\.venv\Scripts\python.exe -B manage.py import_wenku8 --manifest tests/fixtures/wenku8/manifest.json --max-items 1
+# 用上一条输出的 batch_id 恢复；替换下方占位符。
+.\.venv\Scripts\python.exe -B manage.py import_wenku8 --resume <batch_id>
+.\.venv\Scripts\python.exe -B scripts/verify_stage2.py
+```
+
+命令只读本地 HTML 元数据，不访问来源网站、不下载封面或正文。每批最多 20 项，逐项事务，支持中断恢复；重复样本不重复创建作品/标签。`paused` 尚有待处理项，`completed` 全部成功，`completed_partial` 存在可选字段警告，`completed_with_errors` 存在失败项（退出非零）。请同时检查 counts、每项结果与警告；退出 0 不表示所有可选字段完整。
+
+恢复绑定 manifest、输入文件和解析代码的指纹。修正内容后新建批次；仅对未改变的失败输入使用 `--resume <batch_id> --retry-failed`。无可信 ID/标准标题整项失败，可选字段失败不会清空旧值；不完整标签集合不会撤销旧关联。管理员覆盖与治理状态保留，导入不自动加入公共书单。阶段 2 验证证据写入 `.runtime/import_verification/<时间>/`，包括全套测试和真实样本对照；克隆后的旧文件保护计数只反映仓库内实际存在的文件。
+
+## 基础 API
+
+先 GET `/api/v1/csrf/` 获取 `csrf_token` 并保留 Cookie；每次 POST 使用 `Content-Type: application/json` 和 `X-CSRFToken`。登录会轮换 CSRF，后续写入前重新获取。所有写入均同源校验，不能仅以持有链接替代 CSRF。
+
+| 路径 | 方法 / JSON 字段 | 作用 |
+|---|---|---|
+| `/health/` | GET | 数据库和迁移就绪检查 |
+| `/api/v1/identity/` | POST `{}` | 签发或续期匿名身份，不返回身份 ID/token 原文 |
+| `/api/v1/identity/reset/` | POST `{}` | 撤销旧 token、签发新身份；旧贡献保留且不继承权限 |
+| `/api/v1/admin/login/` | POST `username,password` | 独立管理员 Cookie，绝对 12 小时 |
+| `/api/v1/admin/me/` | GET | 当前管理员名称 |
+| `/api/v1/admin/logout/` | POST `{}` | 退出当前会话 |
+| `/api/v1/admin/accounts/` | POST `username,password` | 已登录有效管理员创建同权账号 |
+| `/api/v1/admin/accounts/<id>/disable/` | POST `{}` | 原子停用，不能停用最后一名有效管理员 |
+| `/api/v1/admin/password/` | POST `current_password,new_password` | 修改本人密码并使全部旧会话失效 |
+
+错误为 `{error: {code, message}}`，采用 400/401/403/404/405/409/413/415/429/503；未知字段或错误类型拒绝。应用不提供任意表编辑界面。CLI/ORM 管理更改也必须走业务服务保持审计，直接 SQL 的业务变化会留下 ChangeEvent，但不会自动生成足够的管理员操作说明。
+
+数据库审计、变更事件、转换历史和合并明细为追加记录，SQL UPDATE/DELETE 会被触发器拒绝。因此 `manage.py flush` **不是受支持的运行清理方式**；不要为了清空开发库绕过保护去操作生产库。测试用专用库，数据库初始化和结构升级只使用迁移。`cleanup_security` 仅清到期会话/限流/幂等记录，不删除贡献。
+
+## 发布边界
+
+本地 Git → [GitHub 仓库 SuzukiRenn/shared-booklist](https://github.com/SuzukiRenn/shared-booklist) → 租用 Ubuntu 服务器部署指定提交。用户于 2026-10-19 明确确认保留公开仓库，并允许上传已审查的代码和文档；此决定更新早期文档的私有仓库约定，详见《GitHub公开仓库确认与首次上传范围_2026-10-19》。服务器尚未部署。提交须审查忽略与暂存清单，尤其是旧浏览器 profile、完整历史 HTML、旧虚拟环境和运行产物；只选择去敏必要样本，不能直接 `git add .` 后推送。
+
+生产必须设置 `BOOKLIST_ENV=production`、随机长 `BOOKLIST_SECRET_KEY`、明确 `BOOKLIST_ALLOWED_HOSTS`、代码目录之外的绝对 `BOOKLIST_DATA_DIR`。配置不会自动读取 `.env.example`；该文件只是示例。真实密钥、凭据、SQLite/WAL/SHM、封面、日志、备份不进 Git。HTTPS、受信反向代理、WSGI 服务、调度与一致性备份在实际服务器验证后配置，不能把 `runserver` 用于生产。
+
+数据库后续升级通过新迁移。在线采集路线、候选匹配、贡献写入、活动状态服务、治理管理界面及安全合并/撤销仍按后续阶段实现，生产发布/恢复按阶段 7 验收。字段覆盖与标签抑制已有内部审计服务，尚无管理页面。

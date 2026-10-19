@@ -1,0 +1,5 @@
+# Lock built from the verified project-only environment; see runtime.lock.
+Django==5.2.18
+asgiref==3.12.1
+sqlparse==0.6.0
+tzdata==2026.5

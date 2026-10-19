@@ -1,0 +1,20 @@
+[
+  {
+    "book_id": 4151,
+    "historical_source": "tests/wenku8_browser/online_search_20261018/case1.htm",
+    "sha256": "0a6d1d774c582ad0a4cdaeca61c3348fc9c174958946d696479478901c960148",
+    "scope": "saved work-region DOM only; no new request"
+  },
+  {
+    "book_id": 3219,
+    "historical_source": "tests/wenku8_browser/selected_detail_20261018/selected_detail_region.htm",
+    "sha256": "b05d154e1a9512a379886081f5ef5c6ae0d5d51fe4869203d696a10eed041feb",
+    "scope": "saved work-region DOM only; no new request"
+  },
+  {
+    "book_id": 2951,
+    "historical_source": "tests/wenku8_browser/online_search_20261018/case3.htm",
+    "sha256": "23bbee3011d6471fef89da6b2aec44a2de68ec33f3f88b42f6d8b12d5dd20b58",
+    "scope": "saved work-region DOM only; no new request"
+  }
+]

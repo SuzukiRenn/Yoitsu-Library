@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "key": "4151",
+      "book_id": 4151,
+      "source_url": "https://www.wenku8.net/book/4151.htm",
+      "path": "details/4151.htm"
+    },
+    {
+      "key": "3219",
+      "book_id": 3219,
+      "source_url": "https://www.wenku8.net/book/3219.htm",
+      "path": "details/3219.htm"
+    },
+    {
+      "key": "2951",
+      "book_id": 2951,
+      "source_url": "https://www.wenku8.net/book/2951.htm",
+      "path": "details/2951.htm"
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+# Verified Python 3.14 / Windows x64 parser dependency; Linux wheel lock remains to verify.
+-r runtime.lock
+lxml==6.1.3 --hash=sha256:66299564c046bc7e0cc5de5106601eae907e9fa5904cd68a323380a8502f7861

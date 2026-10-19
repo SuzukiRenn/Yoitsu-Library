@@ -1,0 +1,8 @@
+* text=auto
+*.py text eol=lf
+*.md text eol=lf
+*.mjs text eol=lf
+*.lock text eol=lf
+*.in text eol=lf
+# Preserve historical fixture bytes and their provenance hashes, including spaces.
+tests/fixtures/wenku8/details/*.htm -text whitespace=-blank-at-eol
