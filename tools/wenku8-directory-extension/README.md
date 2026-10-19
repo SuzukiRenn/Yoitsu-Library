@@ -17,7 +17,9 @@
 
 ## 权限和限制
 
-仅使用 `activeTab`、`scripting`、`storage`、`alarms`。你点击扩展后临时授权当前标签页；没有 `<all_urls>`、持久站点权限、Cookie、历史、远程调试或下载权限。JSON 使用普通下载链接保存。只处理 HTTPS、固定两个文库主机及 `articlelist.php`，支持 page/fullflag 筛选；不跟随其他来源、登录跳转或未知筛选。
+仅使用 `activeTab`、`scripting`、`storage`、`alarms`。你点击扩展后临时授权当前标签页；没有 `<all_urls>`、持久站点权限、Cookie、历史、远程调试或下载权限。JSON 使用普通下载链接保存。只处理 HTTPS、固定两个文库主机及 `articlelist.php`，支持 page/fullflag、首字母 initial（A–Z、1）及分类 class（1–14）筛选。网站「全部」入口的空 initial/class 与无筛选等价；翻页保持非空筛选，不跟随其他来源、登录跳转或未知筛选。
+
+更新代码后，在 `chrome://extensions/` 点击本扩展卡片的刷新按钮，回到来源列表再打开扩展。仅关闭弹窗不会重新加载扩展后台模块。0.1.1 修复了「全部」链接携带空 `initial=` 或 `class=` 时被误拒绝的问题。
 
 目录翻页读取的是登录后浏览器已呈现的内容，不把登录成功或技术可读等同于来源方批量使用许可。此工具不读取 robots；它是有界浏览器目录导出工具。后续公开详情采集仍由现有采集器核对 robots 并执行自己的限速、校验和错误停止。
 

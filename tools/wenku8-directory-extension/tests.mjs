@@ -51,6 +51,34 @@ test('reads only bounded hrefs and public title marker, not account content or c
   assert.deepEqual(readLinks(), {url: url(1), is_listing: true, links: ['/book/123.htm']});
   delete globalThis.document; delete globalThis.location;
 });
+test('site all-books links with empty initial or class match the unfiltered pagination', () => {
+  for (const suffix of ['?initial=', '?class=', '?initial=&class=', '?page=1&initial=']) {
+    assert.equal(listing(base + suffix).url, url(1));
+    assert.deepEqual(parsePage({...page(1), url: base + suffix}, base + suffix),
+      {url: url(1), book_ids: [101], next_url: url(2)});
+  }
+  assert.throws(() => listing(`${base}?initial=&initial=`));
+  assert.throws(() => listing(`${base}?class=15`));
+  assert.throws(() => listing(`${base}?initial=AA`));
+});
+test('nonempty initial and class filters must remain unchanged on adjacent pages', () => {
+  const first = `${base}?initial=A&class=2&page=1`;
+  const second = `${base}?page=2&class=2&initial=A`;
+  const raw = {...page(1), url: first};
+  raw.links.push(second, `${base}?initial=B&class=2&page=2`, `${base}?class=3&initial=A&page=2`);
+  assert.equal(parsePage(raw, first).next_url, `${base}?class=2&initial=A&page=2`);
+  assert.notEqual(listing(first).filter, listing(`${base}?fullflag=1`).filter);
+});
+test('empty all-books query survives real controller start and transition to plain page link', async () => {
+  const h = harness();
+  h.redirect(`${base}?initial=`);
+  const started = await h.controller.start(7, 2, 30);
+  assert.equal(started.status, 'running');
+  h.advance(); await h.controller.tick();
+  assert.deepEqual(h.events.navigation, [url(2)]);
+  h.loaded(2);
+  assert.equal((await h.controller.loaded(7)).status, 'completed');
+});
 test('deduplicates real IDs and only follows observed adjacent same-filter same-origin page', () => {
   const raw = page(1, [123, 123]);
   raw.links.push('/book/124.htm', 'https://evil.test/book/125.htm', '/book/126.htm?token=x',

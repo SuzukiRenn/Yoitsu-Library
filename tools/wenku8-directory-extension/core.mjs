@@ -7,16 +7,24 @@ export function listing(raw) {
       u.port || u.username || u.password || u.hash || u.pathname !== '/modules/article/articlelist.php') {
     throw new Error('请打开 HTTPS 轻小说列表页');
   }
+  // The site's own “全部” links include initial= or class= with an empty value.
+  // Validate duplicates before normalizing these equivalent unfiltered URLs.
+  const patterns = {page: /^[1-9][0-9]{0,3}$/, fullflag: /^[01]$/,
+    initial: /^[A-Z1]?$/, class: /^(?:[1-9]|1[0-4])?$/};
   for (const [key, value] of u.searchParams) {
-    if (!['page', 'fullflag'].includes(key) || u.searchParams.getAll(key).length !== 1 ||
-        (key === 'page' ? !/^[1-9][0-9]{0,3}$/.test(value) : !/^[01]$/.test(value))) {
+    if (!Object.hasOwn(patterns, key) || u.searchParams.getAll(key).length !== 1 || !patterns[key].test(value)) {
       throw new Error('暂不支持这个目录筛选条件');
     }
+  }
+  for (const key of ['initial', 'class']) {
+    if (u.searchParams.get(key) === '') u.searchParams.delete(key);
   }
   const page = Number(u.searchParams.get('page') || 1);
   u.searchParams.set('page', String(page));
   u.searchParams.sort();
-  return {url: u.href, origin: u.origin, page, filter: u.searchParams.get('fullflag') || ''};
+  const filters = new URLSearchParams(u.searchParams);
+  filters.delete('page');
+  return {url: u.href, origin: u.origin, page, filter: filters.toString()};
 }
 
 // Chrome serializes this function into the selected tab. Keep it self-contained.
