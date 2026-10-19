@@ -1,0 +1,34 @@
+# Chrome 文库目录助手
+
+在你已经登录的 Chrome 列表标签页中读取真实作品链接，按间隔打开实际存在的下一页。默认 5 页、每次至少等待 30 秒；每轮最多 20 页。只导出目录编号和目录 URL，不采集正文，不读取 Cookie、密码、表单或账号内容，也不向服务器上传数据。
+
+## 安装与使用
+
+1. 在 Chrome 地址栏输入 `chrome://extensions/`，打开右上角「开发者模式」。
+2. 选择「加载已解压的扩展程序」，选择本 README 所在文件夹 `tools/wenku8-directory-extension`。
+3. 回到已经登录的 `https://wenku8.net/modules/article/articlelist.php`（或 www 域名）标签页。浏览器至少需要 Chrome 120。
+4. 从工具栏扩展菜单打开「共享书单 · 文库目录助手」。第一次建议页数设为 **2**，点击「开始新一轮」。
+5. 弹窗可以关闭，但保留任务标签页，不要手动翻页或刷新。页数包含启动时这一页。到上限或末页自动结束；遇到登录、验证或异常页面会暂停，须你手动处理。
+6. 再打开扩展，点击「导出 JSON」。将导出文件交给采集器操作者，先排除已入库 ID，再每批最多 20 部调用 `scripts/collect_wenku8.py --ids ...`。目录记录本身不写入书单数据库。
+
+暂停不会中断已经开始的页面加载。继续须在同一个标签页、任务期待的目录页点击扩展再点「继续」；关闭标签页后保留已保存结果，可导出后新建一轮。Chrome 重启、扩展更新后不会自动继续，手动核查页面再操作。
+
+达到本轮上限时页面停在最后一页。先导出，再手动点来源页面的下一页，开始下一轮。开始新一轮会明确提示替换旧记录。目录会随来源更新，页间可能发生作品移动；编号去重不能证明全站覆盖。导出的 `complete_catalog` 固定为 false。
+
+## 权限和限制
+
+仅使用 `activeTab`、`scripting`、`storage`、`alarms`。你点击扩展后临时授权当前标签页；没有 `<all_urls>`、持久站点权限、Cookie、历史、远程调试或下载权限。JSON 使用普通下载链接保存。只处理 HTTPS、固定两个文库主机及 `articlelist.php`，支持 page/fullflag 筛选；不跟随其他来源、登录跳转或未知筛选。
+
+目录翻页读取的是登录后浏览器已呈现的内容，不把登录成功或技术可读等同于来源方批量使用许可。此工具不读取 robots；它是有界浏览器目录导出工具。后续公开详情采集仍由现有采集器核对 robots 并执行自己的限速、校验和错误停止。
+
+Chrome 闹钟可能延后，电脑休眠时不会持续翻页。扩展后台被唤醒后从本地状态继续；加载 30 秒后仍未完成会暂停。没有自动重试、登录或验证码处理。网站结构变更、权限失效会暂停，不改用其他账号或地址重试。
+
+## 验证
+
+```powershell
+node --test tools/wenku8-directory-extension/tests.mjs
+```
+
+测试覆盖链接边界、分页去重、间隔、停止、恢复、重启及跨页状态；Chrome 扩展真实安装和已登录翻页需用户完成首次验收。工具不能让当前对话自动连接尚未接入的 Chrome。
+
+实现依据：[activeTab](https://developer.chrome.com/docs/extensions/develop/concepts/activeTab)、[scripting](https://developer.chrome.com/docs/extensions/reference/api/scripting)、[alarms](https://developer.chrome.com/docs/extensions/reference/api/alarms)。
