@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase, SimpleTestCase, RequestFactory, override_settings
 from django.utils import timezone
 from booklist import catalog, services
-from booklist.models import Work, WorkAlias, Tag, WorkTag, TagSuppression, ChangeEvent
+from booklist.models import Work, WorkAlias, Tag, WorkTag, TagSuppression, ChangeEvent, PublicRecommendation
 
 
 class CatalogTests(TestCase):
@@ -92,6 +92,8 @@ class CatalogTests(TestCase):
     def test_public_membership_distinct_from_catalog_visibility(self):
         imported = self.work('未收录作品')
         public = self.work('已收录作品', public_added_at=timezone.now())
+        _, person = services.issue_anonymous()
+        PublicRecommendation.objects.create(work=public, anonymous_client=person)
         self.assertFalse(catalog.work_detail(imported.pk)['is_public'])
         self.assertTrue(catalog.work_detail(public.pk)['is_public'])
         self.assertEqual(len(catalog.recent_works()), 2)

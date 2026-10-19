@@ -43,7 +43,8 @@ class ActivityTests(TestCase):
         self.assertEqual((PublicRecommendation.objects.count(),PublicLike.objects.count(),Vote.objects.count()),(0,0,0))
         self.assertEqual(activities.recs(self.period.pk).count(),1)
         self.assertEqual(activities.listing(self.period.pk)['results'][0]['recommendation_count'],1)
-        self.assertEqual(books.listing()['results'][0]['recommendation_count'],0)
+        self.assertEqual(books.listing()['total'],0)
+        self.assertEqual(books.listing()['results'],[])
 
     def test_scope_statistics_and_cancellation_do_not_cross(self):
         self.submit('活动理由')

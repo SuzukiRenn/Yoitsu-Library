@@ -21,7 +21,7 @@ def reasons():
 
 
 def public_works():
-    return catalog.visible_works().filter(public_added_at__isnull=False)
+    return catalog.public_works()
 
 
 def effective_tags():
@@ -70,7 +70,11 @@ def listing(client=None, page=1, page_size=20, tags=()):
 
 
 def require_work(work_id, public=True):
-    query = public_works() if public else catalog.visible_works()
+    query = catalog.visible_works()
+    # Keep write/reason eligibility for previously enrolled works, including monthly-only works.
+    # Leaving the list is not deletion or moderation; a new recommendation reuses this record.
+    if public:
+        query = query.filter(public_added_at__isnull=False)
     work = query.filter(pk=work_id).first()
     if work is None:
         raise services.DomainError('not_found', '作品不存在或暂不可见', 404)

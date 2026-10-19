@@ -4,7 +4,8 @@ import heapq
 import unicodedata
 from urllib.parse import urlsplit
 from django.core.exceptions import ValidationError
-from .models import Work, WorkAlias, WorkTag, TagSuppression
+from django.db.models import Exists, OuterRef
+from .models import Work, WorkAlias, WorkTag, TagSuppression, PublicRecommendation, PublicLike
 from .services import DomainError
 from .text import normalize, WHITESPACE
 
@@ -14,6 +15,15 @@ FUZZY_POOL = 200
 
 def visible_works():
     return Work.objects.filter(hidden_at__isnull=True, review_status='clear', merged_into__isnull=True)
+
+
+def public_works():
+    # Enrollment time is historical; current membership requires a valid public contribution.
+    recommendations = PublicRecommendation.objects.filter(work_id=OuterRef('pk'), withdrawn_at__isnull=True,
+        invalidated_at__isnull=True, archived_at__isnull=True)
+    likes = PublicLike.objects.filter(work_id=OuterRef('pk'), cancelled_at__isnull=True,
+        invalidated_at__isnull=True, archived_at__isnull=True)
+    return visible_works().filter(public_added_at__isnull=False).filter(Exists(recommendations) | Exists(likes))
 
 
 def search_key(value):
@@ -33,6 +43,7 @@ def cover_url(value):
 
 def serialize_works(works, detail=False):
     ids = [work.pk for work in works]
+    public_ids = set(public_works().filter(pk__in=ids).values_list('pk', flat=True))
     suppressed = list(TagSuppression.objects.filter(work_id__in=ids, is_active=True).values_list('work_id', 'tag_id', 'scope'))
     all_bans = {(work, tag) for work, tag, scope in suppressed if scope == 'all'}
     source_bans = {(work, tag) for work, tag, scope in suppressed if scope == 'source'}
@@ -47,7 +58,7 @@ def serialize_works(works, detail=False):
         row = {'id': work.pk, 'title': work.display_title,
                'author': work.author_override if work.author_overridden else work.wenku8_author or '',
                'cover_url': cover_url(work.cover_url_override if work.cover_url_overridden else work.wenku8_cover_url),
-               'is_public': work.public_added_at is not None,
+               'is_public': work.pk in public_ids,
                'source_book_id': work.wenku8_book_id,
                'tags': sorted(tags[work.pk].values(), key=lambda tag: (tag['name'], tag['id']))}
         if detail:

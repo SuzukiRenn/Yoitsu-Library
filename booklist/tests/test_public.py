@@ -201,6 +201,7 @@ class PublicTests(TestCase):
             self.assertNotIn(field, payload)
 
     def test_tags_and_governance_counts_only_public_visible_formal_works(self):
+        self.submit(work_id=self.work.pk)
         a, b = [Tag.objects.create(name=x, normalized_name=x) for x in ('甲', '乙')]
         _, other = services.issue_anonymous()
         imported = Work.objects.create(original_submitted_title='未收录')
@@ -217,6 +218,60 @@ class PublicTests(TestCase):
         self.assertEqual(books.listing(tags=[str(a.pk)])['total'], 0)
         b.is_active=False; b.save()
         self.assertEqual(books.listing()['tags'], [])
+
+    def test_zero_contributions_leave_list_but_keep_catalog_reason_and_original_record(self):
+        self.submit(work_id=self.work.pk, reason='保留理由')
+        self.work.refresh_from_db(); first_added = self.work.public_added_at
+        self.assertEqual(books.listing()['total'], 1)
+        self.assertEqual(self.action('recommend', False).status_code, 200)
+        self.assertEqual(self.client.get('/api/v1/public/works/').json()['total'], 0)
+        self.assertNotContains(self.client.get('/'), self.work.display_title)
+        self.assertEqual(Work.objects.count(), 1)
+        self.assertEqual(Recommendation.objects.get().reason, '保留理由')
+        catalog = self.client.get(f'/api/v1/catalog/works/{self.work.pk}/').json()
+        self.assertFalse(catalog['is_public'])
+        candidate = self.client.get('/api/v1/recommend/candidates/', {'q': self.work.display_title}).json()['results'][0]
+        self.assertEqual((candidate['id'], candidate['in_scope'], candidate['recommendation_count']), (self.work.pk, False, 0))
+        self.assertEqual(self.submit(title=self.work.display_title).status_code, 409)
+        self.assertEqual(self.submit(work_id=self.work.pk).status_code, 200)
+        self.assertEqual(Work.objects.count(), 1)
+        self.work.refresh_from_db(); self.assertEqual(self.work.public_added_at, first_added)
+        self.assertEqual((books.listing()['total'], self.current()['recommendation_count'], self.current()['like_count']), (1, 1, 0))
+        self.assertEqual(self.current()['own_reason'], '保留理由')
+
+    def test_either_valid_recommendation_or_like_keeps_work_listed(self):
+        self.submit(work_id=self.work.pk)
+        self.action('like')
+        self.action('recommend', False)
+        self.assertEqual((books.listing()['total'], self.current()['recommendation_count'], self.current()['like_count']), (1, 0, 1))
+        self.assertTrue(self.client.get(f'/api/v1/catalog/works/{self.work.pk}/').json()['is_public'])
+        self.action('like', False)
+        self.assertEqual(books.listing()['total'], 0)
+        self.submit(work_id=self.work.pk)
+        self.action('like'); self.action('like', False)
+        self.assertEqual((books.listing()['total'], self.current()['recommendation_count'], self.current()['like_count']), (1, 1, 0))
+
+    def test_withdrawn_cancelled_invalidated_and_archived_history_does_not_keep_list_membership(self):
+        for model, fields in ((PublicRecommendation, ('withdrawn_at', 'invalidated_at', 'archived_at')),
+                              (PublicLike, ('cancelled_at', 'invalidated_at', 'archived_at'))):
+            for field in fields:
+                with self.subTest(model=model.__name__, field=field):
+                    record = model.objects.create(work=self.work, anonymous_client=self.person)
+                    self.assertEqual(books.listing()['total'], 1)
+                    setattr(record, field, timezone.now()); record.save(update_fields=[field])
+                    self.assertEqual(books.listing()['total'], 0)
+
+    def test_zero_contribution_works_are_excluded_from_pagination_and_tag_counts(self):
+        tag = Tag.objects.create(name='仅零贡献', normalized_name='仅零贡献')
+        WorkTag.objects.create(work=self.work, tag=tag, source_type='source')
+        self.submit(work_id=self.work.pk)
+        other = Work.objects.create(original_submitted_title='保留作品')
+        self.submit(work_id=other.pk)
+        self.action('recommend', False)
+        result = books.listing(page_size=1)
+        self.assertEqual((result['total'], [row['id'] for row in result['results']], result['tags']), (1, [other.pk], []))
+        self.assertEqual(books.listing(tags=[str(tag.pk)])['total'], 0)
+        self.assertEqual(books.listing(page=2, page_size=1)['results'], [])
 
     def test_reasons_bounded_and_paginated_hidden_does_not_reduce_recommendations(self):
         for index in range(4):
