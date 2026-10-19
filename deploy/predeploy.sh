@@ -105,3 +105,6 @@ mv -Tf "$root/current.$$.new" "$root/current"
 printf '%s\n' "$release" > "$state/release.txt"
 echo "PREDEPLOY_SUCCESS $release"
 trap - ERR
+# Windows PowerShell may append CRLF after the LF-normalized piped script.
+# Exit after the completed deployment, before Bash interprets that trailing CR.
+exit 0
