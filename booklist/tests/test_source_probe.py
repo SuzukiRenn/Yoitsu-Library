@@ -3,6 +3,9 @@ from email.message import Message
 import io
 import json
 import unittest
+from contextlib import redirect_stdout
+from unittest.mock import patch
+from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, HTTPCookieProcessor, build_opener
 from scripts import probe_wenku8 as source
@@ -114,3 +117,81 @@ class SourceProbeTests(unittest.TestCase):
             result, opener, _ = self.run_probe(Response(b'User-agent: *'), response)
             self.assertEqual(result['stop_reason'], reason)
             self.assertEqual(len(opener.calls), 2)
+
+    def test_partial_body_timeout_preserves_progress_and_never_validates(self):
+        class Partial(Response):
+            def read1(self, size):
+                if self.tell():
+                    raise TimeoutError('private proxy address')
+                return super().read1(3)
+        calls = []
+        result = source.probe('local', Opener([Response(b'User-agent: *'), Partial(b'abcdef', 'text/html')]),
+                              lambda _: None, lambda raw: calls.append(raw))
+        record = result['requests'][1]
+        self.assertEqual(record['bytes_read'], 3)
+        self.assertEqual(record['chunks_read'], 1)
+        self.assertEqual(record['phase'], 'body')
+        self.assertFalse(record['body_complete'])
+        self.assertEqual(record['error_class'], 'TimeoutError')
+        self.assertEqual(calls, [])
+        self.assertNotIn('private proxy', json.dumps(result))
+
+    def test_zero_body_timeout_is_distinct(self):
+        class NoBody(Response):
+            def read1(self, size):
+                raise TimeoutError()
+        record, raw = source.fetch(source.BASE, 10, Opener([NoBody(b'')]))
+        self.assertIsNone(raw)
+        self.assertEqual(record['status'], 200)
+        self.assertEqual(record['bytes_read'], 0)
+        self.assertNotIn('first_byte_ms', record)
+
+    def test_content_length_mismatch_and_oversize_stop(self):
+        for length, reason in (('9', 'content_length_mismatch'), ('11', 'response_too_large'), ('invalid', 'invalid_content_length')):
+            response = Response(b'abc')
+            response.headers['Content-Length'] = length
+            record, raw = source.fetch(source.BASE, 10, Opener([response]))
+            self.assertEqual(record['result'], reason)
+            self.assertIsNone(raw)
+            self.assertFalse(record['body_complete'])
+
+    def test_total_budget_stops_even_when_chunks_keep_arriving(self):
+        current = [0]
+        class Slow(Response):
+            def read1(self, size):
+                current[0] += 16
+                return super().read1(1)
+        record, raw = source.fetch(source.BASE, 10, Opener([Slow(b'abcdef')]), clock=lambda: current[0])
+        self.assertEqual(record['result'], 'request_budget_exceeded')
+        self.assertEqual(record['bytes_read'], 2)
+        self.assertIsNone(raw)
+
+    def test_complete_body_with_declared_length(self):
+        response = Response(b'abc')
+        response.headers['Content-Length'] = '3'
+        record, raw = source.fetch(source.BASE, 10, Opener([response]))
+        self.assertEqual(raw, b'abc')
+        self.assertTrue(record['body_complete'])
+        self.assertEqual(record['phase'], 'complete')
+
+    def test_optional_check_uses_saved_real_metadata_adapter(self):
+        raw = (Path(__file__).absolute().parents[2]/'tests/fixtures/wenku8/details/4151.htm').read_bytes()
+        result = source.probe('local', Opener([Response(b'User-agent: *'), Response(raw, 'text/html')]),
+                              lambda _: None, source.check_metadata)
+        self.assertEqual(result['metadata']['book_id'], 4151)
+        self.assertTrue(result['metadata']['tags_complete'])
+        self.assertEqual(result['outcome'], 'detail_identity_verified_optional_fields_unvalidated')
+        self.assertNotIn('introduction', result['metadata'])
+
+    def test_200_login_page_is_not_valid_identity(self):
+        result = source.probe('local', Opener([Response(b'User-agent: *'), Response(b'<html>login</html>', 'text/html')]),
+                              lambda _: None, source.check_metadata)
+        self.assertEqual(result['stop_reason'], 'metadata_check_failed')
+
+    def test_cli_json_is_portable_across_console_encodings(self):
+        output = io.StringIO()
+        result = {'outcome': 'detail_http_received_metadata_unverified', 'title': '标题与表情📚'}
+        with patch('sys.argv', ['probe', '--location', 'local']), patch.object(source, 'probe', return_value=result), redirect_stdout(output):
+            self.assertEqual(source.main(), 0)
+        self.assertEqual(json.loads(output.getvalue()), result)
+        output.getvalue().encode('ascii')
