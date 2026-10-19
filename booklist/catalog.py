@@ -1,6 +1,7 @@
 """Read-only local candidates. Similarity is never an identity assertion."""
 from difflib import SequenceMatcher
 import heapq
+import re
 import unicodedata
 from urllib.parse import urlsplit
 from django.core.exceptions import ValidationError
@@ -36,6 +37,12 @@ def cover_url(value):
         return None
     try:
         url = urlsplit(value)
+        # The source emits HTTP, but this specific image host also serves HTTPS.
+        # Keep source snapshots unchanged; normalize only the displayed URL.
+        if url.scheme == 'http' and url.netloc == 'img.wenku8.com' and not url.query and not url.fragment:
+            match = re.fullmatch(r'/image/([0-9]+)/([1-9][0-9]*)/\2s\.(?:jpg|jpeg|png)', url.path)
+            if match and int(match[1]) == int(match[2]) // 1000:
+                return 'https://img.wenku8.com'+url.path
         return value if url.scheme == 'https' and url.hostname and not url.username and not url.password else None
     except ValueError:
         return None

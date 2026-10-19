@@ -118,6 +118,24 @@ class CatalogTests(TestCase):
             self.assertIsNone(catalog.cover_url(value))
         self.assertEqual(catalog.cover_url('https://example.invalid/x'), 'https://example.invalid/x')
 
+    def test_wenku8_cover_upgrades_display_without_rewriting_source(self):
+        original = 'http://img.wenku8.com/image/4/4151/4151s.jpg'
+        expected = 'https://img.wenku8.com/image/4/4151/4151s.jpg'
+        work = self.work(wenku8_cover_url=original)
+        self.assertEqual(catalog.cover_url(original), expected)
+        self.assertEqual(self.search(work.display_title).json()['results'][0]['cover_url'], expected)
+        self.assertEqual(catalog.work_detail(work.pk)['cover_url'], expected)
+        work.refresh_from_db()
+        self.assertEqual(work.wenku8_cover_url, original)
+        for invalid in (
+            original.replace('img.wenku8.com', 'img.wenku8.com.evil.invalid'),
+            original.replace('img.wenku8.com', 'user@img.wenku8.com'),
+            original.replace('img.wenku8.com', 'img.wenku8.com:80'),
+            original+'?redirect=1', original+'#fragment',
+            original.replace('/image/4/', '/image/3/'), original.replace('/4151s.jpg', '/4152s.jpg'),
+        ):
+            self.assertIsNone(catalog.cover_url(invalid))
+
     def test_bad_query_duplicate_unknown_and_limit_parameters(self):
         for query in ('', ' ', '！', '长'*301):
             self.assertEqual(self.search(query).status_code, 400)
