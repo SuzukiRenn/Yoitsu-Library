@@ -9,6 +9,14 @@ URL = 'https://www.wenku8.net/book/4151.htm'
 
 
 class DocumentCompletenessTests(unittest.TestCase):
+    def test_unquoted_navigation_query_equals_does_not_invalidate_metadata(self):
+        raw = '<html><body><a href=/modules/article/authorarticle.php?author=%D3%A3%C9%FA>author</a></body></html>'
+        self.assertTrue(document_diagnostics(raw, [])['complete'])
+        unsafe = raw.replace('%D3%A3%C9%FA', '%D3%A3&from=2')
+        result = document_diagnostics(unsafe, [])
+        self.assertFalse(result['complete'])
+        self.assertEqual(result['ignored_href_entity_errors'], 0)
+
     def test_missing_native_diagnostics_do_not_relax_entity_policy(self):
         cases = [
             ('<a href="/?x=1&from=2">nav</a>', True, 1),

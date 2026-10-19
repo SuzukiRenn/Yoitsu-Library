@@ -103,7 +103,7 @@ def document_diagnostics(text, errors):
             start = offsets[line-1] + column
             original = self.get_starttag_text()
             opening = re.match(r'<[^\s/>]+', original)
-            attribute = re.compile(r'''\s+([^\s"'<>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?''', re.S)
+            attribute = re.compile(r'''\s+([^\s"'<>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'<>`]+)))?''', re.S)
             cursor = opening.end() if opening else len(original)
             hrefs = []
             while original[cursor:].strip() not in ('>', '/>'):
