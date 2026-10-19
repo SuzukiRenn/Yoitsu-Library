@@ -9,7 +9,13 @@ const serial = action => {
   return result;
 };
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
-  if (sender.id !== chrome.runtime.id || sender.tab) return false;
+  if (sender.id !== chrome.runtime.id) return false;
+  if (sender.tab) {
+    if (message.type !== 'directory-timer' || sender.frameId !== 0 || typeof message.token !== 'string') return false;
+    serial(() => controller.tick(sender.tab.id, message.token))
+      .then(() => respond({ok: true}), () => respond({ok: false}));
+    return true;
+  }
   serial(async () => {
     switch (message.type) {
       case 'status': return controller.get();

@@ -34,6 +34,15 @@ export function readLinks() {
     a => a.getAttribute('href')).filter(href => typeof href === 'string' && href.length <= 2048).slice(0, 3000)};
 }
 
+// Runs in Chrome's isolated content-script world; returns without holding the
+// service worker open. Only wakes the controller, which rechecks task and time.
+export function scheduleTick(delay, token) {
+  clearTimeout(globalThis.__sharedBooklistDirectoryTimer);
+  globalThis.__sharedBooklistDirectoryTimer = setTimeout(() => {
+    chrome.runtime.sendMessage({type: 'directory-timer', token}).catch(() => {});
+  }, Math.max(0, delay));
+}
+
 export function parsePage(raw, expected) {
   if (!raw?.is_listing || !Array.isArray(raw.links) || raw.links.length > 3000) throw new Error('目录页面标识异常，已停止');
   const current = listing(raw.url);

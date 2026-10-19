@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {ALARM, listing, parsePage, readLinks, exportJob} from './core.mjs';
+import {ALARM, listing, parsePage, readLinks, scheduleTick, exportJob} from './core.mjs';
 import {createController} from './controller.mjs';
 
 const base = 'https://www.wenku8.net/modules/article/articlelist.php';
@@ -11,15 +11,20 @@ const page = (n, ids = [100 + n], next = n + 1) => ({url: url(n), is_listing: tr
 
 function harness() {
   let clock = 100000, stored = {}, tab = {id: 7, url: url(1), status: 'complete'}, raw = page(1);
-  const events = {alarms: [], navigation: [], reads: 0};
+  const events = {alarms: [], navigation: [], reads: 0, timers: []};
   const api = {
     storage: {local: {async get() {return structuredClone(stored);}, async set(value) {stored = structuredClone(value);}}},
     alarms: {async clear() {}, async create(name, value) {events.alarms.push({name, ...value});}},
     tabs: {async get(id) {if (id !== 7) throw new Error('Missing tab'); return {...tab};},
       async update(id, value) {events.navigation.push(value.url); tab.url = value.url; tab.status = 'loading';}},
-    scripting: {async executeScript() {events.reads++; return [{result: structuredClone(raw)}];}}
+    scripting: {async executeScript(options) {
+      if (options.func === scheduleTick) {events.timers.push(options.args); return [{result: null}];}
+      assert.equal(options.func, readLinks);
+      events.reads++; return [{result: structuredClone(raw)}];
+    }}
   };
   return {controller: createController(api, () => clock), events, api,
+    now: () => clock,
     advance(ms = 30000) {clock += ms;},
     loaded(n, ids, next) {raw = page(n, ids, next); tab.url = url(n); tab.status = 'complete';},
     redirect(value) {tab.url = value;},
@@ -94,10 +99,114 @@ test('login, empty or redirected pages do not contribute records; terminal page 
 });
 test('validates user bounds before reading any page', async () => {
   const h = harness();
-  for (const args of [[0,30],[21,30],[2,29],[2,301],[1.5,30]]) {
+  for (const args of [[0,10],[21,10],[2,4],[2,301],[1.5,10]]) {
     await assert.rejects(h.controller.start(7, ...args));
   }
   assert.equal(h.events.reads, 0);
+});
+
+test('page timer wakes through an extension message and replaces an older isolated timer', async () => {
+  const savedSet = globalThis.setTimeout, savedClear = globalThis.clearTimeout;
+  const calls = [], messages = [], cleared = [];
+  try {
+    globalThis.setTimeout = (fn, delay) => {calls.push({fn, delay}); return calls.length;};
+    globalThis.clearTimeout = handle => cleared.push(handle);
+    globalThis.chrome = {runtime: {async sendMessage(value) {messages.push(value);}}};
+    scheduleTick(10000, 'old');
+    scheduleTick(5000, 'new');
+    assert.equal(cleared.at(-1), 1);
+    assert.equal(calls.at(-1).delay, 5000);
+    calls.at(-1).fn();
+    assert.deepEqual(messages, [{type: 'directory-timer', token: 'new'}]);
+  } finally {
+    globalThis.setTimeout = savedSet; globalThis.clearTimeout = savedClear;
+    delete globalThis.chrome; delete globalThis.__sharedBooklistDirectoryTimer;
+  }
+});
+
+test('ten-second page timer advances at due time without waiting for the thirty-second alarm', async () => {
+  const h = harness();
+  await h.controller.start(7, 3, 10);
+  const [delay, token] = h.events.timers.at(-1);
+  assert.equal(delay, 10000);
+  assert.equal(h.events.alarms.at(-1).when, 130000);
+  h.advance(9999);
+  await h.controller.tick(7, token);
+  assert.equal(h.events.navigation.length, 0);
+  const currentToken = (await h.controller.get()).timerToken;
+  h.advance(1);
+  await h.restartWorker().tick(7, currentToken);
+  assert.deepEqual(h.events.navigation, [url(2)]);
+  await h.controller.tick(7, currentToken);
+  assert.equal(h.events.navigation.length, 1);
+});
+
+test('five-second minimum is accepted; stale, paused, resumed and other-tab wakeups cannot advance', async () => {
+  const h = harness();
+  await h.controller.start(7, 3, 5);
+  const old = (await h.controller.get()).timerToken;
+  assert.equal(h.events.timers.at(-1)[0], 5000);
+  h.advance(5000);
+  await h.controller.tick(8, old);
+  await h.controller.tick(7, 'wrong');
+  await h.controller.pause(); await h.controller.tick(7, old);
+  assert.equal(h.events.navigation.length, 0);
+  await h.controller.resume(7);
+  const current = (await h.controller.get()).timerToken;
+  assert.notEqual(current, old);
+  h.advance(5000); await h.controller.tick(7, old);
+  assert.equal(h.events.navigation.length, 0);
+  await h.controller.tick(7, current);
+  assert.equal(h.events.navigation.length, 1);
+  h.loaded(2); await h.controller.loaded(7);
+  await h.controller.tick(7, current);
+  assert.equal(h.events.navigation.length, 1);
+});
+
+test('alarm fallback advances once when page timer is delayed and cannot duplicate the timer', async () => {
+  const h = harness();
+  await h.controller.start(7, 2, 10);
+  const token = (await h.controller.get()).timerToken;
+  h.advance(30000); await h.restartWorker().tick();
+  assert.equal((await h.controller.tick()).status, 'running');
+  await h.controller.tick(7, token);
+  assert.equal(h.events.navigation.length, 1);
+  h.loaded(2); assert.equal((await h.controller.loaded(7)).status, 'completed');
+});
+
+test('background dispatch accepts only main-frame timer messages and routes a ten-second wakeup', async () => {
+  const h = harness();
+  let receive;
+  const previousChrome = globalThis.chrome;
+  const previousNow = Date.now;
+  const listener = {addListener() {}};
+  h.api.runtime = {id: 'directory-helper', onMessage: {addListener(fn) {receive = fn;}},
+    onStartup: listener, onInstalled: listener};
+  h.api.tabs.onUpdated = listener; h.api.tabs.onRemoved = listener;
+  h.api.alarms.onAlarm = listener;
+  try {
+    globalThis.chrome = h.api;
+    Date.now = h.now;
+    await import('./background.mjs?message-routing-test');
+    const send = (message, sender) => new Promise(resolve => {
+      const pending = receive(message, sender, resolve);
+      if (!pending) resolve(null);
+    });
+    assert.equal((await send({type: 'start', tabId: 7, maxPages: 2, interval: 10},
+      {id: 'directory-helper'})).ok, true);
+    const token = (await h.controller.get()).timerToken;
+    h.advance(10000);
+    const message = {type: 'directory-timer', token};
+    assert.equal(await send(message, {id: 'foreign-extension', tab: {id: 7}, frameId: 0}), null);
+    assert.equal(await send(message, {id: 'directory-helper', tab: {id: 7}, frameId: 1}), null);
+    assert.equal(await send({type: 'start'}, {id: 'directory-helper', tab: {id: 7}, frameId: 0}), null);
+    await send(message, {id: 'directory-helper', tab: {id: 8}, frameId: 0});
+    assert.equal(h.events.navigation.length, 0);
+    assert.equal((await send(message, {id: 'directory-helper', tab: {id: 7}, frameId: 0})).ok, true);
+    assert.deepEqual(h.events.navigation, [url(2)]);
+    await send(message, {id: 'directory-helper', tab: {id: 7}, frameId: 0});
+    assert.equal(h.events.navigation.length, 1);
+  } finally {globalThis.chrome = previousChrome; Date.now = previousNow;}
 });
 test('respects delay, survives service-worker restart, stops exactly at cap with unique IDs', async () => {
   const h = harness();

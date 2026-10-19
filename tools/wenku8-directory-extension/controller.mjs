@@ -1,4 +1,4 @@
-import {ALARM, MAX_PAGES, listing, parsePage, readLinks} from './core.mjs';
+import {ALARM, MAX_PAGES, listing, parsePage, readLinks, scheduleTick} from './core.mjs';
 
 export function createController(api, now = () => Date.now()) {
   const get = async () => (await api.storage.local.get('job')).job || null;
@@ -9,8 +9,13 @@ export function createController(api, now = () => Date.now()) {
     return job;
   }
   async function arm(job) {
+    job.timerToken = crypto.randomUUID();
     await save(job);
     await api.alarms.create(ALARM, {when: Math.max(now() + 30000, job.dueAt || 0)});
+    if (job.phase === 'waiting') {
+      await api.scripting.executeScript({target: {tabId: job.tabId}, func: scheduleTick,
+        args: [Math.max(0, job.dueAt - now()), job.timerToken]});
+    }
   }
   async function collect(job) {
     const tab = await api.tabs.get(job.tabId);
@@ -43,7 +48,7 @@ export function createController(api, now = () => Date.now()) {
     get,
     async start(tabId, maxPages, interval, replace = false) {
       if (!Number.isInteger(maxPages) || maxPages < 1 || maxPages > MAX_PAGES ||
-          !Number.isInteger(interval) || interval < 30 || interval > 300) throw new Error('页数应为 1–20，间隔应为 30–300 秒');
+          !Number.isInteger(interval) || interval < 5 || interval > 300) throw new Error('页数应为 1–20，间隔应为 5–300 秒');
       const old = await get();
       if (old?.status === 'running') throw new Error('请先暂停正在运行的任务');
       if (old?.pages.length && !replace) throw new Error('请先导出记录，再确认开始新一轮');
@@ -68,18 +73,23 @@ export function createController(api, now = () => Date.now()) {
         await arm(job); return job;
       });
     },
-    async tick() {
+    async tick(tabId = null, token = null) {
       const job = await get();
       if (!job || job.status !== 'running') return job;
+      // Ignore timers from prior rounds, paused/resumed tasks, subframes or other tabs.
+      if (tabId !== null && (tabId !== job.tabId || token !== job.timerToken || job.phase !== 'waiting')) return job;
       return protect(job, async () => {
-        if (job.phase === 'loading') return halt(job, '页面加载未完成，已暂停；可加载完成后继续');
+        if (job.phase === 'loading') {
+          if (job.loadDeadline && now() < job.loadDeadline) {await arm(job); return job;}
+          return halt(job, '页面加载未完成，已暂停；可加载完成后继续');
+        }
         if (now() < job.dueAt) { await arm(job); return job; }
         const tab = await api.tabs.get(job.tabId);
         if (listing(tab.url).url !== job.currentUrl) throw new Error('所选页面已改变，已暂停');
         const next = listing(job.nextUrl);
         if (next.origin !== listing(job.currentUrl).origin || next.page !== listing(job.currentUrl).page + 1 ||
             next.filter !== listing(job.currentUrl).filter) throw new Error('下一页链接异常');
-        job.phase = 'loading'; job.expectedUrl = next.url;
+        job.phase = 'loading'; job.expectedUrl = next.url; job.loadDeadline = now() + 30000;
         await arm(job); // persist before navigation; a watchdog stops stalled navigation
         await api.tabs.update(job.tabId, {url: next.url});
         return job;

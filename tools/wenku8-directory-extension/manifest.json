@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "共享书单 · 文库目录助手",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "minimum_chrome_version": "120",
   "description": "在用户打开的文库8目录中限速翻页，导出作品编号。",
   "permissions": ["activeTab", "scripting", "storage", "alarms"],
