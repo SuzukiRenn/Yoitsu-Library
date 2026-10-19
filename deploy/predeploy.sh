@@ -17,7 +17,14 @@ for path in "$root" "$state" "$state/data" "$state/backups" "$config"; do
 done
 install -d -m 0700 "$root" "$root/releases" "$config"
 exec 9>"$root/deploy.lock"
-flock -n 9 || { echo 'Another deployment is running'; exit 2; }
+echo 'PHASE waiting_for_deployment_lock (up to 30 seconds)'
+if ! flock -w 30 9; then
+  echo 'Another deployment still holds the lock; no new deployment started.'
+  if command -v lslocks >/dev/null; then
+    lslocks --noheadings --output PID,COMMAND,TYPE,PATH | awk '$NF == "/opt/shared-booklist/deploy.lock"'
+  fi
+  exit 2
+fi
 python3 - <<'PY'
 import shutil
 if shutil.disk_usage('/').free < 3*1024**3: raise SystemExit('Need at least 3 GiB free for build and backup')
@@ -28,7 +35,8 @@ if [[ ! -d "$checkout" ]]; then
   git -C "$checkout" init -q
   git -C "$checkout" remote add origin https://github.com/SuzukiRenn/shared-booklist.git
 fi
-timeout 120 git -c credential.helper= -C "$checkout" fetch --depth 1 origin "$release"
+echo 'PHASE fetch_fixed_release (up to 120 seconds)'
+GIT_TERMINAL_PROMPT=0 timeout 120 git -c credential.helper= -C "$checkout" fetch --depth 1 origin "$release"
 git -C "$checkout" checkout --detach "$release"
 [[ $(git -C "$checkout" rev-parse HEAD) == "$release" ]]
 git -C "$checkout" diff --exit-code >/dev/null
