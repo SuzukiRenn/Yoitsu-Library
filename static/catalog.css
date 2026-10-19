@@ -35,3 +35,6 @@ button{color:var(--ink);background:white;border:1px solid var(--line);border-rad
 .scope-label{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px}
 .scope-label a{padding:6px 12px;border:1px solid var(--line);border-radius:5px;background:#f0f3e9;line-height:20px;text-decoration:none;overflow-wrap:anywhere}
 .scope-label a:hover{background:#e3eadb;border-color:var(--accent)}
+.activity-title{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;min-width:0}
+.activity-status{padding:3px 8px;border-radius:4px;background:var(--wash);color:var(--muted);font-size:12px;line-height:20px;white-space:nowrap}
+.activity-heading>.primary{flex-shrink:0}
