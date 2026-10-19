@@ -8,8 +8,7 @@ if (form) {
   const query = document.querySelector('#recommend-query'), reason = document.querySelector('#recommend-reason');
   const candidates = document.querySelector('#candidates'), status = document.querySelector('#recommend-status');
   const searchStatus = document.querySelector('#candidate-status'), selectedStatus = document.querySelector('#selected-work');
-  const submit = document.querySelector('#recommend-submit'), distinct = document.querySelector('#distinct-work');
-  const distinctOption = document.querySelector('#distinct-option');
+  const submit = document.querySelector('#recommend-submit');
   const editing = form.dataset.editing === 'true', activity = form.dataset.activity;
   let selected = form.dataset.work ? {id: Number(form.dataset.work), in_scope: form.dataset.inScope === 'true', recommended: form.dataset.recommended === 'true', own_reason: reason.value} : null;
   let timer = null, composing = false, busy = false, searchState = selected || editing ? 'ready' : 'idle';
@@ -26,7 +25,7 @@ if (form) {
     },
     onStatus: (text, pending) => { searchStatus.textContent = text; if (pending) searchState='searching'; else if (searchState!=='ready') searchState='error'; },
     onResult: payload => {
-      searchState='ready'; candidates.replaceChildren(); distinctOption.hidden=!payload.results.length;
+      searchState='ready'; candidates.replaceChildren();
       for (const work of payload.results) {
         const button = document.createElement('button'); button.type='button'; button.className='candidate'; button.setAttribute('aria-pressed','false');
         const title=document.createElement('strong'); title.textContent=work.title;
@@ -37,7 +36,7 @@ if (form) {
         button.addEventListener('click',()=>{
           if (busy) return;
           for (const item of candidates.querySelectorAll('button')) item.setAttribute('aria-pressed','false');
-          selected=work; distinct.checked=false; query.value=work.title; reason.value=work.own_reason || ''; count();
+          selected=work; query.value=work.title; reason.value=work.own_reason || ''; count();
           button.setAttribute('aria-pressed','true'); selectedStatus.textContent=''; label();
         });
         candidates.append(button);
@@ -47,14 +46,13 @@ if (form) {
   function invalidate() {
     if (selected && reason.value === selected.own_reason) { reason.value=''; count(); }
     clearTimeout(timer); search.cancel(); selected=null; searchState='idle'; candidates.replaceChildren(); selectedStatus.textContent='';
-    distinct.checked=false; distinctOption.hidden=true; searchStatus.textContent=''; label();
+    searchStatus.textContent=''; label();
     if (!composing && query.value.trim()) { searchState='pending'; timer=setTimeout(()=>search.run(query.value),300); }
   }
   if (!editing) {
     query.addEventListener('input',invalidate);
     query.addEventListener('compositionstart',()=>{composing=true; invalidate(); searchState='pending';});
     query.addEventListener('compositionend',()=>{composing=false; invalidate();});
-    distinct.addEventListener('change',()=>{if(distinct.checked){selected=null; selectedStatus.textContent='新作品'; for(const item of candidates.querySelectorAll('button'))item.setAttribute('aria-pressed','false'); label();}});
   }
   reason.addEventListener('input',count); count(); label();
   form.addEventListener('submit',async event=>{
@@ -62,15 +60,15 @@ if (form) {
     let title,text;
     try {title=normalize(query.value,'title',true); text=normalize(reason.value,'reason');}
     catch {status.textContent='书名限 1—300 字，理由限 200 字';return;}
-    busy=true; submit.disabled=true; query.readOnly=true; reason.readOnly=true; if(distinct)distinct.disabled=true; status.textContent='';
+    busy=true; submit.disabled=true; query.readOnly=true; reason.readOnly=true; status.textContent='';
     try {
       if (!editing && !selected) {
         clearTimeout(timer);
         if(searchState!=='ready') {await search.run(query.value);}
         if(searchState!=='ready'){status.textContent='候选查询失败，请重试';return;}
-        if(candidates.childElementCount && !distinct.checked){status.textContent='请选择候选作品，或勾选作为新作品提交';return;}
+        if(candidates.childElementCount){status.textContent='请选择已有作品';return;}
       }
-      const payload=editing ? {reason:text} : {work_id:selected?.id ?? null,title,reason:text,confirmed_unmatched:distinct.checked};
+      const payload=editing ? {reason:text} : {work_id:selected?.id ?? null,title,reason:text,confirmed_unmatched:false};
       if(activity && !editing)payload.copy_public_reason=document.querySelector('#copy-public-reason').checked;
       const result=await write(form.dataset.target,payload);
       if(result.status==='pending'){status.textContent='待核查'; submit.hidden=true;}
@@ -78,6 +76,6 @@ if (form) {
     } catch(error){
       status.textContent=error.message;
       if(error.code==='existing_candidate'){selected=null; searchState='pending'; await search.run(query.value);}
-    } finally {busy=false; submit.disabled=false; query.readOnly=editing; reason.readOnly=false; if(distinct)distinct.disabled=false;}
+    } finally {busy=false; submit.disabled=false; query.readOnly=editing; reason.readOnly=false;}
   });
 }

@@ -128,8 +128,9 @@ def resolve_submission(data):
             Q(title_overridden=False) & (Q(wenku8_title__isnull=True) | Q(wenku8_title='')) & Q(original_submitted_title=title))
         aliases = WorkAlias.objects.filter(alias=title, archived_at__isnull=True).values('work_id')
         matches = Work.objects.filter(title_match | Q(pk__in=aliases)).filter(merged_into__isnull=True)
-        if matches.filter(hidden_at__isnull=True, review_status='clear').exists() and not data['confirmed_unmatched']:
-            raise services.DomainError('existing_candidate', '请选择已有作品，或确认同名不同作品', 409)
+        # The legacy confirmed_unmatched field is retained for old clients, never as an override.
+        if matches.filter(hidden_at__isnull=True, review_status='clear').exists() or catalog.search(title)['results']:
+            raise services.DomainError('existing_candidate', '请先选择已有候选作品；无法确认时需管理员核查', 409)
         pending = matches.filter(Q(hidden_at__isnull=False) | Q(review_status='pending')).exists()
         work = Work.objects.create(original_submitted_title=title, review_status='pending' if pending else 'clear')
     return work

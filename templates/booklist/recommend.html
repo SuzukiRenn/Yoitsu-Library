@@ -5,7 +5,6 @@
 {% if readonly %}<p>本期活动不可提交</p>{% else %}<form id="recommend-form" data-target="{{ target }}" data-success="{{ success_url }}" data-activity="{{ activity.id|default:'' }}" data-editing="{{ editing|yesno:'true,false' }}" data-work="{{ work.id|default:'' }}" data-in-scope="{{ work.in_scope|yesno:'true,false' }}" data-recommended="{{ work.recommended|yesno:'true,false' }}">
 <label for="recommend-query">书名</label><input id="recommend-query" type="search" value="{{ work.title }}" placeholder="书名或别名" autocomplete="off" required {% if editing %}readonly{% endif %} aria-controls="candidates" aria-describedby="candidate-status">
 <p id="candidate-status" role="status" aria-live="polite"></p><div id="candidates" aria-label="候选作品"></div><p id="selected-work" role="status">{% if work.recommended %}我已推荐{% elif work.in_scope %}已推荐{% endif %}</p>
-{% if not editing %}<label id="distinct-option" hidden><input id="distinct-work" type="checkbox">作为新作品提交</label>{% endif %}
 <label for="recommend-reason">理由（可选）</label><textarea id="recommend-reason" rows="4">{{ work.own_reason }}</textarea><output id="reason-length">0 / 200</output>
 {% if activity and not editing %}<label><input id="copy-public-reason" type="checkbox">同时作为公共理由</label>{% endif %}
 <p id="recommend-status" role="status" aria-live="polite"></p><div class="form-actions"><button class="primary" id="recommend-submit" type="submit">{% if editing %}保存{% else %}推荐{% endif %}</button><a href="{{ success_url }}">返回</a></div></form>{% endif %}</section>{% endblock %}

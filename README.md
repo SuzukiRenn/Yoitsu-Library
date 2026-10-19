@@ -108,7 +108,7 @@ $env:BOOKLIST_ENV='development'
 
 | POST 路径 | 严格 JSON 字段 | 作用 |
 |---|---|---|
-| `/api/v1/public/recommendations/` | `work_id`（整数或 null）、`title`、`reason`、`confirmed_unmatched`（布尔） | 选择已有作品或提交新书名，并建立个人推荐关系；理由可空 |
+| `/api/v1/public/recommendations/` | `work_id`（整数或 null）、`title`、`reason`、`confirmed_unmatched`（兼容旧客户端的布尔字段，现固定 false） | 选择已有作品或提交无候选的新书名，并建立个人推荐关系；理由可空 |
 | `/api/v1/public/works/<id>/recommend/` | `enabled`（布尔） | +1 / 撤回推荐 |
 | `/api/v1/public/works/<id>/like/` | `enabled`（布尔） | 独立点赞 / 取消 |
 | `/api/v1/public/works/<id>/reason/` | `reason` | 编辑 / 清空自己的理由，不改变推荐或点赞 |
@@ -117,7 +117,7 @@ GET `/api/v1/public/works/<id>/reasons/?page=1&page_size=20` 分页返回公开�
 
 推荐页自动补齐候选使用 GET `/api/v1/recommend/candidates/?q=书名`；活动范围另加 `activity=<id>`。查询结果区分 `in_scope`、`recommended`、`recommendation_count` 和当前身份的理由；这些字段不会跨公共/活动范围取值。查询中、失败或尚未选择候选时不能把数据库候选当作零条直接提交。公共理由编辑入口为 `/recommend/?work=<id>&edit=1`。
 
-未选作品 ID 时在写事务内复查当前同名标题/别名；可见同名候选要求选择，或明确勾选“同名不同作品”后另建。未知身份仅与隐藏/待核查作品同名时进入待核查，不公开、不计公共统计；明确指向隐藏作品的 ID 则拒绝写入。
+未选作品 ID 时在写事务内复查当前标题、有效别名及本地候选；找到可见候选时返回 409，必须选择已有作品，普通提交不提供“作为新作品提交”的绕过入口。`confirmed_unmatched=true` 也不能放行。相似候选不等于同一身份，系统不自动关联或合并；无法确认时需管理员核查。检索失败也不能按零候选创建。未知身份仅与隐藏/待核查作品同名时仍按已确认 D7 进入待核查，不公开、不计公共统计；明确指向隐藏作品的 ID 则拒绝写入。
 
 运行 `scripts/verify_stage4.py` 在独立 `.runtime/public_verification/` 数据库执行完整测试、离线样本导入、前端写入协议测试和真实迁移往返验证。`scripts/verify_public_migration.py` 单独验证旧公共 +1 / 理由去重、取消排除、零点赞及迁移往返完整性，始终使用新建测试库。浏览器预览贡献均为合成测试数据，不进入 Git 或生产。
 

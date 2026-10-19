@@ -75,12 +75,32 @@ class PublicTests(TestCase):
         self.assertEqual(self.action('like', key='short').status_code, 400)
         self.assertEqual(PublicRecommendation.objects.count(), 1)
 
-    def test_exact_title_or_alias_requires_selection_or_explicit_distinct_work(self):
+    def test_exact_title_or_alias_cannot_be_overridden_by_legacy_flag(self):
         self.assertEqual(self.submit(title=self.work.display_title).status_code, 409)
         WorkAlias.objects.create(work=self.work, alias='别名', normalized_alias='别名')
         self.assertEqual(self.submit(title='别名').status_code, 409)
-        self.assertEqual(self.submit(title=self.work.display_title, confirmed_unmatched=True).status_code, 200)
-        self.assertEqual(Work.objects.count(), 2)
+        self.assertEqual(self.submit(title=self.work.display_title, confirmed_unmatched=True).status_code, 409)
+        self.assertEqual(self.submit(title='别名', confirmed_unmatched=True).status_code, 409)
+        self.assertEqual(Work.objects.count(), 1)
+
+    def test_normalized_and_partial_candidates_cannot_create_duplicate_without_selection(self):
+        self.work.title_overridden=True; self.work.title_override='ＡＢＣ：魔法 学园';self.work.save()
+        for title in ('abc魔法学园','魔法 学园'):
+            self.assertEqual(self.submit(title=title,confirmed_unmatched=True).status_code,409)
+        self.assertEqual(Work.objects.count(),1)
+        self.assertEqual(self.submit(work_id=self.work.pk,title='abc魔法学园').status_code,200)
+        self.assertEqual(Work.objects.count(),1)
+
+    def test_recommend_page_has_no_duplicate_creation_override(self):
+        page=self.client.get('/recommend/')
+        self.assertNotContains(page,'distinct-work')
+        self.assertNotContains(page,'作为新作品提交')
+
+    def test_search_failure_does_not_become_permission_to_create(self):
+        with patch('booklist.catalog.search',side_effect=services.DomainError('search_capacity','检索暂不可用',503)):
+            self.assertEqual(self.submit(title='未确认作品').status_code,503)
+        self.assertEqual(Work.objects.count(),1)
+        self.assertFalse(PublicRecommendation.objects.exists())
 
     def test_unknown_same_title_hidden_or_pending_is_not_published(self):
         for state in ('hidden', 'pending'):

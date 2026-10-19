@@ -197,6 +197,14 @@ class ActivityTests(TestCase):
         browser=Client(enforce_csrf_checks=True)
         self.assertEqual(self.submit(browser=browser).status_code,403)
 
+    def test_activity_duplicate_creation_override_is_rejected_without_partial_writes(self):
+        response=self.post(f'/api/v1/activities/{self.period.pk}/recommendations/',{
+            'work_id':None,'title':self.work.display_title,'reason':'重复申请','confirmed_unmatched':True,'copy_public_reason':True})
+        self.assertEqual(response.status_code,409)
+        self.assertEqual(Work.objects.count(),1)
+        self.assertFalse(ActivityWork.objects.exists());self.assertFalse(Recommendation.objects.exists())
+        self.assertFalse(PublicRecommendation.objects.exists());self.assertFalse(PublicLike.objects.exists())
+
 
 class MonthlyConcurrentTests(TransactionTestCase):
     def _fixture_teardown(self):
