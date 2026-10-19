@@ -6,3 +6,4 @@ button{color:var(--ink);background:white;border:1px solid var(--line);border-rad
 .period-heading{font-size:16px;font-weight:500;margin:26px 0 14px}
 .period,.scope-label,.public-shelf>p,.public-shelf h1{overflow-wrap:anywhere}.section-heading h1{min-width:0}
 .public-shelf>.back-link{font-size:14px;line-height:1.5;color:var(--ink);margin-bottom:20px}
+.back-link,.return-button{display:inline-flex;align-items:center;min-height:44px;padding:10px 16px;border:1px solid #a6b39e;border-radius:5px;background:white;color:var(--ink);font-size:14px;font-weight:500;line-height:1.5;text-decoration:none}.back-link:hover,.return-button:hover{background:var(--wash);border-color:var(--accent)}

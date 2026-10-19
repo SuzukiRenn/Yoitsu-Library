@@ -7,4 +7,4 @@
 <p id="candidate-status" role="status" aria-live="polite"></p><div id="candidates" aria-label="候选作品"></div><p id="selected-work" role="status">{% if work.recommended %}我已推荐{% endif %}</p>
 <label for="recommend-reason">理由（可选）</label><textarea id="recommend-reason" rows="4">{{ work.own_reason }}</textarea><output id="reason-length">0 / 200</output>
 {% if activity and not editing %}<label><input id="copy-public-reason" type="checkbox">同时作为公共理由</label>{% endif %}
-<p id="recommend-status" role="status" aria-live="polite"></p><div class="form-actions"><button class="primary" id="recommend-submit" type="submit">{% if editing or work.recommended %}保存{% elif work.in_scope %}+1{% else %}推荐{% endif %}</button><a href="{{ success_url }}">返回</a></div></form>{% endif %}</section>{% endblock %}
+<p id="recommend-status" role="status" aria-live="polite"></p><div class="form-actions"><button class="primary" id="recommend-submit" type="submit">{% if editing or work.recommended %}保存{% elif work.in_scope %}+1{% else %}推荐{% endif %}</button><a class="return-button" href="{{ success_url }}">← 返回</a></div></form>{% endif %}</section>{% endblock %}
