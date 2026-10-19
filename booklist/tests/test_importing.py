@@ -194,6 +194,17 @@ class ImportTests(TestCase):
         importing.apply_snapshot(data)
         self.assertEqual(WorkTag.objects.filter(work=work,source_type='source',state='active').count(),6)
 
+    def test_ignored_url_noise_imports_but_text_errors_do_not_retract_tags(self):
+        raw=(FIXTURE/'details/4151.htm').read_text(encoding='utf-8')
+        raw=raw.replace('<body>','<body><a href="/?x=1&from=2">nav</a>')
+        work,warnings,_=importing.apply_snapshot(extract(raw.encode('utf-8'),4151,'https://www.wenku8.net/book/4151.htm'))
+        self.assertEqual(warnings,[])
+        self.assertEqual(WorkTag.objects.filter(work=work,state='active').count(),6)
+        raw=raw.replace('作品Tags：穿越 奇幻 魔法 经营 后宫 大小姐','作品Tags：partial&from=2')
+        _,warnings,_=importing.apply_snapshot(extract(raw.encode('utf-8'),4151,'https://www.wenku8.net/book/4151.htm'))
+        self.assertIn('incomplete_document',warnings)
+        self.assertEqual(WorkTag.objects.filter(work=work,state='active').count(),6)
+
     def test_same_title_unmatched_work_is_not_automatically_bound(self):
         title=snapshot()['fields']['title']['value']
         original=Work.objects.create(original_submitted_title=title)

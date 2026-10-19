@@ -1,6 +1,7 @@
 """Adapter for the unchanged saved-page parser. No network/browser API."""
 import hashlib
 import importlib.util
+from html.parser import HTMLParser
 import re
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -56,6 +57,72 @@ def field(state, value=None, raw=None, complete=None, code=''):
     return {'state': state, 'value': value, 'raw': raw, 'complete': complete, 'code': code}
 
 
+def document_diagnostics(text, errors):
+    """Ignore only observed URL-attribute entity noise, never text/structure.
+
+    Use lexical positions from the original input, rather than a recovered DOM,
+    to prove both genuine closing tags and the context of an lxml diagnostic.
+    """
+    offsets = [0, *(match.end() for match in re.finditer('\n', text))]
+
+    class Scan(HTMLParser):
+        def __init__(self):
+            super().__init__(convert_charrefs=False)
+            self.hrefs = []
+            self.ends = []
+
+        def handle_starttag(self, tag, attrs):
+            line, column = self.getpos()
+            start = offsets[line-1] + column
+            original = self.get_starttag_text()
+            opening = re.match(r'<[^\s/>]+', original)
+            attribute = re.compile(r'''\s+([^\s"'<>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?''', re.S)
+            cursor = opening.end() if opening else len(original)
+            hrefs = []
+            while original[cursor:].strip() not in ('>', '/>'):
+                match = attribute.match(original, cursor)
+                if not match:
+                    return
+                cursor = match.end()
+                group = 2 if match[2] is not None else 3 if match[3] is not None else None
+                if match[1].lower() == 'href' and group is not None:
+                    value = match[group]
+                    if '<' not in value and '>' not in value:
+                        hrefs.append((start+match.start(group), start+match.end(group)))
+            self.hrefs.extend(hrefs)
+
+        def handle_endtag(self, tag):
+            if tag in ('body', 'html'):
+                self.ends.append(tag)
+
+    scan = Scan()
+    lexical_ok = True
+    try:
+        scan.feed(text)
+        scan.close()
+    except (ValueError, AssertionError):
+        lexical_ok = False
+    explicit = (lexical_ok and scan.ends == ['body', 'html']
+                and bool(re.search(r'</body>\s*</html>\s*$', text, re.I)))
+    ignored = 0
+    blocking = set()
+    for error in errors:
+        position = offsets[error.line-1]+error.column-1 if 1 <= error.line <= len(offsets) else -1
+        if (lexical_ok and error.type_name == 'ERR_ENTITYREF_SEMICOL_MISSING'
+                and any(start <= position < end for start, end in scan.hrefs)):
+            ignored += 1
+        else:
+            blocking.add(error.type_name)
+    # Do not certify a page with a flood of diagnostics; logs may be bounded.
+    if len(errors) > 50:
+        blocking.add('diagnostic_limit_exceeded')
+    complete = explicit and not blocking
+    return {'complete': complete, 'explicit_end_tags': explicit,
+            'parser_error_count': len(errors), 'ignored_href_entity_errors': ignored,
+            'blocking_error_types': sorted(blocking),
+            'reason': '' if complete else ('missing_explicit_end' if not explicit else 'blocking_parser_diagnostic')}
+
+
 def extract(raw, book_id, source_url):
     canonical_detail_url(book_id, source_url)
     if not isinstance(raw, bytes) or not raw or len(raw) > MAX_HTML_BYTES:
@@ -66,7 +133,7 @@ def extract(raw, book_id, source_url):
         text, _ = p.LEGACY.decode_html(raw)
         html_parser=p.html.HTMLParser(no_network=True, remove_comments=True)
         root = p.html.fromstring(text, parser=html_parser)
-        document_complete=bool(re.search(r'</body>\s*</html>\s*$',text,re.I)) and not html_parser.error_log
+        document = document_diagnostics(text, html_parser.error_log)
     except (ValueError, LookupError, UnicodeError):
         raise SnapshotError('unrecognized_or_mismatched_detail') from None
     if result.get('page_type') != 'detail' or result.get('book_id') != book_id or result['diagnostics']['fields']['title']['state'] != 'ok':
@@ -123,7 +190,7 @@ def extract(raw, book_id, source_url):
             fields['tags'] = field('value' if tags else 'empty', tags, tag_text, complete=True)
     else:
         fields['tags'] = field('not_fetched' if not tag_nodes else 'parse_error', complete=False, code='tags_incomplete')
-    if not document_complete:
+    if not document['complete']:
         # lxml recovery can manufacture closing nodes. It must not certify an
         # empty/complete collection or overwrite previous optional metadata.
         for name,diagnostic in fields.items():
@@ -131,4 +198,5 @@ def extract(raw, book_id, source_url):
                 diagnostic.update(state='parse_error',value=None,code='incomplete_document')
                 if name=='tags':
                     diagnostic['complete']=False
-    return {'version':1, 'book_id':book_id, 'source_url':source_url, 'fields':fields}
+    return {'version':1, 'book_id':book_id, 'source_url':source_url, 'fields':fields,
+            'document_diagnostics':document}

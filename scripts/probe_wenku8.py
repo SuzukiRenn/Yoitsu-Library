@@ -185,6 +185,7 @@ def check_metadata(raw):
     if fields['title']['state'] != 'value':
         raise ValueError('Invalid standard title')
     return {'result': 'identity_verified', 'book_id': snapshot['book_id'],
+            'document_diagnostics': snapshot['document_diagnostics'],
             'title': fields['title']['value'],
             'field_states': {name: value['state'] for name, value in fields.items()},
             'diagnostic_codes': {name: value['code'] for name, value in fields.items() if value['code']},
