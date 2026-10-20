@@ -1,0 +1,8 @@
+<div class="metadata-fields">
+<div class="metadata-field"><label for="manual-tags">作品标签 <span class="field-optional">选填</span></label>
+<input id="manual-tags" type="text" value="{{ metadata.tags|join:'，' }}" placeholder="奇幻，冒险，校园…" aria-describedby="manual-tags-hint">
+<p class="field-hint" id="manual-tags-hint">逗号分隔 · 最多 20 个，每个 30 字</p></div>
+<div class="metadata-field"><label for="manual-description">作品简介 <span class="field-optional">选填</span></label>
+<textarea id="manual-description" rows="4" placeholder="介绍故事背景、主要人物，或这本书的独特之处…" aria-describedby="manual-description-hint">{{ metadata.description }}</textarea>
+<p class="field-hint" id="manual-description-hint">作品的故事与设定 · 最多 10000 字</p></div>
+</div>

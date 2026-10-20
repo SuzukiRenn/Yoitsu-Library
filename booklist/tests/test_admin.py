@@ -77,7 +77,7 @@ class AdminTests(TestCase):
         PendingActivitySubmission.objects.create(work=self.second,activity=self.period,anonymous_client=self.person,reason='待核查理由',copy_public_reason=False)
         moderation.approve(self.actor,self.second.pk,'核实为独立作品')
         self.assertEqual(activities.recs(self.period.pk).count(),1)
-        self.assertFalse(PublicRecommendation.objects.exists());self.assertFalse(PublicLike.objects.exists())
+        self.assertEqual(PublicRecommendation.objects.count(),1);self.assertFalse(PublicLike.objects.exists())
         self.assertFalse(books.reasons().exists());self.assertEqual(PendingActivitySubmission.objects.count(),1)
         with self.assertRaises(services.DomainError): moderation.approve(self.actor,self.second.pk,'重复批准')
 
@@ -88,7 +88,7 @@ class AdminTests(TestCase):
         public=Recommendation.objects.create(work=self.first,scope='public',anonymous_client=self.person,reason='已有公共理由')
         operation=self.merge()
         rec=activities.recs(self.period.pk).get();self.assertEqual(rec.work_id,self.first.pk)
-        self.assertEqual(rec.reason,'本期理由');self.assertFalse(PublicRecommendation.objects.exists())
+        self.assertEqual(rec.reason,'本期理由');self.assertEqual(PublicRecommendation.objects.filter(work=self.first).count(),1)
         public.refresh_from_db();self.assertEqual(public.reason,'已有公共理由')
         merging.undo(self.actor,operation.pk,'撤销核查')
         self.second.refresh_from_db();self.assertEqual(self.second.review_status,'pending')

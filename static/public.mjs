@@ -1,4 +1,6 @@
 import {createPublicApi} from './public-api.mjs';
+import './tag-filter.mjs?v=20261020-3';
+import './cover-images.mjs';
 const write = createPublicApi();
 const status = document.querySelector('#action-status');
 

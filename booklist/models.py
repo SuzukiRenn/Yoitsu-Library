@@ -80,6 +80,20 @@ class Work(Timestamped):
         return self.title_override if self.title_overridden else self.wenku8_title or self.original_submitted_title
 
 
+class UserWorkMetadata(Timestamped):
+    work = models.ForeignKey(Work, on_delete=P)
+    anonymous_client = models.ForeignKey(AnonymousClient, on_delete=P)
+    description = models.TextField(default='')
+    revision = models.PositiveIntegerField(default=1)
+    archived_at = models.DateTimeField(null=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['work'], condition=Q(archived_at__isnull=True), name='user_metadata_active_work'),
+            models.CheckConstraint(condition=Q(description__length__lte=10000), name='user_metadata_description_limit'),
+        ]
+
+
 class SourceFieldState(Timestamped):
     work = models.ForeignKey(Work, on_delete=P)
     field = models.CharField(max_length=50)
@@ -242,7 +256,7 @@ class PublicRecommendation(Timestamped):
 
     class Meta:
         constraints = [
-            models.CheckConstraint(condition=Q(origin__in=['submit', 'plus_one', 'legacy']), name='public_rec_origin'),
+            models.CheckConstraint(condition=Q(origin__in=['submit', 'plus_one', 'legacy', 'activity']), name='public_rec_origin'),
             models.UniqueConstraint(fields=['work', 'anonymous_client'], condition=Q(withdrawn_at__isnull=True, invalidated_at__isnull=True, archived_at__isnull=True), name='public_rec_person_unique'),
         ]
 
@@ -336,6 +350,22 @@ class RateLimitBucket(models.Model):
     key = models.CharField(max_length=64, unique=True)
     count = models.PositiveIntegerField(default=0)
     expires_at = models.DateTimeField(db_index=True)
+
+
+class SourceIdentityReview(Timestamped):
+    source_work = models.OneToOneField(Work, on_delete=P, related_name='source_identity_review')
+    book_id = models.PositiveIntegerField(unique=True)
+    snapshot = models.JSONField()
+    snapshot_hash = models.CharField(max_length=64)
+    candidates = models.JSONField(default=list)
+    status = models.CharField(max_length=20, default='pending')
+    resolved_work = models.ForeignKey(Work, on_delete=P, null=True, related_name='resolved_source_reviews')
+    resolved_by = models.ForeignKey(Admin, on_delete=P, null=True)
+    resolved_at = models.DateTimeField(null=True)
+    reason = models.TextField(default='')
+
+    class Meta:
+        constraints = [models.CheckConstraint(condition=Q(status__in=['pending', 'linked', 'separate']), name='source_identity_review_status')]
 
 
 class ImportBatch(Timestamped):

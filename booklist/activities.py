@@ -1,4 +1,4 @@
-"""Activity participation is separate from public recommendations and likes."""
+"""Activity recommendations also enroll a unique public recommendation."""
 from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
@@ -77,17 +77,17 @@ def listing(activity_id, client=None, page=1, page_size=20, *, work_id=None):
 def submit(activity_id, client, data):
     activity = require_open(activity_id)
     reason = normalize(data['reason'], 'reason')
-    work = books.resolve_submission(data)
+    work = books.resolve_submission(data, client)
     if work.review_status == 'pending':
         PendingActivitySubmission.objects.create(activity=activity, work=work, anonymous_client=client,
             reason=reason, copy_public_reason=data['copy_public_reason'])
         return {'status': 'pending'}
-    books.enroll(work)  # No public recommendation or like is created by activity participation.
+    books.enroll(work)
     snap = ActivityWork.objects.filter(activity=activity, work=work, archived_at__isnull=True, merged_into__isnull=True).first()
     if snap is None:
         snap = ActivityWork.objects.create(activity=activity, work=work, snapshot_title=normalize(work.display_title, 'title', required=True),
             snapshot_author=normalize(work.author_override if work.author_overridden else work.wenku8_author or '', 'title'),
-            snapshot_cover_url=catalog.cover_url(work.cover_url_override if work.cover_url_overridden else work.wenku8_cover_url) or '')
+            snapshot_cover_url=catalog.cover_url(work.cover_url_override if work.cover_url_overridden else work.wenku8_cover_url, cached=False) or '')
     row = recs(activity_id).filter(work=work, anonymous_client=client).first()
     if row:
         edit_reason(row, reason)
@@ -98,6 +98,7 @@ def submit(activity_id, client, data):
         hidden = history.filter(text_hidden_at__isnull=False).order_by('-id').first()
         Recommendation.objects.create(scope='activity', activity=activity, activity_work=snap, work=work,
             anonymous_client=client, reason=reason, text_hidden_at=hidden.text_hidden_at if hidden else None)
+    books.set_relation(work, client, 'recommend', True, origin='activity')
     if data['copy_public_reason'] and reason and not books.reasons().filter(work=work, anonymous_client=client).exists():
         books.set_reason(work, client, reason)
     return {'status': 'saved', 'activity_id': activity.pk, 'work_id': work.pk}

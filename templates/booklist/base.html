@@ -1,9 +1,11 @@
 {% load static %}<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{% block title %}共享书单{% endblock %}</title>
-<link rel="stylesheet" href="{% static 'catalog.css' %}?v=20261019-17">
+<link rel="preconnect" href="https://img.wenku8.com">
+<link rel="dns-prefetch" href="//img.wenku8.com">
+<link rel="stylesheet" href="{% static 'catalog.css' %}?v=20261020-6">
 <link rel="stylesheet" href="{% static 'motion.css' %}?v=20261019-3">
-<script type="module" src="{% static 'public.mjs' %}?v=20261019-1"></script>
+<script type="module" src="{% static 'public.mjs' %}?v=20261020-4"></script>
 {% block scripts %}{% endblock %}</head>
 <body><a class="skip-link" href="#main">跳到内容</a>
 <header class="site-header"><a class="brand" href="/">共享书单</a><nav class="main-nav" aria-label="主导航"><a href="/"{% if not navigation_activities %} aria-current="true"{% endif %}>公共书单</a><a href="/activities/"{% if navigation_activities %} aria-current="true"{% endif %}>推荐活动</a></nav></header>

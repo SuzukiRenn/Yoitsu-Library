@@ -13,7 +13,7 @@ def error(code, message, status):
     return JsonResponse({'error': {'code': code, 'message': message}}, status=status)
 
 
-def endpoint(method, admin=False, fields=()):
+def endpoint(method, admin=False, fields=(), optional_fields=None):
     def decorate(fn):
         @wraps(fn)
         def wrapped(request, *args, **kwargs):
@@ -35,7 +35,8 @@ def endpoint(method, admin=False, fields=()):
                         return error('request_too_large', '请求体过大', 413)
                     data = json.loads(body.decode('utf-8'))
                     types = fields if isinstance(fields, dict) else {key: str for key in fields}
-                    if not isinstance(data, dict) or set(data) != set(types) or any(type(data[k]) not in (kind if isinstance(kind, tuple) else (kind,)) for k, kind in types.items()):
+                    allowed = {**types, **(optional_fields or {})}
+                    if not isinstance(data, dict) or not set(types) <= set(data) or set(data) - set(allowed) or any(type(value) not in (allowed[k] if isinstance(allowed[k], tuple) else (allowed[k],)) for k, value in data.items()):
                         return error('invalid_request', '字段缺失、类型错误或含未知字段', 400)
                 return fn(request, data, *args, **kwargs)
             except services.DomainError as exc:

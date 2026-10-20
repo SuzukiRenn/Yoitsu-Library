@@ -68,7 +68,7 @@ def moderate_reason(actor, pk, action, note):
 
 
 def release_pending(work, actor, note, target_work=None):
-    """Approval preserves the original submission and creates no public +1 for monthly entries."""
+    """Approval creates activity participation and its unique public recommendation."""
     books.enroll(work)
     created = {}; seen = set()
     for submission in PendingActivitySubmission.objects.filter(work=work).order_by('-created_at', '-id'):
@@ -89,6 +89,7 @@ def release_pending(work, actor, note, target_work=None):
             Recommendation.objects.filter(pk=rec.pk).update(created_at=submission.created_at, updated_at=submission.created_at)
             created[rec.pk] = 'pending:'+str(submission.pk)
         has_target_reason = target_work and books.reasons().filter(work=target_work, anonymous_client=submission.anonymous_client).exists()
+        books.set_relation(work, submission.anonymous_client, 'recommend', True, origin='activity')
         if submission.copy_public_reason and submission.reason and not has_target_reason and not books.reasons().filter(work=work, anonymous_client=submission.anonymous_client).exists():
             books.set_reason(work, submission.anonymous_client, submission.reason)
         corrected(activity_id=period.pk)
@@ -99,6 +100,8 @@ def release_pending(work, actor, note, target_work=None):
 @transaction.atomic
 def approve(actor, work_id, note):
     services.require_active(actor); note = reason(note); work = get_work(work_id)
+    if hasattr(work, 'source_identity_review') and work.source_identity_review.status == 'pending':
+        raise services.DomainError('source_identity_pending', '请先在来源待核对中确认作品身份', 409)
     if work.review_status != 'pending' or work.hidden_at:
         raise services.DomainError('not_pending', '作品不在待核查状态或已隐藏', 409)
     work.review_status = 'clear'; work.save(update_fields=['review_status', 'updated_at'])

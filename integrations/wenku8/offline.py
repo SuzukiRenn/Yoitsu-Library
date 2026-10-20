@@ -1,5 +1,6 @@
 """Adapter for the unchanged saved-page parser. No network/browser API."""
 import hashlib
+import codecs
 import importlib.util
 from html.parser import HTMLParser
 import re
@@ -169,17 +170,41 @@ def document_diagnostics(text, errors):
             'reason': '' if complete else ('missing_explicit_end' if not explicit else 'blocking_parser_diagnostic')}
 
 
+def parser_bytes(raw):
+    """Handle observed GB18030 extension characters in GBK-declared source HTML.
+
+    Keep legacy parsers unchanged. Only the charset token in the parser's copy
+    changes; decoding must be strict and round-trip the entire original body.
+    """
+    declaration = re.search(br'<meta\b[^>]*charset\s*=\s*["\x27]?\s*([A-Za-z0-9_-]+)', raw, re.I)
+    if not declaration or codecs.lookup(declaration[1].decode('ascii')).name != 'gbk':
+        return raw, None
+    try:
+        raw.decode('gbk', errors='strict')
+        return raw, None
+    except UnicodeDecodeError:
+        text = raw.decode('gb18030', errors='strict')
+        if text.encode('gb18030', errors='strict') != raw:
+            raise ValueError('non_roundtrip_encoding')
+        adjusted = raw[:declaration.start(1)] + b'gb18030' + raw[declaration.end(1):]
+        return adjusted, {'declared': 'gbk', 'decoded': 'gb18030', 'strict_roundtrip': True,
+                          'original_body_sha256': hashlib.sha256(raw).hexdigest()}
+
+
 def extract(raw, book_id, source_url):
     canonical_detail_url(book_id, source_url)
     if not isinstance(raw, bytes) or not raw or len(raw) > MAX_HTML_BYTES:
         raise SnapshotError('invalid_file_size')
     p = parser()
     try:
-        result = p.parse_page(raw, source_url=source_url)
-        text, _ = p.LEGACY.decode_html(raw)
+        parse_raw, encoding = parser_bytes(raw)
+        result = p.parse_page(parse_raw, source_url=source_url)
+        text, _ = p.LEGACY.decode_html(parse_raw)
         html_parser=p.html.HTMLParser(no_network=True, remove_comments=True)
         root = p.html.fromstring(text, parser=html_parser)
         document = document_diagnostics(text, html_parser.error_log)
+        if encoding:
+            document['encoding'] = encoding
     except (ValueError, LookupError, UnicodeError):
         raise SnapshotError('unrecognized_or_mismatched_detail') from None
     if result.get('page_type') != 'detail' or result.get('book_id') != book_id or result['diagnostics']['fields']['title']['state'] != 'ok':

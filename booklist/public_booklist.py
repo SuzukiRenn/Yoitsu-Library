@@ -122,9 +122,11 @@ def set_relation(work, client, kind, enabled, origin='plus_one'):
         row.save(update_fields=[field, 'updated_at'])
 
 
-def resolve_submission(data):
+def resolve_submission(data, client=None):
     title = normalize(data['title'], 'title', required=True)
     if data['work_id'] is not None:
+        if 'metadata' in data:
+            raise services.DomainError('metadata_separate', '已有作品请从详情页编辑资料', 409)
         work = require_work(data['work_id'], public=False)
     else:
         # Recheck within the idempotent write transaction, including current overrides and aliases.
@@ -132,11 +134,19 @@ def resolve_submission(data):
             Q(title_overridden=False) & (Q(wenku8_title__isnull=True) | Q(wenku8_title='')) & Q(original_submitted_title=title))
         aliases = WorkAlias.objects.filter(alias=title, archived_at__isnull=True).values('work_id')
         matches = Work.objects.filter(title_match | Q(pk__in=aliases)).filter(merged_into__isnull=True)
-        # The legacy confirmed_unmatched field is retained for old clients, never as an override.
-        if matches.filter(hidden_at__isnull=True, review_status='clear').exists() or catalog.search(title)['results']:
-            raise services.DomainError('existing_candidate', '请先选择已有候选作品；无法确认时需管理员核查', 409)
+        # A similarity suggestion is not an identity match. Explicit manual entry
+        # may dismiss partial/fuzzy suggestions, never exact titles or aliases.
+        candidates = catalog.search(title)
+        if matches.filter(hidden_at__isnull=True, review_status='clear').exists() or (
+                candidates['results'] and candidates['strategy'] in ('exact', 'normalized')):
+            raise services.DomainError('existing_candidate', '已有同名或同别名作品，请选择已有作品', 409)
+        if candidates['results'] and not data.get('confirmed_unmatched', False):
+            raise services.DomainError('existing_candidate', '请选择候选作品，或确认手动填写新作品', 409)
         pending = matches.filter(Q(hidden_at__isnull=False) | Q(review_status='pending')).exists()
         work = Work.objects.create(original_submitted_title=title, review_status='pending' if pending else 'clear')
+        if client:
+            from . import user_metadata
+            user_metadata.initialize(work, client, data.get('metadata'))
     return work
 
 
@@ -149,7 +159,7 @@ def enroll(work):
 
 def submit(client, data):
     reason = normalize(data['reason'], 'reason')
-    work = resolve_submission(data)
+    work = resolve_submission(data, client)
     pending = work.review_status == 'pending'
     enroll(work)
     set_relation(work, client, 'recommend', True, origin='submit')

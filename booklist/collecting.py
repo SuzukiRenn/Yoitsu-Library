@@ -1,10 +1,10 @@
 """Bounded, resumable metadata collection into an isolated catalog.
 
 Checkpoint only parsed metadata and transport diagnostics, never source HTML.
-No login, redirects, cover downloads, novel text, or automatic retries.
+No login, redirects, cover downloads or novel text. Transport retries are bounded and opt-in.
 """
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import hashlib
 import json
 import os
@@ -146,10 +146,21 @@ def validate_state(state):
         raise SnapshotError('invalid_collection_state')
 
 
-def run(directory, state, *, max_items=MAX_ITEMS, retry_failed=False, opener=None, sleeper=time.sleep, progress=lambda value: None):
+def retryable_transport(record):
+    """Never retry an HTTP restriction, certificate rejection, or parser failure."""
+    if record.get('status') not in (None, 200) or record.get('result') != 'transport_failed':
+        return False
+    kinds = {'TimeoutError', 'ConnectionResetError', 'ConnectionAbortedError',
+             'ConnectionRefusedError', 'SSLEOFError', 'RemoteDisconnected', 'gaierror', 'IncompleteRead'}
+    return record.get('cause_class', record.get('error_class')) in kinds
+
+
+def run(directory, state, *, max_items=MAX_ITEMS, retry_failed=False, network_retries=0, opener=None, sleeper=time.sleep, progress=lambda value: None):
     validate_state(state)
     if type(max_items) is not int or not 1 <= max_items <= MAX_ITEMS:
         raise SnapshotError('max_items_must_be_1_to_20')
+    if type(network_retries) is not int or not 0 <= network_retries <= 3:
+        raise SnapshotError('network_retries_must_be_0_to_3')
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     checkpoint = directory/'state.json'
@@ -159,17 +170,32 @@ def run(directory, state, *, max_items=MAX_ITEMS, retry_failed=False, opener=Non
     if state['items'] and not pending:
         return report(directory, state)
     state['stop_reason'] = ''
+    state['retry_policy'] = {'network_retries': network_retries,
+        'backoff_seconds': [30 * 2**n for n in range(network_retries)]}
     opener = opener or build_opener(source.NoRedirect())
     interval = MIN_INTERVAL
     rules = None
     parser()  # Check local dependencies before requesting anything.
 
     def request(url, limit):
-        sleeper(interval)  # Also wait before robots on resume; never immediately repeat a stopped request.
-        attempt = {'url': url, 'result': 'started', 'observed_at_utc': datetime.now(timezone.utc).isoformat()}
-        state['requests'].append(attempt); save()
-        record, raw = source.fetch(url, limit, opener)
-        attempt.update(record); save()
+        for number in range(network_retries + 1):
+            delay = max(interval, 30 * 2**(number - 1)) if number else interval
+            if number:
+                state['network_wait'] = {'url': url, 'attempt': number + 1, 'delay_seconds': delay,
+                    'due_at': (datetime.now(timezone.utc) + timedelta(seconds=delay)).isoformat()}
+                save()
+                progress({'book_id': None, 'status': 'network_backoff', 'attempt': number + 1,
+                          'delay_seconds': delay})
+            # Preserve ordinary request spacing and any stricter robots interval.
+            sleeper(delay)
+            state.pop('network_wait', None)
+            attempt = {'url': url, 'result': 'started', 'attempt_number': number + 1,
+                       'observed_at_utc': datetime.now(timezone.utc).isoformat()}
+            state['requests'].append(attempt); save()
+            record, raw = source.fetch(url, limit, opener)
+            attempt.update(record); save()
+            if raw is not None or not retryable_transport(record):
+                return record, raw
         return record, raw
 
     # Resume cached metadata without any additional network request.

@@ -1,8 +1,11 @@
 """Offline transport substitutes and real saved metadata; never live source calls."""
 from email.message import Message
 import io
+from http.client import IncompleteRead
 import json
 import os
+import ssl
+from urllib.error import URLError
 from pathlib import Path
 import subprocess
 import sys
@@ -47,6 +50,67 @@ def detail(book_id=4151):
 
 
 class CollectionTests(TestCase):
+    def test_incomplete_response_is_discarded_and_retried_from_start(self):
+        class InterruptedResponse(Response):
+            def read1(self, size=-1):
+                raise IncompleteRead(b'partial untrusted content', 200)
+        state = collecting.new_state([4151]); sleeps = []
+        opener = Opener(robots(), InterruptedResponse(b''), detail())
+        with TemporaryDirectory() as folder:
+            result = collecting.run(folder, state, opener=opener, sleeper=sleeps.append, network_retries=2)
+            self.assertTrue(result['success'])
+            self.assertEqual(sleeps, [10, 10, 30])
+            self.assertEqual(state['requests'][1]['error_class'], 'IncompleteRead')
+            self.assertEqual(state['requests'][1]['status'], 200)
+            self.assertEqual(Work.objects.count(), 1)
+            self.assertNotIn('untrusted', json.dumps(state))
+
+    def test_opt_in_retry_recovers_tls_and_robot_timeouts_with_bounded_backoff(self):
+        state = collecting.new_state([4151]); sleeps = []
+        opener = Opener(TimeoutError('private address'), robots(),
+                        URLError(ssl.SSLEOFError(8, 'private credentials')), detail())
+        with TemporaryDirectory() as folder:
+            result = collecting.run(folder, state, opener=opener, sleeper=sleeps.append, network_retries=2)
+            self.assertTrue(result['success'])
+            self.assertEqual(sleeps, [10, 30, 10, 30])
+            self.assertEqual([r['attempt_number'] for r in state['requests']], [1, 2, 1, 2])
+            self.assertNotIn('network_wait', state)
+            self.assertNotIn('private', json.dumps(state))
+            self.assertEqual(Work.objects.count(), 1)
+
+    def test_retry_exhaustion_stops_robots_before_detail_and_keeps_checkpoint(self):
+        state = collecting.new_state([4151]); sleeps = []
+        opener = Opener(*[TimeoutError('sensitive error') for _ in range(3)])
+        with TemporaryDirectory() as folder:
+            result = collecting.run(folder, state, opener=opener, sleeper=sleeps.append, network_retries=2)
+            self.assertEqual(result['stop_reason'], 'robots_fetch_failed')
+            self.assertEqual(sleeps, [10, 30, 60])
+            self.assertEqual(len(opener.urls), 3)
+            self.assertTrue(all(url.endswith('/robots.txt') for url in opener.urls))
+            self.assertEqual(state['items'][0]['status'], 'pending')
+            self.assertEqual(Work.objects.count(), 0)
+
+    def test_access_restrictions_certificate_and_parser_failures_are_not_retried(self):
+        for code in (301, 401, 403, 429, 503):
+            self.assertFalse(collecting.retryable_transport({'status': code, 'result': 'http_status_stop'}))
+        self.assertFalse(collecting.retryable_transport({'status': None, 'result': 'transport_failed',
+            'error_class': 'URLError', 'cause_class': 'SSLCertVerificationError'}))
+        state = collecting.new_state([4151]); opener = Opener(robots(), Response(b'<html>login</html>'))
+        with TemporaryDirectory() as folder:
+            result = collecting.run(folder, state, opener=opener, sleeper=lambda _: None, network_retries=2)
+            self.assertEqual(result['counts']['failed'], 1)
+            self.assertEqual(len(opener.urls), 2)
+
+    def test_transport_retry_honors_robots_delay_and_does_not_fetch_success_twice(self):
+        state = collecting.new_state([4151]); sleeps = []
+        opener = Opener(robots(b'User-agent: *\nCrawl-delay: 40\nDisallow:\n'), TimeoutError(), detail())
+        with TemporaryDirectory() as folder:
+            result = collecting.run(folder, state, opener=opener, sleeper=sleeps.append, network_retries=2)
+            self.assertTrue(result['success'])
+            self.assertEqual(sleeps, [10, 40, 40])
+            self.assertEqual(Work.objects.count(), 1)
+            self.assertEqual(len(opener.urls), 3)
+
     def test_windows_checkpoint_replace_recovers_from_short_file_lock(self):
         with TemporaryDirectory() as folder:
             path = Path(folder)/'state.json'

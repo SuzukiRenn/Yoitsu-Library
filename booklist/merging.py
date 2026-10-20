@@ -5,9 +5,9 @@ from django.db.models import Q
 from django.utils import timezone
 from . import services, moderation, catalog
 from .models import (Work, WorkAlias, WorkTag, TagSuppression, ActivityWork, Recommendation, Vote,
-    PublicRecommendation, PublicLike, PendingActivitySubmission, ChangeEvent, WorkMergeOperation, WorkMergeChange)
+    PublicRecommendation, PublicLike, PendingActivitySubmission, ChangeEvent, WorkMergeOperation, WorkMergeChange, UserWorkMetadata)
 
-MODELS = (Work, WorkAlias, WorkTag, TagSuppression, ActivityWork, Recommendation, Vote, PublicRecommendation, PublicLike, PendingActivitySubmission)
+MODELS = (Work, WorkAlias, WorkTag, TagSuppression, ActivityWork, Recommendation, Vote, PublicRecommendation, PublicLike, PendingActivitySubmission, UserWorkMetadata)
 RELATIONS = (Recommendation, Vote, PublicRecommendation, PublicLike)
 TABLES = {model._meta.db_table: model for model in MODELS}
 
@@ -33,6 +33,11 @@ def plan(first, second):
     if secondary.wenku8_book_id and secondary.wenku8_book_id != primary.wenku8_book_id:
         raise services.DomainError('source_conflict', '来源身份不同；有来源身份的作品须作为主作品', 409)
     conflicts = []
+    manual_primary = UserWorkMetadata.objects.filter(work=primary, archived_at__isnull=True).first()
+    manual_secondary = UserWorkMetadata.objects.filter(work=secondary, archived_at__isnull=True).first()
+    if not primary.wenku8_book_id and manual_primary and manual_secondary and manual_primary.description != manual_secondary.description:
+        conflicts.append({'key': 'user_description', 'label': '用户填写的简介',
+            'primary': manual_primary.description, 'secondary': manual_secondary.description})
     for field in ('title', 'author', 'description', 'cover_url'):
         if getattr(primary, field+'_overridden') and getattr(secondary, field+'_overridden') and getattr(primary, field+'_override') != getattr(secondary, field+'_override'):
             conflicts.append({'key': field, 'label': {'title':'书名','author':'作者','description':'简介','cover_url':'封面'}[field], 'primary': getattr(primary, field+'_override'), 'secondary': getattr(secondary, field+'_override')})
@@ -92,6 +97,15 @@ def merge(actor, first, second, choices, version, note):
     if updates:
         save(primary, **updates)
     now = timezone.now()
+    manual_primary = UserWorkMetadata.objects.filter(work=primary, archived_at__isnull=True).first()
+    manual_secondary = UserWorkMetadata.objects.filter(work=secondary, archived_at__isnull=True).first()
+    if manual_secondary:
+        if not primary.wenku8_book_id and (manual_primary is None or choices.get('user_description') == 'secondary'):
+            if manual_primary:
+                save(manual_primary, archived_at=now)
+            save(manual_secondary, work_id=first)
+        else:
+            save(manual_secondary, archived_at=now)
     # Moderation history follows the canonical identity too; otherwise a merged ID could escape it.
     for model in RELATIONS:
         for row in model.objects.filter(work=secondary, archived_at__isnull=False):
@@ -193,7 +207,7 @@ def undo(actor, pk, note):
         model = TABLES[change.table_name]
         if model in RELATIONS:
             model.objects.filter(pk=change.record_id).update(archived_at=timezone.now())
-        elif model is WorkAlias:
+        elif model in (WorkAlias, UserWorkMetadata):
             model.objects.filter(pk=change.record_id).update(archived_at=timezone.now())
         elif model is WorkTag:
             model.objects.filter(pk=change.record_id).update(state='merge_archived')

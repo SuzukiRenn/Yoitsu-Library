@@ -6,7 +6,7 @@ import unicodedata
 from urllib.parse import urlsplit
 from django.core.exceptions import ValidationError
 from django.db.models import Exists, OuterRef
-from .models import Work, WorkAlias, WorkTag, TagSuppression, PublicRecommendation, PublicLike
+from .models import Work, WorkAlias, WorkTag, TagSuppression, PublicRecommendation, PublicLike, UserWorkMetadata
 from .services import DomainError
 from .text import normalize, WHITESPACE
 
@@ -32,11 +32,15 @@ def search_key(value):
                    if c not in WHITESPACE and not unicodedata.category(c).startswith(('P', 'Z')))
 
 
-def cover_url(value):
+def cover_url(value, *, cached=True):
     if not isinstance(value, str) or len(value) > 2048 or any(ord(c) < 33 for c in value):
         return None
     try:
         url = urlsplit(value)
+        from .cover_cache import local_url
+        local = local_url(value) if cached else None
+        if local:
+            return local
         # The source emits HTTP, but this specific image host also serves HTTPS.
         # Keep source snapshots unchanged; normalize only the displayed URL.
         if url.scheme == 'http' and url.netloc == 'img.wenku8.com' and not url.query and not url.fragment:
@@ -69,7 +73,8 @@ def serialize_works(works, detail=False):
                'source_book_id': work.wenku8_book_id,
                'tags': sorted(tags[work.pk].values(), key=lambda tag: (tag['name'], tag['id']))}
         if detail:
-            row['description'] = work.description_override if work.description_overridden else work.wenku8_description or ''
+            manual = UserWorkMetadata.objects.filter(work=work, archived_at__isnull=True).first() if work.wenku8_book_id is None or work.source_metadata.get('preserve_user_description') else None
+            row['description'] = work.description_override if work.description_overridden else (manual.description if manual and manual.description else work.wenku8_description or '')
             row['metadata'] = {key: work.source_metadata.get(key) for key in ('publisher_category', 'status', 'last_updated', 'word_count')}
         results.append(row)
     return results

@@ -24,6 +24,8 @@ def main():
     args_parser.add_argument('--max-items', type=int, default=20)
     args_parser.add_argument('--skip-ids', type=int, nargs='+', help='Exclude up to 20 previously collected IDs from one discovery page')
     args_parser.add_argument('--retry-failed', action='store_true')
+    args_parser.add_argument('--network-retries', type=int, choices=range(4), default=0,
+        help='Opt-in transient transport retries per request (0..3), with 30/60/120-second backoff')
     args_parser.add_argument('--refresh', action='store_true', help='Explicitly refresh a fully completed batch in its existing catalog')
     args = args_parser.parse_args()
     if not 1 <= args.max_items <= 20 or (args.retry_failed and not args.resume):
@@ -69,6 +71,7 @@ def main():
             with (directory/'migrate.log').open('a', encoding='utf-8') as log:
                 call_command('migrate', interactive=False, stdout=log, verbosity=1)
             result = run(directory, state, max_items=args.max_items, retry_failed=args.retry_failed,
+                         network_retries=args.network_retries,
                          progress=lambda item: print(json.dumps(item, ensure_ascii=True), flush=True))
     except KeyboardInterrupt:
         result = {'success': False, 'error_code': 'interrupted_resume_same_batch'}

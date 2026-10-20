@@ -53,3 +53,45 @@ button{color:var(--ink);background:white;border:1px solid var(--line);border-rad
 .candidate-preview .tag{font-size:11px;line-height:1.4}
 @media(prefers-reduced-motion:no-preference){.candidate-preview:not([hidden]){animation:booklist-fade-in 120ms ease-out}}
 .recommend-page #candidates:not(:empty){padding:10px;margin:0 -10px -10px}
+.tag-filter{position:relative;display:block;padding:16px;border:1px solid var(--line);border-radius:7px;background:#fffefa}
+.tag-filter .tag-filter-ghost{position:absolute;pointer-events:none;z-index:2}
+.tag-filter [hidden]{display:none!important}
+.tag-filter .tags{gap:8px}
+.tag-filter .tag{min-height:32px;padding:5px 9px;gap:7px;line-height:20px}
+.tag-filter .tag-count{font-variant-numeric:tabular-nums;color:var(--muted)}
+.tag-filter-selected{margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.tag-filter-caption,.tag-filter-search label{display:block;margin:0 0 8px;font-size:12px;color:var(--muted)}
+.tag-filter-selected .tag{background:var(--wash);color:var(--ink)}
+.tag-filter-search{margin-bottom:14px}
+.tag-filter-search input{width:100%;max-width:360px;min-height:38px;padding:8px 12px;border:1px solid #bbc6b4;border-radius:5px;background:white;color:var(--ink)}
+.tag-filter-actions{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:14px}
+.tag-filter-actions button,.tag-filter-actions .reason-link{min-height:34px;font-size:12px;line-height:18px;padding:7px 12px}
+.tag-filter-empty{margin:12px 0;color:var(--muted);font-size:13px}
+.recommend-page input[type=text]{width:100%;font:inherit;padding:12px;border:1px solid #bbc6b4;border-radius:5px;background:white;color:var(--ink)}
+.recommend-page .field-hint{font-size:12px;line-height:1.7;color:var(--muted);margin:6px 0 12px}
+#manual-metadata{margin:24px 0;padding:22px 24px;border:1px solid var(--line);border-radius:10px;background:#fffefa;min-width:0}
+.metadata-heading{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:6px 12px}
+.metadata-heading h2{margin:0;font-size:16px;line-height:1.5;font-weight:600}
+.metadata-heading>span{font-size:11px;color:var(--muted)}
+.recommend-page .metadata-note{margin:7px 0 22px;font-size:12px;line-height:1.7;color:var(--muted)}
+.metadata-fields{display:grid;gap:20px}
+.recommend-page .metadata-field label,.reason-editor-heading label{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-size:13px;font-weight:500}
+.field-optional{font-size:11px;font-weight:400;color:var(--muted)}
+.recommend-page .metadata-field input,.recommend-page .metadata-field textarea,.recommend-page .reason-editor textarea{padding:11px 12px;border-color:var(--line);border-radius:7px;font-size:14px;line-height:1.7}
+.recommend-page .metadata-field input::placeholder,.recommend-page textarea::placeholder{color:#92998c;font-size:13px}
+.recommend-page .metadata-field textarea{min-height:126px;display:block}
+.recommend-page .metadata-field .field-hint{margin:6px 0 0;font-size:11px;color:var(--muted)}
+.reason-editor{margin-top:24px}
+.reason-editor-heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:8px}
+.recommend-page .reason-editor-heading label{margin:0}
+.recommend-page .reason-editor-heading output{margin:0;font-size:11px;font-variant-numeric:tabular-nums}
+.recommend-page .reason-editor textarea{min-height:92px;display:block}
+@media(max-width:700px){#manual-metadata{padding:18px 16px}.metadata-heading>span{flex-basis:100%}.recommend-page .metadata-note{margin-bottom:18px}}
+.introduction .section-heading h2{margin:0}
+.recommend-page .manual-candidate{display:grid;gap:5px;width:100%;padding:12px 14px;text-align:left;border:1px dashed #9cad92;background:#f0f3e9;line-height:1.6}
+.manual-candidate strong{font-size:13px;font-weight:500}
+.manual-candidate span{font-size:12px;color:var(--muted)}
+@media(prefers-reduced-motion:no-preference){#manual-metadata:not([hidden]){animation:booklist-content-enter 180ms ease-out}}
+.cover-caption{position:absolute;bottom:12px;left:5px;right:5px;color:#77836b;text-align:center;font-size:10px;line-height:1.5}
+.cover-fallback{padding:8px;color:#77836b;text-align:center;font-size:11px;line-height:1.6}
+.book-cover>img[hidden],.cover-fallback[hidden]{display:none}

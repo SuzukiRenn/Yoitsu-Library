@@ -40,7 +40,7 @@ def detail_api(request, data, activity_id):
 FIELDS = {'work_id': (int, type(None)), 'title': str, 'reason': str, 'confirmed_unmatched': bool, 'copy_public_reason': bool}
 
 
-@endpoint('POST', fields=FIELDS)
+@endpoint('POST', fields=FIELDS, optional_fields={'metadata': dict})
 def submit(request, data, activity_id):
     activities.advance_due()
     return write(request, f'activity.submit.{activity_id}', data, lambda: activities.submit(activity_id, request.anonymous_client, data))

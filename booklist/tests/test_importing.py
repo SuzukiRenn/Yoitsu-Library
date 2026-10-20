@@ -2,6 +2,7 @@ from copy import deepcopy
 from datetime import timedelta
 import importlib
 import io
+import hashlib
 import json
 from pathlib import Path
 import socket
@@ -27,6 +28,23 @@ def snapshot(book=4151):
 
 
 class ImportTests(TestCase):
+    def test_gbk_declared_gb18030_extension_is_lossless_and_keeps_identity_checks(self):
+        raw=(FIXTURE/'details/4151.htm').read_bytes()
+        text, _=parser().LEGACY.decode_html(raw)
+        text=text.replace('charset="utf-8"', 'charset="gbk"').replace('</body>', '<!-- \U0001fa84 --></body>')
+        extended=text.encode('gb18030')
+        with self.assertRaises(UnicodeDecodeError): extended.decode('gbk')
+        result=extract(extended,4151,'https://www.wenku8.net/book/4151.htm')
+        self.assertEqual(result['fields'],snapshot()['fields'])
+        self.assertTrue(result['document_diagnostics']['encoding']['strict_roundtrip'])
+        self.assertEqual(result['document_diagnostics']['encoding']['original_body_sha256'],hashlib.sha256(extended).hexdigest())
+        with self.assertRaises(SnapshotError): extract(extended,3219,'https://www.wenku8.net/book/3219.htm')
+
+    def test_invalid_gbk_and_gb18030_bytes_are_not_silently_replaced(self):
+        text,_=parser().LEGACY.decode_html((FIXTURE/'details/4151.htm').read_bytes())
+        raw=text.replace('charset="utf-8"','charset="gbk"').encode('gbk')+b'\xff'
+        with self.assertRaises(SnapshotError): extract(raw,4151,'https://www.wenku8.net/book/4151.htm')
+
     def test_three_saved_samples_and_repeat_have_no_duplicate_or_spurious_events(self):
         forbidden=[]
         def no_network(*args,**kwargs):

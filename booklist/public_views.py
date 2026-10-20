@@ -39,7 +39,7 @@ def write(request, scope, data, operation):
     return JsonResponse(services.idempotent(client, scope, request.headers.get('Idempotency-Key'), data, operation))
 
 
-@endpoint('POST', fields={'work_id': (int, type(None)), 'title': str, 'reason': str, 'confirmed_unmatched': bool})
+@endpoint('POST', fields={'work_id': (int, type(None)), 'title': str, 'reason': str, 'confirmed_unmatched': bool}, optional_fields={'metadata': dict})
 def submit(request, data):
     return write(request, 'public.submit', data, lambda: books.submit(request.anonymous_client, data))
 

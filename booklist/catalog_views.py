@@ -53,6 +53,8 @@ def work_page(request, data, work_id):
     read_limit(request)
     from . import public_booklist as books
     work = catalog.work_detail(work_id)
+    from . import user_metadata
+    can_edit_metadata = user_metadata.editable(books.require_work(work_id, public=False), request.anonymous_client)
     if 'activity' in request.GET:
         from . import activities
         from .recommend_views import positive
@@ -73,6 +75,6 @@ def work_page(request, data, work_id):
             # Rejoining still uses the standalone recommendation form, never a stale +1 button.
             work.update(title=snapshot.snapshot_title, author=snapshot.snapshot_author,
                         cover_url=catalog.cover_url(snapshot.snapshot_cover_url))
-        return page(request, 'booklist/work.html', {'work': work, 'interaction': interaction, 'activity': result['activity']})
+        return page(request, 'booklist/work.html', {'work': work, 'interaction': interaction, 'activity': result['activity'], 'can_edit_metadata': can_edit_metadata})
     interaction = books.serialize([books.require_work(work_id)], request.anonymous_client)[0] if work['is_public'] else None
-    return page(request, 'booklist/work.html', {'work': work, 'interaction': interaction})
+    return page(request, 'booklist/work.html', {'work': work, 'interaction': interaction, 'can_edit_metadata': can_edit_metadata})

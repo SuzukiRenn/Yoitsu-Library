@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from .models import AdminSession, AnonymousClient
 from .services import token_hash, valid_token
+from . import cover_cache
 
 
 class IdentityMiddleware:
@@ -15,6 +16,18 @@ class IdentityMiddleware:
         length = request.META.get('CONTENT_LENGTH', '')
         if length and (not length.isdigit() or int(length) > 32768):
             return JsonResponse({'error': {'code': 'request_too_large', 'message': '请求体过大'}}, status=413)
+        prefix = '/media/covers/'
+        public_cover = request.method in ('GET', 'HEAD') and request.path_info.startswith(prefix) and bool(
+            cover_cache.NAME.fullmatch(request.path_info[len(prefix):]))
+        if public_cover:
+            # Cover bytes are identical for every visitor. Avoid identity queries and
+            # let this one public raster endpoint retain its browser cache headers.
+            response = self.get_response(request)
+            matched = getattr(getattr(request, 'resolver_match', None), 'func', None)
+            if matched is not cover_cache.serve or response.status_code not in (200, 304):
+                response['Cache-Control'] = 'no-store'
+            response['X-Frame-Options'] = 'DENY'
+            return response
         token = request.COOKIES.get(settings.ADMIN_COOKIE)
         if valid_token(token):
             session = AdminSession.objects.select_related('admin').filter(token_hash=token_hash(token),

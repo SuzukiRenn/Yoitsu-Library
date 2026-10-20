@@ -94,6 +94,11 @@ def fetch(url, limit, opener, clock=time.monotonic):
     except (URLError, OSError, ValueError, HTTPException) as exc:
         # Do not emit exception text: it may contain proxy addresses or credentials.
         record['error_class'] = type(exc).__name__
+        cause = getattr(exc, 'reason', None)
+        if cause is not None:
+            record['cause_class'] = type(cause).__name__
+            if isinstance(getattr(cause, 'errno', None), int):
+                record['cause_errno'] = cause.errno
     finally:
         record['elapsed_ms'] = round((clock()-started)*1000, 3)
     return record, None

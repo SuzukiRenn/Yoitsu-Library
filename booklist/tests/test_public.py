@@ -83,15 +83,17 @@ class PublicTests(TestCase):
         self.assertEqual(self.submit(title='别名', confirmed_unmatched=True).status_code, 409)
         self.assertEqual(Work.objects.count(), 1)
 
-    def test_normalized_and_partial_candidates_cannot_create_duplicate_without_selection(self):
+    def test_normalized_match_stays_blocked_partial_requires_explicit_manual_entry(self):
         self.work.title_overridden=True; self.work.title_override='ＡＢＣ：魔法 学园';self.work.save()
-        for title in ('abc魔法学园','魔法 学园'):
-            self.assertEqual(self.submit(title=title,confirmed_unmatched=True).status_code,409)
+        self.assertEqual(self.submit(title='abc魔法学园',confirmed_unmatched=True).status_code,409)
+        self.assertEqual(self.submit(title='魔法 学园').status_code,409)
         self.assertEqual(Work.objects.count(),1)
+        self.assertEqual(self.submit(title='魔法 学园',confirmed_unmatched=True).status_code,200)
+        self.assertEqual(Work.objects.count(),2)
         self.assertEqual(self.submit(work_id=self.work.pk,title='abc魔法学园').status_code,200)
-        self.assertEqual(Work.objects.count(),1)
+        self.assertEqual(Work.objects.count(),2)
 
-    def test_recommend_page_has_no_duplicate_creation_override(self):
+    def test_manual_entry_controls_are_not_offered_before_a_search(self):
         page=self.client.get('/recommend/')
         self.assertNotContains(page,'distinct-work')
         self.assertNotContains(page,'作为新作品提交')

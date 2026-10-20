@@ -1,12 +1,15 @@
 from django.urls import path
-from booklist import views, catalog_views, public_views, activity_views, recommend_views, admin_views
+from booklist import views, catalog_views, public_views, activity_views, recommend_views, admin_views, metadata_views, cover_cache
 
 urlpatterns = [
+    path('media/covers/<str:name>', cover_cache.serve),
     path('manage/login/', admin_views.login),
     path('manage/', admin_views.index),
     path('manage/works/<int:work_id>/', admin_views.work),
     path('manage/activities/<int:activity_id>/', admin_views.activity),
     path('manage/merge/', admin_views.merge_preview),
+    path('manage/source-reviews/<int:review_id>/', admin_views.source_review),
+    path('api/v1/admin/source-reviews/<int:review_id>/resolve/', admin_views.resolve_source_review),
     path('api/v1/admin/works/<int:work_id>/action/', admin_views.work_action),
     path('api/v1/admin/works/', admin_views.create_work),
     path('api/v1/admin/reasons/<int:reason_id>/action/', admin_views.reason_action),
@@ -36,6 +39,8 @@ urlpatterns = [
     path('api/v1/public/works/<int:work_id>/reason/', public_views.reason),
     path('api/v1/public/works/<int:work_id>/reasons/', public_views.reasons),
     path('works/<int:work_id>/', catalog_views.work_page),
+    path('works/<int:work_id>/edit/', metadata_views.edit),
+    path('api/v1/catalog/works/<int:work_id>/metadata/', metadata_views.save),
     path('api/v1/catalog/search/', catalog_views.search),
     path('api/v1/catalog/works/<int:work_id>/', catalog_views.detail),
     path('api/v1/csrf/', views.csrf_token),

@@ -37,14 +37,14 @@ class ActivityTests(TestCase):
         browser=Client(); token, person=services.issue_anonymous();browser.cookies[settings.ANONYMOUS_COOKIE]=token
         return browser,person
 
-    def test_activity_submission_enrolls_without_public_recommendation_or_likes(self):
+    def test_activity_submission_adds_public_recommendation_without_likes(self):
         self.assertEqual(self.submit().status_code,200)
         self.work.refresh_from_db();self.assertIsNotNone(self.work.public_added_at)
-        self.assertEqual((PublicRecommendation.objects.count(),PublicLike.objects.count(),Vote.objects.count()),(0,0,0))
+        self.assertEqual((PublicRecommendation.objects.count(),PublicLike.objects.count(),Vote.objects.count()),(1,0,0))
         self.assertEqual(activities.recs(self.period.pk).count(),1)
         self.assertEqual(activities.listing(self.period.pk)['results'][0]['recommendation_count'],1)
-        self.assertEqual(books.listing()['total'],0)
-        self.assertEqual(books.listing()['results'],[])
+        self.assertEqual(books.listing()['total'],1)
+        self.assertEqual(books.listing()['results'][0]['recommendation_count'],1)
 
     def test_monthly_cover_and_title_open_details_with_monthly_actions_and_return(self):
         self.work.description_overridden = True; self.work.description_override = '简介内容<script>不执行</script>'; self.work.save()
@@ -123,10 +123,10 @@ class ActivityTests(TestCase):
         self.post(f'/api/v1/public/works/{self.work.pk}/like/',{'enabled':True})
         monthly=activities.listing(self.period.pk)['results'][0];public=books.listing()['results'][0]
         self.assertEqual((monthly['recommendation_count'],monthly['like_count']),(2,1))
-        self.assertEqual((public['recommendation_count'],public['like_count']),(1,1))
+        self.assertEqual((public['recommendation_count'],public['like_count']),(2,1))
         self.action('withdraw')
         self.assertEqual(activities.recs(self.period.pk).count(),1)
-        self.assertEqual((books.recommendations().count(),books.likes().count(),activities.votes(self.period.pk).count()),(1,1,1))
+        self.assertEqual((books.recommendations().count(),books.likes().count(),activities.votes(self.period.pk).count()),(2,1,1))
 
     def test_list_plus_one_is_a_button_and_adds_only_one_monthly_recommendation(self):
         self.submit('首位理由')
@@ -139,7 +139,7 @@ class ActivityTests(TestCase):
         row = activities.recs(self.period.pk).get(anonymous_client=person)
         self.assertEqual(row.reason, '')
         self.assertEqual((activities.recs(self.period.pk).count(), ActivityWork.objects.count()), (2, 1))
-        self.assertEqual((PublicRecommendation.objects.count(), PublicLike.objects.count(), Vote.objects.count()), (0, 0, 0))
+        self.assertEqual((PublicRecommendation.objects.count(), PublicLike.objects.count(), Vote.objects.count()), (2, 0, 0))
         page = other.get(f'/activities/{self.period.pk}/')
         self.assertContains(page, 'data-action="recommend" data-enabled="false" aria-pressed="true">取消推荐</button>')
         self.assertContains(page, f'href="/activities/{self.period.pk}/recommend/?work={self.work.pk}&amp;edit=1">写理由</a>')
@@ -221,6 +221,22 @@ class ActivityTests(TestCase):
         self.submit('',copy=True)
         self.assertFalse(books.reasons().exists())
         self.assertEqual(activities.recs(self.period.pk).count(),1)
+
+    def test_public_recommendation_is_unique_across_periods_and_existing_public_reason_is_retained(self):
+        self.post('/api/v1/public/recommendations/', {'work_id': self.work.pk, 'title': self.work.display_title,
+            'reason': '已有公共理由', 'confirmed_unmatched': False})
+        self.submit('新的活动理由', copy=True)
+        self.submit('重复提交', copy=True)
+        self.assertEqual(books.recommendations().count(), 1)
+        self.assertEqual(books.reasons().get().reason, '已有公共理由')
+        self.period.status = 'ended'; self.period.ended_at = self.now; self.period.save()
+        second = Activity.objects.create(title='下一场活动', start_at=self.now,
+            scheduled_end_at=self.now+timedelta(days=2), started_at=self.now, status='active', created_by=self.admin)
+        data = {'work_id': self.work.pk, 'title': self.work.display_title, 'reason': '',
+            'confirmed_unmatched': False, 'copy_public_reason': False}
+        services.idempotent(self.person, 'activity.test', str(uuid.uuid4()), data, lambda: activities.submit(second.pk, self.person, data))
+        self.assertEqual(books.recommendations().count(), 1)
+        self.assertEqual(activities.recs(second.pk).count(), 1)
 
     def test_snapshot_reused_after_zero_contributions_and_source_changes(self):
         self.submit();snap=ActivityWork.objects.get()
@@ -311,7 +327,7 @@ class ActivityTests(TestCase):
             activities.advance_due(); row.refresh_from_db()
             self.assertEqual((row.status, row.started_at, row.ended_at), ('ended', start, end))
             self.assertFalse(activities.writable(row))
-        self.assertEqual(PublicRecommendation.objects.count(), 0)
+        self.assertEqual(PublicRecommendation.objects.count(), 1)
 
     def test_active_or_paused_deadline_can_shorten_or_extend_with_audit(self):
         original_start = self.period.start_at
@@ -397,6 +413,18 @@ class ActivityTests(TestCase):
         self.assertFalse(ActivityWork.objects.exists());self.assertFalse(Recommendation.objects.exists())
         self.assertFalse(PublicRecommendation.objects.exists());self.assertFalse(PublicLike.objects.exists())
 
+    def test_activity_partial_suggestion_can_be_declined_with_manual_metadata(self):
+        data={'work_id':None,'title':'群友','reason':'另一部作品','confirmed_unmatched':False,
+            'copy_public_reason':False,'metadata':{'description':'手工简介','tags':['奇幻']}}
+        path=f'/api/v1/activities/{self.period.pk}/recommendations/'
+        self.assertEqual(self.post(path,data).status_code,409)
+        response=self.post(path,{**data,'confirmed_unmatched':True})
+        self.assertEqual(response.status_code,200,response.content)
+        work_id=response.json()['work_id']
+        from booklist import catalog
+        self.assertEqual(catalog.work_detail(work_id)['description'],'手工简介')
+        self.assertEqual(activities.recs(self.period.pk).filter(work_id=work_id).count(),1)
+
 
 class MonthlyConcurrentTests(TransactionTestCase):
     def _fixture_teardown(self):
@@ -436,4 +464,4 @@ class MonthlyConcurrentTests(TransactionTestCase):
             person=AnonymousClient.objects.get(pk=pk)
             return services.idempotent(person,'monthly.concurrent',str(uuid.uuid4()),data,lambda:activities.submit(period.pk,person,data))['status']
         self.assertEqual(self.concurrent(ids,recommend),['saved','saved'])
-        self.assertEqual((ActivityWork.objects.count(),Recommendation.objects.count(),PublicRecommendation.objects.count()),(1,2,0))
+        self.assertEqual((ActivityWork.objects.count(),Recommendation.objects.count(),PublicRecommendation.objects.count()),(1,2,2))

@@ -1,0 +1,16 @@
+{% extends 'booklist/admin/base.html' %}{% block content %}
+<a href="/manage/?section=source_reviews">← 来源待核对</a>
+<h1>{{ source.title }}</h1><p>文库8 #{{ review.book_id }} · {{ source.author }}</p>
+{% if source.cover_url %}<img src="{{ source.cover_url }}" width="120" loading="lazy" referrerpolicy="no-referrer" alt="{{ source.title }}封面">{% endif %}
+<p>{% for tag in source.tags %}{{ tag.name }} {% endfor %}</p><p>{{ source.description|linebreaksbr }}</p>
+{% if review.status == 'pending' %}
+<h2>可能对应的原作品</h2><p>请对照作者、书名和简介确认。关联后保留原作品的推荐、理由与用户资料。</p>
+{% for candidate in review.candidates %}<article><a href="/manage/works/{{ candidate.work_id }}/">#{{ candidate.work_id }} {{ candidate.title }}</a><p>{{ candidate.match }}</p>
+<form data-api="/api/v1/admin/source-reviews/{{ review.id }}/resolve/">
+<input type="hidden" name="action" value="link"><input type="hidden" name="work_id" value="{{ candidate.work_id }}" data-integer><input type="hidden" name="snapshot_hash" value="{{ review.snapshot_hash }}">
+<label>核对依据<input name="reason" required maxlength="500" placeholder="例如：书名与作者一致，已核对作品介绍"></label><button>确认同一本，关联资料</button><p role="status"></p></form></article>{% endfor %}
+<h2>确认为不同作品</h2><form data-api="/api/v1/admin/source-reviews/{{ review.id }}/resolve/">
+<input type="hidden" name="action" value="separate"><input type="hidden" name="work_id" value="0" data-integer><input type="hidden" name="snapshot_hash" value="{{ review.snapshot_hash }}">
+<label>核对依据<input name="reason" required maxlength="500"></label><button>作为独立作品收录</button><p role="status"></p></form>
+{% else %}<p>已处理：{{ review.reason }}</p><a href="/manage/works/{{ review.resolved_work_id }}/">查看处理后的作品</a>{% endif %}
+{% endblock %}

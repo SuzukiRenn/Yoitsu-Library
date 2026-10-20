@@ -25,3 +25,4 @@ tests/wenku8_browser/logging_validation_20261018/parser_*/
 tests/wenku8_browser/chrome_regression_20261018/2026*/
 tests/wenku8_browser/logging_online_review_20261018/runs/
 requirements/wheels/
+tools/wenku8/*.json

@@ -1,4 +1,4 @@
 <a class="book-card" href="/works/{{ work.id }}/">
-<span class="book-cover" aria-hidden="true">{% if work.cover_url %}<img src="{{ work.cover_url }}" loading="lazy" referrerpolicy="no-referrer" alt="">{% else %}<span class="cover-rule"></span>{% endif %}</span>
+<span class="book-cover" aria-hidden="true">{% include 'booklist/cover_image.html' %}</span>
 <span class="book-info"><span class="book-status">{% if work.is_public %}已收录{% else %}未收录{% endif %}</span><strong class="book-title">{{ work.title }}</strong><span class="book-author">{{ work.author|default:"—" }}</span><span class="tags">{% for tag in work.tags %}<span class="tag">{{ tag.name }}</span>{% endfor %}</span></span>
 </a>
