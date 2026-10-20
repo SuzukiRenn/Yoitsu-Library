@@ -3,6 +3,7 @@ from difflib import SequenceMatcher
 import hashlib
 import json
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from . import catalog, services
 from .importing import apply_snapshot, validate_snapshot
@@ -17,7 +18,8 @@ def digest(snapshot):
 def manual_candidates(title):
     key = catalog.search_key(title)
     candidates = []
-    for work in Work.objects.filter(wenku8_book_id__isnull=True, merged_into__isnull=True).order_by('id'):
+    for work in Work.objects.filter(wenku8_book_id__isnull=True, merged_into__isnull=True).exclude(
+            Q(source_metadata__has_key='manual_retired_at') & Q(hidden_at__isnull=True, review_status='clear')).order_by('id'):
         names = [work.display_title, *WorkAlias.objects.filter(work=work, archived_at__isnull=True).values_list('alias', flat=True)]
         kind = None
         for name in names:
@@ -69,7 +71,7 @@ def resolve(actor, pk, action, work_id, expected_hash, reason):
         if work_id not in [c['work_id'] for c in review.candidates]:
             raise services.DomainError('invalid_target', '请选择待核对的原作品')
         target = Work.objects.filter(pk=work_id, wenku8_book_id__isnull=True, merged_into__isnull=True,
-            hidden_at__isnull=True, review_status='clear').first()
+            hidden_at__isnull=True, review_status='clear').exclude(source_metadata__has_key='manual_retired_at').first()
         if target is None:
             raise services.DomainError('target_changed', '原作品已变更，请重新核对', 409)
         # Source quarantine rows have never been public. Refuse to absorb any contributions.

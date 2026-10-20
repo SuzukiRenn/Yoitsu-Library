@@ -19,7 +19,9 @@ try {
     if ($LASTEXITCODE -ne 0 -or $localRelease -ne $Release) { throw 'Requested release must equal the local committed HEAD.' }
     git -C $repoRoot bundle create $bundlePath HEAD
     if ($LASTEXITCODE -ne 0) { throw 'Cannot prepare the requested committed release.' }
-    $bundleHash=(Get-FileHash -LiteralPath $bundlePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $bundleHasher=[Security.Cryptography.SHA256]::Create()
+    try { $bundleHash=([BitConverter]::ToString($bundleHasher.ComputeHash([IO.File]::ReadAllBytes($bundlePath)))).Replace('-','').ToLowerInvariant() }
+    finally { $bundleHasher.Dispose() }
     $bundleBase64=[Convert]::ToBase64String([IO.File]::ReadAllBytes($bundlePath))
 } finally {
     if (Test-Path -LiteralPath $bundlePath) { Remove-Item -LiteralPath $bundlePath }

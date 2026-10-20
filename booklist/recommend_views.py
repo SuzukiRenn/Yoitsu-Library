@@ -36,7 +36,8 @@ def recommend(request, data, activity_id=None):
         work.update(books.serialize([books.require_work(work_id, public=editing)], request.anonymous_client)[0])
     if work:
         if activity_id:
-            work['in_scope'] = activities.recs(activity_id).filter(work_id=work_id).exists() or activities.votes(activity_id).filter(work_id=work_id).exists()
+            work['recommendation_count'] = activities.recs(activity_id).filter(work_id=work_id).count()
+            work['in_scope'] = work['recommendation_count'] > 0
             work['recommended'] = own is not None
         else:
             work['in_scope'] = work['is_public']
@@ -64,5 +65,5 @@ def candidates(request, data):
         else:
             reason = books.reasons().filter(work_id=row['id'], anonymous_client=client).first() if client else None
             row['own_reason'] = reason.reason if reason else ''
-        row['in_scope'] = row['recommendation_count'] > 0 or activities.votes(activity_id).filter(work_id=row['id']).exists() if activity_id else row['is_public']
+        row['in_scope'] = row['recommendation_count'] > 0 if activity_id else row['is_public']
     return JsonResponse(payload)

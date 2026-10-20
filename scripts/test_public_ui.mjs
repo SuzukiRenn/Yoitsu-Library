@@ -31,36 +31,4 @@ await assert.rejects(rejected('/like/', {enabled: true}), error => error.code ==
 assert.equal(identityCount, 1); // Never silently issue a new identity and transfer the action.
 console.log('Public write CSRF, identity, retry-key and explicit-state tests passed');
 
-// Exercise the real shared list click handler: monthly +1 must POST and reload,
-// without navigating to the recommendation/reason form.
-if (!globalThis.crypto) globalThis.crypto = webcrypto;
-const clicks = [], monthlyRequests = [], actionStatus = {textContent: ''};
-let reloads = 0;
-globalThis.document = {
-  querySelector: selector => selector === '#action-status' ? actionStatus : null,
-  querySelectorAll: () => [],
-  addEventListener: (event, handler) => { if (event === 'click') clicks.push(handler); }
-};
-globalThis.location = {reload: () => { reloads++; }, assign: () => { throw Error('Unexpected form navigation'); }};
-globalThis.fetch = async (url, options) => {
-  monthlyRequests.push({url, options});
-  if (url.endsWith('/csrf/')) return response({csrf_token: 'monthly-csrf'});
-  if (url.endsWith('/identity/')) return response({status: 'ready'});
-  return response({status: 'saved'});
-};
-await import('../static/public.mjs');
-const monthlyButton = {dataset: {action: 'recommend', enabled: 'true'}, disabled: false};
-const monthlyContainer = {dataset: {activity: '7', work: '11'}, querySelectorAll: () => [monthlyButton]};
-monthlyButton.closest = () => monthlyContainer;
-const click = {target: {closest: selector => selector === '[data-action]' ? monthlyButton : null}};
-for (const handler of clicks) await handler(click);
-assert.equal(monthlyRequests.at(-1).url, '/api/v1/activities/7/works/11/recommend/');
-assert.equal(monthlyRequests.at(-1).options.method, 'POST');
-assert.deepEqual(JSON.parse(monthlyRequests.at(-1).options.body), {enabled: true});
-assert.equal(monthlyRequests.at(-1).options.headers['X-CSRFToken'], 'monthly-csrf');
-assert.equal(reloads, 1);
-monthlyButton.disabled = false; monthlyButton.dataset.enabled = 'false';
-for (const handler of clicks) await handler(click);
-assert.deepEqual(JSON.parse(monthlyRequests.at(-1).options.body), {enabled: false});
-assert.equal(reloads, 2);
-console.log('Monthly list +1 and cancellation POST directly without form navigation');
+await import('./test_live_interactions.mjs');

@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db.models import F
+from django.db import OperationalError
 from django.http import JsonResponse
 from django.utils import timezone
 from .models import AdminSession, AnonymousClient
@@ -28,16 +29,22 @@ class IdentityMiddleware:
                 response['Cache-Control'] = 'no-store'
             response['X-Frame-Options'] = 'DENY'
             return response
-        token = request.COOKIES.get(settings.ADMIN_COOKIE)
-        if valid_token(token):
-            session = AdminSession.objects.select_related('admin').filter(token_hash=token_hash(token),
-                expires_at__gt=timezone.now(), admin__is_active=True, session_version=F('admin__session_version')).first()
-            if session:
-                request.admin, request.admin_session = session.admin, session
-        token = request.COOKIES.get(settings.ANONYMOUS_COOKIE)
-        if valid_token(token):
-            request.anonymous_client = AnonymousClient.objects.filter(token_hash=token_hash(token), revoked_at__isnull=True,
-                expires_at__gt=timezone.now()).first()
+        try:
+            token = request.COOKIES.get(settings.ADMIN_COOKIE)
+            if valid_token(token):
+                session = AdminSession.objects.select_related('admin').filter(token_hash=token_hash(token),
+                    expires_at__gt=timezone.now(), admin__is_active=True, session_version=F('admin__session_version')).first()
+                if session:
+                    request.admin, request.admin_session = session.admin, session
+            token = request.COOKIES.get(settings.ANONYMOUS_COOKIE)
+            if valid_token(token):
+                request.anonymous_client = AnonymousClient.objects.filter(token_hash=token_hash(token), revoked_at__isnull=True,
+                    expires_at__gt=timezone.now()).first()
+        except OperationalError as exc:
+            from .views import database_unavailable
+            response = database_unavailable(request, exc)
+            response['X-Frame-Options'] = 'DENY'
+            return response
         response = self.get_response(request)
         response['Cache-Control'] = 'no-store'
         response['X-Frame-Options'] = 'DENY'

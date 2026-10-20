@@ -35,9 +35,9 @@ def plan(first, second):
     conflicts = []
     manual_primary = UserWorkMetadata.objects.filter(work=primary, archived_at__isnull=True).first()
     manual_secondary = UserWorkMetadata.objects.filter(work=secondary, archived_at__isnull=True).first()
-    if not primary.wenku8_book_id and manual_primary and manual_secondary and manual_primary.description != manual_secondary.description:
-        conflicts.append({'key': 'user_description', 'label': '用户填写的简介',
-            'primary': manual_primary.description, 'secondary': manual_secondary.description})
+    if not primary.wenku8_book_id and manual_primary and manual_secondary and (manual_primary.author, manual_primary.description) != (manual_secondary.author, manual_secondary.description):
+        conflicts.append({'key': 'user_description', 'label': '用户填写的作者与简介',
+            'primary': (manual_primary.author+'\n'+manual_primary.description).strip(), 'secondary': (manual_secondary.author+'\n'+manual_secondary.description).strip()})
     for field in ('title', 'author', 'description', 'cover_url'):
         if getattr(primary, field+'_overridden') and getattr(secondary, field+'_overridden') and getattr(primary, field+'_override') != getattr(secondary, field+'_override'):
             conflicts.append({'key': field, 'label': {'title':'书名','author':'作者','description':'简介','cover_url':'封面'}[field], 'primary': getattr(primary, field+'_override'), 'secondary': getattr(secondary, field+'_override')})

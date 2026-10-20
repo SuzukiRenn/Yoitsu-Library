@@ -27,6 +27,7 @@ def main():
     args_parser.add_argument('--network-retries', type=int, choices=range(4), default=0,
         help='Opt-in transient transport retries per request (0..3), with 30/60/120-second backoff')
     args_parser.add_argument('--refresh', action='store_true', help='Explicitly refresh a fully completed batch in its existing catalog')
+    args_parser.add_argument('--shared-pacing', type=Path, help='Coordinator-owned shared pacing checkpoint')
     args = args_parser.parse_args()
     if not 1 <= args.max_items <= 20 or (args.retry_failed and not args.resume):
         args_parser.error('max-items must be 1..20; retry-failed requires resume')
@@ -52,8 +53,12 @@ def main():
     from django.core.management import call_command
     from booklist.collecting import collection_lock, new_state, validate_state, atomic_json, run
     result = {'success': False}
+    pacing = args.shared_pacing.resolve() if args.shared_pacing else None
+    expected_pacing = (ROOT/'.runtime/directory_detail_queues/retry_220_20261020/pacing.json').resolve()
+    if pacing and (pacing != expected_pacing or not pacing.is_file()):
+        args_parser.error('shared pacing must be initialized by the frozen queue coordinator')
     try:
-        with collection_lock(OUTPUT_ROOT):
+        with collection_lock(directory if pacing else OUTPUT_ROOT):
             if args.resume:
                 state = json.loads((directory/'state.json').read_text(encoding='utf-8'))
                 validate_state(state)
@@ -70,7 +75,20 @@ def main():
             print('BATCH:', directory, flush=True)
             with (directory/'migrate.log').open('a', encoding='utf-8') as log:
                 call_command('migrate', interactive=False, stdout=log, verbosity=1)
-            result = run(directory, state, max_items=args.max_items, retry_failed=args.retry_failed,
+            opener = None
+            if pacing:
+                from urllib.request import build_opener
+                from scripts import probe_wenku8 as source
+                from scripts.probe_wenku8 import NoRedirect
+                import time
+                from booklist.collection_parallel import PacedOpener
+                opener = PacedOpener(build_opener(NoRedirect()), pacing,
+                    lambda: state.get('robots', {}).get('minimum_interval_seconds', 10))
+                fetch = source.fetch
+                # Queue waiting is not network time; preserve the original 30s I/O budget.
+                source.fetch = lambda url, limit, transport: fetch(url, limit, transport,
+                    clock=lambda: time.monotonic() - opener.wait_seconds)
+            result = run(directory, state, opener=opener, max_items=args.max_items, retry_failed=args.retry_failed,
                          network_retries=args.network_retries,
                          progress=lambda item: print(json.dumps(item, ensure_ascii=True), flush=True))
     except KeyboardInterrupt:

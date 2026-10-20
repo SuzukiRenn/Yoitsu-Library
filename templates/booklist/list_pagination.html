@@ -1,0 +1,8 @@
+{% if total %}<nav class="shelf-pagination{% if compact %} shelf-pagination-top{% endif %}" aria-label="{% if compact %}书单上方分页{% else %}书单分页{% endif %}">
+{% if compact %}<span class="page-summary"><span data-shelf-total>共 {{ total }} 本</span><span>第 {{ paging.current }} / {{ paging.count }} 页</span></span>{% endif %}
+<div class="page-links">
+{% if paging.previous %}<a class="page-step" href="{{ paging.previous }}" rel="prev">上一页</a>{% else %}<span class="page-step" aria-disabled="true">上一页</span>{% endif %}
+{% if not compact %}{% for item in paging.links %}{% if item.gap %}<span class="page-gap" aria-hidden="true">…</span>{% elif item.current %}<span class="page-number" aria-current="page">{{ item.number }}</span>{% else %}<a class="page-number" href="{{ item.url }}" aria-label="第 {{ item.number }} 页">{{ item.number }}</a>{% endif %}{% endfor %}{% endif %}
+{% if paging.next %}<a class="page-step" href="{{ paging.next }}" rel="next">下一页</a>{% else %}<span class="page-step" aria-disabled="true">下一页</span>{% endif %}
+</div>
+</nav>{% endif %}

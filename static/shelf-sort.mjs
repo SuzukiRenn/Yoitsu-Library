@@ -1,0 +1,60 @@
+// Enhance only shelf sorting. Real links remain usable without JavaScript.
+export function installShelfSort(refresh, {doc=document,win=window,fetcher=fetch}={}) {
+  const shelf=doc.querySelector('[data-live-shelf]');
+  if(!shelf || !refresh?.apply)return;
+  const controls=shelf.querySelector('.shelf-sort');
+  const status=doc.querySelector('#action-status');
+  const path=win.location.pathname;
+  let generation=0,request,timer;
+  let renderedURL=win.location.href;
+  const marker='booklistShelf';
+  win.history.replaceState({...win.history.state,[marker]:path},'',win.location.href);
+  const announce=pending=>doc.dispatchEvent(new win.CustomEvent('booklist:shelf-navigation',{detail:{pending}}));
+  async function navigate(url,push=true) {
+    generation++;const epoch=generation;request?.abort();win.clearTimeout(timer);
+    const controller=new AbortController();request=controller;
+    const startingURL=win.location.href;
+    let timedOut=false;
+    timer=win.setTimeout(()=>{timedOut=true;controller.abort();},15000);
+    controls.setAttribute('aria-busy','true');status.textContent='';announce(true);
+    try {
+      const response=await fetcher(url,{credentials:'same-origin',cache:'no-store',signal:controller.signal});
+      if(!response.ok)throw Error(response.status===429?'操作较频繁，请稍后重试':'排序加载失败，请重试');
+      const destination=new URL(response.url || url,startingURL);
+      if(destination.origin!==win.location.origin || destination.pathname!==path)throw Error('页面已变化，请刷新后重试');
+      const html=await response.text();
+      if(epoch!==generation || win.location.href!==startingURL)return;
+      const next=new win.DOMParser().parseFromString(html,'text/html').querySelector('[data-live-shelf]');
+      if(!next || !next.querySelector('.shelf-sort') || !next.querySelector('[data-shelf-grid]'))throw Error('排序加载失败，请重试');
+      refresh.apply(next,{preserveAnchor:false,animateReorder:true});
+      if(push)win.history.pushState({...win.history.state,[marker]:path},'',destination.href);
+      else if(destination.href!==win.location.href)win.history.replaceState({...win.history.state,[marker]:path},'',destination.href);
+      renderedURL=destination.href;
+    }catch(error){
+      if(epoch===generation && win.location.href===startingURL) {
+        if(!push)win.history.replaceState({...win.history.state,[marker]:path},'',renderedURL);
+        if(timedOut)status.textContent='排序加载超时，请重试';
+        else if(error.name!=='AbortError')status.textContent=error.message || '排序加载失败，请重试';
+      }
+    }finally{
+      if(epoch===generation){win.clearTimeout(timer);controls.removeAttribute('aria-busy');announce(false);}
+    }
+  }
+  doc.addEventListener('click',event=>{
+    if(event.defaultPrevented || event.button!==0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)return;
+    const link=event.target.closest?.('.shelf-sort a[href]');
+    if(!link || !shelf.contains(link) || link.hasAttribute('download') || (link.target&&link.target!=='_self'))return;
+    const url=new URL(link.href,win.location.href);
+    if(url.origin!==win.location.origin || url.pathname!==path)return;
+    event.preventDefault();
+    if(link.hasAttribute('aria-current') && !controls.hasAttribute('aria-busy'))return;
+    return navigate(url.href);
+  });
+  win.addEventListener('popstate',event=>{
+    if(event.state?.[marker]===path && win.location.pathname===path)return navigate(win.location.href,false);
+  });
+  win.addEventListener('pagehide',()=>{
+    generation++;request?.abort();win.clearTimeout(timer);controls.removeAttribute('aria-busy');announce(false);
+  });
+  return {navigate};
+}

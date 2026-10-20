@@ -153,6 +153,12 @@ def issue_anonymous(existing=None, reset=False):
 def rate_limit(scope, identifier, limit, seconds):
     slot = int(time.time()) // seconds
     key = hmac.new(settings.SECRET_KEY.encode(), f'{scope}:{identifier}:{slot}'.encode(), hashlib.sha256).hexdigest()
+    read_store = getattr(settings, 'READ_RATE_LIMIT_DATABASE', None)
+    if read_store and scope in ('catalog_read', 'catalog_search'):
+        from .read_rate_limit import consume
+        if not consume(read_store, key, limit, time.time() + seconds * 2, time.time()):
+            raise DomainError('rate_limited', '请求过于频繁，请稍后重试', 429)
+        return
     with transaction.atomic():
         bucket, _ = RateLimitBucket.objects.get_or_create(key=key, defaults={'expires_at': timezone.now() + timedelta(seconds=seconds * 2)})
         if bucket.count >= limit:

@@ -52,9 +52,14 @@ def work_page(request, data, work_id):
     parameters(request, ('activity',))
     read_limit(request)
     from . import public_booklist as books
-    work = catalog.work_detail(work_id)
-    from . import user_metadata
-    can_edit_metadata = user_metadata.editable(books.require_work(work_id, public=False), request.anonymous_client)
+    from . import user_metadata, activities
+    from .recommend_views import positive
+    period = activities.get(positive(request.GET['activity'])) if 'activity' in request.GET else None
+    if period: activities.advance_due(); period.refresh_from_db()
+    historical = period is not None and period.status == 'ended'
+    work = catalog.work_detail(work_id, include_retired=historical)
+    current_work = catalog.visible_works().filter(pk=work_id).first()
+    can_edit_metadata = user_metadata.editable(current_work, request.anonymous_client) if current_work else False
     if 'activity' in request.GET:
         from . import activities
         from .recommend_views import positive
@@ -75,6 +80,12 @@ def work_page(request, data, work_id):
             # Rejoining still uses the standalone recommendation form, never a stale +1 button.
             work.update(title=snapshot.snapshot_title, author=snapshot.snapshot_author,
                         cover_url=catalog.cover_url(snapshot.snapshot_cover_url))
+        if historical:
+            from .models import ActivityWork
+            history = ActivityWork.objects.filter(activity_id=activity_id, work_id=work_id, archived_at__isnull=True, merged_into__isnull=True).first()
+            if history and history.snapshot_description is not None:
+                work.update(description=history.snapshot_description, tags=history.snapshot_tags or [])
+            can_edit_metadata = False
         return page(request, 'booklist/work.html', {'work': work, 'interaction': interaction, 'activity': result['activity'], 'can_edit_metadata': can_edit_metadata})
     interaction = books.serialize([books.require_work(work_id)], request.anonymous_client)[0] if work['is_public'] else None
     return page(request, 'booklist/work.html', {'work': work, 'interaction': interaction, 'can_edit_metadata': can_edit_metadata})

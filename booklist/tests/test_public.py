@@ -51,21 +51,18 @@ class PublicTests(TestCase):
         self.assertEqual((self.current()['recommendation_count'], Work.objects.count()), (2, 1))
         self.assertEqual(PublicLike.objects.count(), 0)
 
-    def test_likes_and_recommendation_and_reason_lifecycles_are_independent(self):
-        self.action('like')
-        self.assertEqual((self.current()['recommendation_count'], self.current()['like_count']), (0, 1))
+    def test_source_cycle_blocks_off_shelf_likes_and_resets_reasons(self):
+        self.work.wenku8_book_id=123; self.work.identity_status='matched'; self.work.save()
+        self.assertEqual(self.action('like').status_code,409)
         self.submit(work_id=self.work.pk, reason='推荐理由')
+        self.action('like')
         self.action('recommend', False)
-        self.assertEqual((self.current()['recommendation_count'], self.current()['like_count'], self.current()['own_reason']), (0, 1, '推荐理由'))
-        self.action('like', False)
-        self.work.refresh_from_db()
-        self.assertIsNotNone(self.work.public_added_at)
-        self.assertEqual(self.current()['like_count'], 0)
-        self.action('recommend')
-        response = self.post(f'/api/v1/public/works/{self.work.pk}/reason/', {'reason': ''})
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(self.current()['recommendation_count'], 1)
-        self.assertFalse(Recommendation.objects.exists())
+        self.assertEqual((self.current()['recommendation_count'],self.current()['like_count'],self.current()['own_reason']),(0,0,''))
+        self.assertEqual(self.action('like').status_code,409)
+        self.assertEqual(self.post(f'/api/v1/public/works/{self.work.pk}/reason/',{'reason':'旧页面写入'}).status_code,409)
+        self.assertEqual(self.action('recommend').status_code,200)
+        self.assertEqual((self.current()['recommendation_count'],self.current()['like_count'],self.current()['own_reason']),(1,0,''))
+        self.assertEqual(Recommendation.objects.filter(archived_at__isnull=False).count(),1)
 
     def test_idempotency_replay_conflict_and_missing_key(self):
         key = str(uuid.uuid4())
@@ -152,6 +149,7 @@ class PublicTests(TestCase):
         self.assertEqual(self.current()['recommendation_count'], 2)
 
     def test_auth_csrf_origin_strict_types_and_unknown_actor_field(self):
+        PublicRecommendation.objects.create(work=self.work, anonymous_client=self.person)
         self.assertEqual(self.action('recommend', browser=Client()).status_code, 401)
         secure = Client(enforce_csrf_checks=True); self.actor(secure)
         self.assertEqual(self.action('recommend', browser=secure).status_code, 403)
@@ -171,6 +169,7 @@ class PublicTests(TestCase):
         self.assertEqual(self.submit(reason='📚'*201).status_code, 400)
 
     def test_write_rate_limit_and_read_parameters(self):
+        PublicRecommendation.objects.create(work=self.work, anonymous_client=self.person)
         with patch('booklist.services.time.time', return_value=120):
             for _ in range(60):
                 self.assertEqual(self.action('like').status_code, 200)
@@ -180,6 +179,7 @@ class PublicTests(TestCase):
             self.assertEqual(self.client.get('/api/v1/public/works/?'+query).status_code, 400)
 
     def test_ip_write_limit_is_shared_across_rotating_identities(self):
+        PublicRecommendation.objects.create(work=self.work, anonymous_client=self.person)
         second, third = Client(), Client()
         self.actor(second); self.actor(third)
         with patch('booklist.services.time.time', return_value=120):
@@ -221,32 +221,29 @@ class PublicTests(TestCase):
         b.is_active=False; b.save()
         self.assertEqual(books.listing()['tags'], [])
 
-    def test_zero_contributions_leave_list_but_keep_catalog_reason_and_original_record(self):
-        self.submit(work_id=self.work.pk, reason='保留理由')
-        self.work.refresh_from_db(); first_added = self.work.public_added_at
-        self.assertEqual(books.listing()['total'], 1)
+    def test_manual_zero_cycle_requires_fresh_metadata_and_new_identity(self):
+        self.submit(work_id=self.work.pk, reason='旧理由')
         self.assertEqual(self.action('recommend', False).status_code, 200)
-        self.assertEqual(self.client.get('/api/v1/public/works/').json()['total'], 0)
-        self.assertNotContains(self.client.get('/'), self.work.display_title)
-        self.assertEqual(Work.objects.count(), 1)
-        self.assertEqual(Recommendation.objects.get().reason, '保留理由')
-        catalog = self.client.get(f'/api/v1/catalog/works/{self.work.pk}/').json()
-        self.assertFalse(catalog['is_public'])
-        candidate = self.client.get('/api/v1/recommend/candidates/', {'q': self.work.display_title}).json()['results'][0]
-        self.assertEqual((candidate['id'], candidate['in_scope'], candidate['recommendation_count']), (self.work.pk, False, 0))
-        self.assertEqual(self.submit(title=self.work.display_title).status_code, 409)
-        self.assertEqual(self.submit(work_id=self.work.pk).status_code, 200)
-        self.assertEqual(Work.objects.count(), 1)
-        self.work.refresh_from_db(); self.assertEqual(self.work.public_added_at, first_added)
-        self.assertEqual((books.listing()['total'], self.current()['recommendation_count'], self.current()['like_count']), (1, 1, 0))
-        self.assertEqual(self.current()['own_reason'], '保留理由')
+        self.assertEqual(books.listing()['total'], 0)
+        self.assertEqual(self.client.get(f'/api/v1/catalog/works/{self.work.pk}/').status_code, 404)
+        self.assertEqual(Recommendation.objects.get().reason, '旧理由')
+        self.assertIsNotNone(Recommendation.objects.get().archived_at)
+        self.assertEqual(self.submit(work_id=self.work.pk).status_code, 409)
+        result = self.submit(title=self.work.display_title)
+        self.assertEqual(result.status_code, 200)
+        self.assertNotEqual(result.json()['work']['id'], self.work.pk)
+        self.assertEqual(result.json()['work']['own_reason'], '')
+        self.assertEqual(Work.objects.count(), 2)
 
-    def test_either_valid_recommendation_or_like_keeps_work_listed(self):
+    def test_source_zero_cycle_archives_old_likes_and_keeps_source_identity(self):
+        self.work.wenku8_book_id=123; self.work.identity_status='matched'; self.work.save()
         self.submit(work_id=self.work.pk)
         self.action('like')
         self.action('recommend', False)
-        self.assertEqual((books.listing()['total'], self.current()['recommendation_count'], self.current()['like_count']), (1, 0, 1))
-        self.assertTrue(self.client.get(f'/api/v1/catalog/works/{self.work.pk}/').json()['is_public'])
+        self.assertEqual((books.listing()['total'], self.current()['recommendation_count'], self.current()['like_count']), (0, 0, 0))
+        self.assertEqual(PublicLike.objects.count(),1)
+        self.assertIsNotNone(PublicLike.objects.get().archived_at)
+        self.assertFalse(self.client.get(f'/api/v1/catalog/works/{self.work.pk}/').json()['is_public'])
         self.action('like', False)
         self.assertEqual(books.listing()['total'], 0)
         self.submit(work_id=self.work.pk)
@@ -259,7 +256,7 @@ class PublicTests(TestCase):
             for field in fields:
                 with self.subTest(model=model.__name__, field=field):
                     record = model.objects.create(work=self.work, anonymous_client=self.person)
-                    self.assertEqual(books.listing()['total'], 1)
+                    self.assertEqual(books.listing()['total'], int(model is PublicRecommendation))
                     setattr(record, field, timezone.now()); record.save(update_fields=[field])
                     self.assertEqual(books.listing()['total'], 0)
 
@@ -283,7 +280,8 @@ class PublicTests(TestCase):
         row = self.current()
         self.assertEqual((row['recommendation_count'], row['reason_count'], len(row['reasons'])), (4, 3, 2))
         response = self.client.get(f'/api/v1/public/works/{self.work.pk}/reasons/?page=2&page_size=2')
-        self.assertEqual(response.json(), {'total': 3, 'results': [{'reason': '理由3'}]})
+        self.assertEqual(response.json()['total'], 3)
+        self.assertEqual([row['reason'] for row in response.json()['results']], ['理由3'])
 
     def test_new_table_uniqueness_and_raw_sql_tracking(self):
         for model in (PublicRecommendation, PublicLike):

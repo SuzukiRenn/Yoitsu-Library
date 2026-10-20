@@ -1,14 +1,15 @@
 {% load static %}<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{% block title %}共享书单{% endblock %}</title>
+<link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}?v=1">
 <link rel="preconnect" href="https://img.wenku8.com">
 <link rel="dns-prefetch" href="//img.wenku8.com">
-<link rel="stylesheet" href="{% static 'catalog.css' %}?v=20261020-6">
-<link rel="stylesheet" href="{% static 'motion.css' %}?v=20261019-3">
-<script type="module" src="{% static 'public.mjs' %}?v=20261020-4"></script>
+<link rel="stylesheet" href="{% static 'catalog.css' %}?v=20261020-29">
+<link rel="stylesheet" href="{% static 'motion.css' %}?v=20261020-5">
+<script type="module" src="{% static 'public.mjs' %}?v=20261020-19"></script>
 {% block scripts %}{% endblock %}</head>
 <body><a class="skip-link" href="#main">跳到内容</a>
-<header class="site-header"><a class="brand" href="/">共享书单</a><nav class="main-nav" aria-label="主导航"><a href="/"{% if not navigation_activities %} aria-current="true"{% endif %}>公共书单</a><a href="/activities/"{% if navigation_activities %} aria-current="true"{% endif %}>推荐活动</a></nav></header>
+<header class="site-header"><a class="brand" href="/"><img src="{% static 'favicon.svg' %}" width="28" height="28" alt="" aria-hidden="true">共享书单</a><nav class="main-nav" aria-label="主导航"><a href="/"{% if not navigation_activities %} aria-current="true"{% endif %}>公共书单</a><a href="/activities/"{% if navigation_activities %} aria-current="true"{% endif %}>推荐活动</a></nav></header>
 <main id="main">{% block content %}{% endblock %}</main>
 <p id="action-status" class="action-status" role="status"></p>
 {% include 'booklist/legal_footer.html' %}

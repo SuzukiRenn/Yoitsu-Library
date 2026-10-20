@@ -1,8 +1,12 @@
 <div class="metadata-fields">
+<div class="metadata-field"><label for="manual-author">作者 <span class="field-optional">选填</span></label><input id="manual-author" type="text" value="{{ metadata.author }}" placeholder="填写作者姓名或笔名" autocomplete="off" maxlength="20"></div>
 <div class="metadata-field"><label for="manual-tags">作品标签 <span class="field-optional">选填</span></label>
-<input id="manual-tags" type="text" value="{{ metadata.tags|join:'，' }}" placeholder="奇幻，冒险，校园…" aria-describedby="manual-tags-hint">
+<div class="tag-autocomplete" data-tag-autocomplete data-work="{{ tag_work_id|default:'' }}">
+<input id="manual-tags" type="text" value="{{ metadata.tags|join:'，' }}" placeholder="奇幻，冒险，校园…" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="manual-tag-options" aria-describedby="manual-tags-hint">
+<div class="tag-suggestions" hidden><div class="tag-suggestions-heading">已有标签</div><div id="manual-tag-options" role="listbox" aria-label="标签建议"></div><p class="tag-suggestions-empty" hidden>暂无匹配标签，可直接填写新标签</p><div class="tag-suggestions-pagination" hidden><span data-tag-page-info></span><div class="tag-page-buttons"><button type="button" tabindex="-1" data-tag-previous aria-label="上一页已有标签">上一页</button><button type="button" tabindex="-1" data-tag-next aria-label="下一页已有标签">下一页</button></div></div></div>
+<span class="sr-only" role="status" data-tag-status></span></div>
 <p class="field-hint" id="manual-tags-hint">逗号分隔 · 最多 20 个，每个 30 字</p></div>
 <div class="metadata-field"><label for="manual-description">作品简介 <span class="field-optional">选填</span></label>
 <textarea id="manual-description" rows="4" placeholder="介绍故事背景、主要人物，或这本书的独特之处…" aria-describedby="manual-description-hint">{{ metadata.description }}</textarea>
-<p class="field-hint" id="manual-description-hint">作品的故事与设定 · 最多 10000 字</p></div>
+<p class="field-hint" id="manual-description-hint">最多 2000 字</p></div>
 </div>

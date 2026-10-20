@@ -37,6 +37,34 @@ class ActivityTests(TestCase):
         browser=Client(); token, person=services.issue_anonymous();browser.cookies[settings.ANONYMOUS_COOKIE]=token
         return browser,person
 
+    def test_navigation_opens_current_and_archive_stays_browsable(self):
+        self.assertRedirects(self.client.get('/activities/'), f'/activities/{self.period.pk}/')
+        self.assertContains(self.client.get(f'/activities/{self.period.pk}/'),
+                            'href="/activities/history/">回顾往期活动</a>')
+        history = Activity.objects.create(title='去年的活动', start_at=self.now-timedelta(days=10),
+            scheduled_end_at=self.now-timedelta(days=9), started_at=self.now-timedelta(days=10),
+            ended_at=self.now-timedelta(days=9), status='ended', created_by=self.admin)
+        archive = self.client.get('/activities/history/')
+        self.assertContains(archive, '往期活动')
+        self.assertContains(archive, f'href="/activities/{history.pk}/"')
+        self.assertNotContains(archive, f'href="/activities/{self.period.pk}/"')
+        self.assertContains(archive, 'class="primary activity-current-link" href="/activities/"')
+
+    def test_navigation_without_active_shows_list_and_empty_archive(self):
+        self.period.status = 'paused'; self.period.save()
+        page = self.client.get('/activities/')
+        self.assertContains(page, '十月推荐')
+        self.assertContains(page, '回顾往期活动')
+        self.assertContains(self.client.get('/activities/history/'), '还没有往期活动')
+        self.period.status = 'draft'; self.period.started_at = None; self.period.save()
+        self.assertContains(self.client.get('/activities/'), '暂无进行中的活动')
+
+    def test_navigation_advances_scheduled_activity_before_selecting_current(self):
+        self.period.status = 'scheduled'; self.period.started_at = None; self.period.save()
+        self.assertRedirects(self.client.get('/activities/'), f'/activities/{self.period.pk}/')
+        self.period.refresh_from_db()
+        self.assertEqual(self.period.status, 'active')
+
     def test_activity_submission_adds_public_recommendation_without_likes(self):
         self.assertEqual(self.submit().status_code,200)
         self.work.refresh_from_db();self.assertIsNotNone(self.work.public_added_at)
@@ -53,7 +81,7 @@ class ActivityTests(TestCase):
         self.post('/api/v1/public/recommendations/', {'work_id': self.work.pk, 'title': self.work.display_title,
                   'reason': '公共理由独有', 'confirmed_unmatched': False})
         path = f'/works/{self.work.pk}/?activity={self.period.pk}'
-        self.assertContains(self.client.get(f'/activities/{self.period.pk}/'), f'href="{path}"', count=2)
+        self.assertContains(self.client.get(f'/activities/{self.period.pk}/'), f'href="{path}"', count=3)
         page = self.client.get(path)
         self.assertContains(page, '简介内容&lt;script&gt;不执行&lt;/script&gt;')
         self.assertNotContains(page, '<script>不执行</script>')
@@ -103,15 +131,16 @@ class ActivityTests(TestCase):
             Work.objects.filter(pk=self.work.pk).update(hidden_at=None, review_status='clear')
         self.action('withdraw')
         page = self.client.get(path+f'?activity={self.period.pk}')
-        self.assertContains(page, '<h2>简介</h2>')
-        self.assertNotContains(page, 'data-action=')
-        self.assertContains(page, f'href="/activities/{self.period.pk}/recommend/?work={self.work.pk}">推荐到活动</a>')
+        self.assertEqual(page.status_code,404)
         self.assertEqual(self.client.get(path).status_code, 200)
 
     def test_monthly_detail_more_reasons_keeps_activity_scope(self):
         for index in range(3):
             other, _ = self.other(); self.submit(f'本期理由{index}', browser=other)
         page = self.client.get(f'/works/{self.work.pk}/?activity={self.period.pk}')
+        self.assertContains(page, 'class="reason-card"', count=2)
+        self.assertContains(page, 'data-reason-total>3 条</span>')
+        self.assertContains(page, '加载更多理由')
         self.assertContains(page, f'data-url="/api/v1/activities/{self.period.pk}/works/{self.work.pk}/reasons/"')
         self.assertNotContains(page, f'data-url="/api/v1/public/works/{self.work.pk}/reasons/"')
 
@@ -238,23 +267,31 @@ class ActivityTests(TestCase):
         self.assertEqual(books.recommendations().count(), 1)
         self.assertEqual(activities.recs(second.pk).count(), 1)
 
-    def test_snapshot_reused_after_zero_contributions_and_source_changes(self):
+    def test_new_snapshot_after_zero_cycle_uses_current_metadata(self):
         self.submit();snap=ActivityWork.objects.get()
         self.action('withdraw')
         self.assertEqual(activities.listing(self.period.pk)['total'],0)
         self.assertEqual(self.action('like',{'enabled':True}).status_code,409)
         self.work.title_overridden=True;self.work.title_override='新标题';self.work.author_overridden=True;self.work.author_override='新作者';self.work.save()
         self.submit(title='新标题')
-        self.assertEqual(ActivityWork.objects.count(),1)
+        self.assertEqual(ActivityWork.objects.count(),2)
+        snap.refresh_from_db();self.assertIsNotNone(snap.archived_at)
         row=activities.listing(self.period.pk)['results'][0]
-        self.assertEqual((row['title'],row['author']),(snap.snapshot_title,'原作者'))
+        self.assertEqual((row['title'],row['author']),('新标题','新作者'))
 
     def test_like_cannot_create_snapshot_or_enter_another_period(self):
         self.work.public_added_at=self.now;self.work.save()
         self.assertEqual(self.action('like',{'enabled':True}).status_code,409)
         self.assertFalse(ActivityWork.objects.exists())
         self.submit();self.action('like',{'enabled':True});self.action('withdraw')
-        self.assertEqual(activities.listing(self.period.pk)['total'],1)
+        self.assertEqual(activities.listing(self.period.pk)['total'],0)
+        self.assertEqual(activities.votes(self.period.pk).count(),0)
+        self.assertEqual(Vote.objects.filter(activity=self.period,archived_at__isnull=False).count(),1)
+        other,_=self.other()
+        self.assertEqual(self.action('recommend', {'enabled':True}, browser=other).status_code,409)
+        self.assertEqual(self.action('like', {'enabled':True}, browser=other).status_code,409)
+        candidate=other.get('/api/v1/recommend/candidates/', {'q':self.work.display_title,'activity':self.period.pk}).json()['results'][0]
+        self.assertFalse(candidate['in_scope'])
         self.action('like',{'enabled':False})
         self.assertEqual(activities.listing(self.period.pk)['total'],0)
 
@@ -383,14 +420,15 @@ class ActivityTests(TestCase):
         second=Work.objects.create(original_submitted_title='第二本')
         self.submit(work_id=second.pk,title='第二本')
         self.post(f'/api/v1/activities/{self.period.pk}/works/{second.pk}/like/',{'enabled':True})
-        rows=activities.listing(self.period.pk)['results'];self.assertEqual(rows[0]['id'],second.pk)
+        rows=activities.listing(self.period.pk, sort='likes')['results'];self.assertEqual(rows[0]['id'],second.pk)
         self.assertEqual((rows[1]['reason_count'],len(rows[1]['reasons'])),(3,2))
         response=self.client.get(f'/api/v1/activities/{self.period.pk}/works/{self.work.pk}/reasons/?page=2&page_size=2')
-        self.assertEqual(response.json()['results'],[{'reason':'理由2'}])
+        self.assertEqual([row['reason'] for row in response.json()['results']],['理由2'])
 
     def test_drafts_not_exposed_readonly_page_and_admin_auth_required(self):
         draft=Activity.objects.create(title='隐藏草稿',start_at=self.now,scheduled_end_at=self.now+timedelta(days=2),created_by=self.admin)
-        self.assertNotContains(self.client.get('/activities/'),'隐藏草稿')
+        self.assertNotContains(self.client.get('/activities/', follow=True),'隐藏草稿')
+        self.assertNotContains(self.client.get('/activities/history/'),'隐藏草稿')
         self.assertEqual(self.client.get(f'/activities/{draft.pk}/').status_code,404)
         self.period.status='paused';self.period.save()
         self.assertNotContains(self.client.get(f'/activities/{self.period.pk}/'),'data-action="like"')

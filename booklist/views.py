@@ -1,5 +1,6 @@
 from functools import wraps
 import json
+import logging
 from django.conf import settings
 from django.core.exceptions import ValidationError, RequestDataTooBig
 from django.db import OperationalError, connection
@@ -11,6 +12,25 @@ from . import services
 
 def error(code, message, status):
     return JsonResponse({'error': {'code': code, 'message': message}}, status=status)
+
+
+logger = logging.getLogger(__name__)
+
+
+def database_unavailable(request, exc):
+    # Keep diagnostic detail in local logs, never in the public response.
+    cause = exc.__cause__ or exc
+    logger.warning('Database unavailable: method=%s path=%s sqlite_code=%s cause=%s',
+        request.method, request.path, getattr(cause, 'sqlite_errorname', 'unknown'), str(cause))
+    if request.method == 'GET' and not request.path.startswith('/api/'):
+        from .catalog_views import page
+        response = page(request, 'booklist/unavailable.html', {'retry_url': request.get_full_path()})
+        response.status_code = 503
+    else:
+        response = error('database_unavailable', '数据库暂不可用，请稍后重试', 503)
+    response['Retry-After'] = '3'
+    response['Cache-Control'] = 'no-store'
+    return response
 
 
 def endpoint(method, admin=False, fields=(), optional_fields=None):
@@ -48,8 +68,8 @@ def endpoint(method, admin=False, fields=(), optional_fields=None):
                 return error('invalid_request', '输入不符合协议或校验未通过', 400)
             except RequestDataTooBig:
                 return error('request_too_large', '请求体过大', 413)
-            except OperationalError:
-                return error('database_unavailable', '数据库暂不可用，请稍后重试', 503)
+            except OperationalError as exc:
+                return database_unavailable(request, exc)
         return wrapped
     return decorate
 

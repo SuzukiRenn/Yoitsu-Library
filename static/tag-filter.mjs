@@ -1,7 +1,10 @@
 // Progressive enhancement: without JS every label remains available for GET filtering.
-for (const form of document.querySelectorAll('[data-tag-filter]')) {
+const tagFilters = new WeakMap();
+export function initializeTagFilters(scope = document) {
+for (const form of scope.querySelectorAll('[data-tag-filter]')) {
+  if (tagFilters.has(form)) continue;
   const list = form.querySelector('#filter-tags');
-  const labels = [...list.querySelectorAll('[data-tag-name]')];
+  let labels = [...list.querySelectorAll('[data-tag-name]')];
   const selected = form.querySelector('[data-selected-tags]');
   const selectedSection = selected.parentElement;
   const toggle = form.querySelector('[data-expand-tags]');
@@ -14,7 +17,7 @@ for (const form of document.querySelectorAll('[data-tag-filter]')) {
   const ghosts = new Set();
   const caption = selectedSection.querySelector('.tag-filter-caption');
   const controls = [...form.querySelector('.tag-filter-actions').children];
-  const targets = [searchSection, caption, empty, ...labels, ...controls];
+  let targets = [searchSection, caption, empty, ...labels, ...controls];
   const key = value => value.normalize('NFKC').toLocaleLowerCase().trim();
 
   function render() {
@@ -130,5 +133,30 @@ for (const form of document.querySelectorAll('[data-tag-filter]')) {
   });
   observer.observe(form);
   document.fonts?.ready.then(() => update(() => {}, false));
+  tagFilters.set(form, source => update(() => {
+    const existing = new Map(labels.map(label => [label.querySelector('input').value, label]));
+    const next = [];
+    for (const sourceLabel of source.querySelectorAll('[data-tag-name]')) {
+      const id = sourceLabel.querySelector('input').value;
+      const label = existing.get(id) || document.importNode(sourceLabel, true);
+      if (existing.has(id)) {
+        const input = label.querySelector('input');
+        label.dataset.tagName = sourceLabel.dataset.tagName;
+        label.replaceChildren(input, document.createTextNode(sourceLabel.dataset.tagName+' '),
+          document.importNode(sourceLabel.querySelector('.tag-count'), true));
+      } else list.append(label);
+      next.push(label); existing.delete(id);
+    }
+    for (const label of existing.values()) {
+      if (label.querySelector('input').checked) {
+        label.querySelector('.tag-count').textContent = '0'; next.push(label);
+      } else label.remove();
+    }
+    labels = next;
+    targets = [searchSection, caption, empty, ...labels, ...controls];
+  }, false));
   render();
 }
+}
+export function updateTagFilter(form, source) {tagFilters.get(form)?.(source);}
+if (typeof document !== 'undefined') initializeTagFilters();

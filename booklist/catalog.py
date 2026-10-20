@@ -14,17 +14,16 @@ MAX_TERMS = 20000
 FUZZY_POOL = 200
 
 
-def visible_works():
-    return Work.objects.filter(hidden_at__isnull=True, review_status='clear', merged_into__isnull=True)
+def visible_works(include_retired=False):
+    rows = Work.objects.filter(hidden_at__isnull=True, review_status='clear', merged_into__isnull=True)
+    return rows if include_retired else rows.exclude(source_metadata__has_key='manual_retired_at')
 
 
 def public_works():
-    # Enrollment time is historical; current membership requires a valid public contribution.
+    # Enrollment time is historical; only active recommendations keep a work on the shelf.
     recommendations = PublicRecommendation.objects.filter(work_id=OuterRef('pk'), withdrawn_at__isnull=True,
         invalidated_at__isnull=True, archived_at__isnull=True)
-    likes = PublicLike.objects.filter(work_id=OuterRef('pk'), cancelled_at__isnull=True,
-        invalidated_at__isnull=True, archived_at__isnull=True)
-    return visible_works().filter(public_added_at__isnull=False).filter(Exists(recommendations) | Exists(likes))
+    return visible_works().filter(public_added_at__isnull=False).filter(Exists(recommendations))
 
 
 def search_key(value):
@@ -64,24 +63,29 @@ def serialize_works(works, detail=False):
     for work, tag, name, origin in rows:
         if (work, tag) not in all_bans and not (origin == 'source' and (work, tag) in source_bans):
             tags[work][tag] = {'id': tag, 'name': name}
+    manual_ids = [work.pk for work in works if work.wenku8_book_id is None or work.source_metadata.get('preserve_user_description')]
+    manuals = {row.work_id: row for row in UserWorkMetadata.objects.filter(work_id__in=manual_ids, archived_at__isnull=True)} if manual_ids else {}
     results = []
     for work in works:
+        manual = manuals.get(work.pk)
+        author = work.author_override if work.author_overridden else work.wenku8_author or ''
+        if manual and work.wenku8_book_id is None and not work.author_overridden:
+            author = manual.author or author
         row = {'id': work.pk, 'title': work.display_title,
-               'author': work.author_override if work.author_overridden else work.wenku8_author or '',
+               'author': author,
                'cover_url': cover_url(work.cover_url_override if work.cover_url_overridden else work.wenku8_cover_url),
                'is_public': work.pk in public_ids,
                'source_book_id': work.wenku8_book_id,
                'tags': sorted(tags[work.pk].values(), key=lambda tag: (tag['name'], tag['id']))}
         if detail:
-            manual = UserWorkMetadata.objects.filter(work=work, archived_at__isnull=True).first() if work.wenku8_book_id is None or work.source_metadata.get('preserve_user_description') else None
             row['description'] = work.description_override if work.description_overridden else (manual.description if manual and manual.description else work.wenku8_description or '')
             row['metadata'] = {key: work.source_metadata.get(key) for key in ('publisher_category', 'status', 'last_updated', 'word_count')}
         results.append(row)
     return results
 
 
-def work_detail(work_id):
-    work = visible_works().filter(pk=work_id).first()
+def work_detail(work_id, include_retired=False):
+    work = visible_works(include_retired).filter(pk=work_id).first()
     if work is None:
         raise DomainError('not_found', '作品不存在或暂不可见', 404)
     return serialize_works([work], detail=True)[0]

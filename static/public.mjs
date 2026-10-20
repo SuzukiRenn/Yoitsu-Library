@@ -1,8 +1,13 @@
-import {createPublicApi} from './public-api.mjs';
-import './tag-filter.mjs?v=20261020-3';
-import './cover-images.mjs';
-const write = createPublicApi();
+import {installShelfSort} from './shelf-sort.mjs?v=20261020-1';
+import {startReasonLikes} from './reason-likes.mjs?v=20261020-5';
+import {startLiveInteractions} from './live-interactions.mjs?v=20261020-8';
+import {createShelfRefresh} from './live-shelf.mjs?v=20261020-5';
+import './navigation-motion.mjs?v=20261020-1';
+import './work-motion.mjs?v=20261020-1';
 const status = document.querySelector('#action-status');
+const shelfRefresh=createShelfRefresh();
+startLiveInteractions({refresh:shelfRefresh});
+installShelfSort(shelfRefresh);
 
 document.addEventListener('keydown', event => {
   if (event.key !== 'Escape') return;
@@ -10,32 +15,9 @@ document.addEventListener('keydown', event => {
     control.setAttribute('data-tooltip-dismissed', '');
   }
 });
-for (const control of document.querySelectorAll('.recommend-control')) {
-  for (const name of ['pointerleave', 'focusout']) {
-    control.addEventListener(name, () => control.removeAttribute('data-tooltip-dismissed'));
-  }
-}
-document.addEventListener('click', async event => {
-  const button=event.target.closest('[data-action]');
-  if(!button || button.disabled)return;
-  const container=button.closest('[data-work]'), buttons=[...container.querySelectorAll('button')];
-  buttons.forEach(item=>{item.disabled=true;}); status.textContent='';
-  const prefix=container.dataset.activity ? `/api/v1/activities/${container.dataset.activity}` : '/api/v1/public';
-  const payload=button.dataset.action==='withdraw' ? {} : {enabled:button.dataset.enabled==='true'};
-  try {await write(`${prefix}/works/${container.dataset.work}/${button.dataset.action}/`,payload);location.reload();}
-  catch(error){status.textContent=error.message;buttons.forEach(item=>{item.disabled=false;});}
+for (const name of ['pointerout', 'focusout']) document.addEventListener(name, event => {
+  const control = event.target.closest('.recommend-control');
+  if (control && !control.contains(event.relatedTarget)) control.removeAttribute('data-tooltip-dismissed');
 });
-document.addEventListener('click',async event=>{
-  const more=event.target.closest('[data-more-reasons], #more-reasons');
-  if(!more || more.disabled)return;
-  more.disabled=true;status.textContent='';
-  try {
-    const page=Number(more.dataset.page)+1, section=document.querySelector('[data-reasons-work]');
-    const url=more.dataset.url || `/api/v1/public/works/${section.dataset.reasonsWork}/reasons/`;
-    const response=await fetch(`${url}?page=${page}&page_size=2`),payload=await response.json();
-    if(!response.ok)throw Error(payload.error?.message || '请求失败');
-    const container=more.closest('[data-reason-container]') || document.querySelector('#detail-reasons');
-    for(const item of payload.results){const p=document.createElement('p');p.className='reason-text';p.textContent=item.reason;container.insertBefore(p,container.contains(more)?more:null);}
-    more.dataset.page=String(page);more.hidden=page*2>=payload.total;
-  }catch(error){status.textContent=error.message;}finally{more.disabled=false;}
-});
+
+startReasonLikes();

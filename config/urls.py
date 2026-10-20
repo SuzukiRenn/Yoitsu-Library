@@ -1,5 +1,6 @@
+from booklist import reason_likes
 from django.urls import path
-from booklist import views, catalog_views, public_views, activity_views, recommend_views, admin_views, metadata_views, cover_cache
+from booklist import views, catalog_views, public_views, activity_views, recommend_views, admin_views, metadata_views, cover_cache, live_stats
 
 urlpatterns = [
     path('media/covers/<str:name>', cover_cache.serve),
@@ -20,9 +21,11 @@ urlpatterns = [
     path('recommend/', recommend_views.recommend),
     path('api/v1/recommend/candidates/', recommend_views.candidates),
     path('activities/', activity_views.index),
+    path('activities/history/', activity_views.index, {'archive': True}),
     path('activities/<int:activity_id>/', activity_views.detail),
     path('activities/<int:activity_id>/recommend/', recommend_views.recommend),
     path('api/v1/activities/<int:activity_id>/', activity_views.detail_api),
+    path('api/v1/activities/<int:activity_id>/stats/', live_stats.stats),
     path('api/v1/activities/<int:activity_id>/recommendations/', activity_views.submit),
     path('api/v1/activities/<int:activity_id>/works/<int:work_id>/withdraw/', activity_views.withdraw),
     path('api/v1/activities/<int:activity_id>/works/<int:work_id>/recommend/', activity_views.recommend),
@@ -32,7 +35,12 @@ urlpatterns = [
     path('api/v1/admin/activities/', activity_views.create),
     path('api/v1/admin/activities/<int:activity_id>/update/', activity_views.update),
     path('api/v1/admin/activities/<int:activity_id>/action/', activity_views.action),
+    path('api/v1/public/works/<int:work_id>/reasons/stats/', reason_likes.stats),
+    path('api/v1/activities/<int:activity_id>/works/<int:work_id>/reasons/stats/', reason_likes.stats),
+    path('api/v1/public/works/<int:work_id>/reasons/<int:reason_id>/like/', reason_likes.like),
+    path('api/v1/activities/<int:activity_id>/works/<int:work_id>/reasons/<int:reason_id>/like/', reason_likes.like),
     path('api/v1/public/works/', public_views.listing),
+    path('api/v1/public/stats/', live_stats.stats),
     path('api/v1/public/recommendations/', public_views.submit),
     path('api/v1/public/works/<int:work_id>/recommend/', public_views.recommend),
     path('api/v1/public/works/<int:work_id>/like/', public_views.like),
@@ -42,6 +50,7 @@ urlpatterns = [
     path('works/<int:work_id>/edit/', metadata_views.edit),
     path('api/v1/catalog/works/<int:work_id>/metadata/', metadata_views.save),
     path('api/v1/catalog/search/', catalog_views.search),
+    path('api/v1/catalog/tags/', metadata_views.tags),
     path('api/v1/catalog/works/<int:work_id>/', catalog_views.detail),
     path('api/v1/csrf/', views.csrf_token),
     path('api/v1/identity/', views.identity), path('api/v1/identity/reset/', views.reset_identity),

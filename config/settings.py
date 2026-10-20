@@ -32,6 +32,8 @@ if ENV == 'production' and (not os.environ.get('BOOKLIST_DATA_DIR') or not DATA_
     raise ImproperlyConfigured('Production data directory must be absolute and outside code')
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 COVER_CACHE_DIR = DATA_DIR / 'covers'
+# Tests keep transaction-isolated counters by default; contention tests enable the sidecar explicitly.
+READ_RATE_LIMIT_DATABASE = None if ENV == 'test' else DATA_DIR / 'read_rate_limits.sqlite3'
 INSTALLED_APPS = ['django.contrib.staticfiles', 'booklist.apps.BooklistConfig']
 MIDDLEWARE = ['booklist.proxy.TrustedProxyMiddleware', 'django.middleware.security.SecurityMiddleware', 'django.middleware.clickjacking.XFrameOptionsMiddleware', 'django.middleware.common.CommonMiddleware',
               'django.middleware.csrf.CsrfViewMiddleware', 'booklist.middleware.IdentityMiddleware']

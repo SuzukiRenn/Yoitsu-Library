@@ -83,6 +83,7 @@ class Work(Timestamped):
 class UserWorkMetadata(Timestamped):
     work = models.ForeignKey(Work, on_delete=P)
     anonymous_client = models.ForeignKey(AnonymousClient, on_delete=P)
+    author = models.CharField(max_length=300, default='')
     description = models.TextField(default='')
     revision = models.PositiveIntegerField(default=1)
     archived_at = models.DateTimeField(null=True)
@@ -202,6 +203,8 @@ class ActivityWork(Timestamped):
     snapshot_title = models.CharField(max_length=300)
     snapshot_author = models.CharField(max_length=300, default='')
     snapshot_cover_url = models.TextField(default='')
+    snapshot_description = models.TextField(null=True)
+    snapshot_tags = models.JSONField(null=True)
     archived_at = models.DateTimeField(null=True)
     merged_into = models.ForeignKey('self', null=True, on_delete=P)
 
@@ -235,6 +238,15 @@ class Recommendation(ScopedContribution):
             models.CheckConstraint(condition=Q(reason__length__lte=200), name='reason_length'),
             models.UniqueConstraint(fields=['work', 'anonymous_client'], condition=Q(scope='public', archived_at__isnull=True, invalidated_at__isnull=True), name='public_reason_active_unique'),
             models.UniqueConstraint(fields=['activity', 'work', 'anonymous_client'], condition=Q(scope='activity', withdrawn_at__isnull=True, archived_at__isnull=True, invalidated_at__isnull=True), name='activity_rec_active_unique')]
+
+
+class ReasonLike(Timestamped):
+    recommendation = models.ForeignKey(Recommendation, on_delete=models.CASCADE)
+    anonymous_client = models.ForeignKey(AnonymousClient, on_delete=P)
+    cancelled_at = models.DateTimeField(null=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['recommendation', 'anonymous_client'], name='reason_like_person_unique')]
 
 
 class Vote(ScopedContribution):

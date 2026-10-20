@@ -1,5 +1,5 @@
 import {createPublicApi} from './public-api.mjs';
-import {readMetadata} from './manual-metadata.mjs';
+import {readMetadata} from './manual-metadata.mjs?v=20261020-5';
 const form = document.querySelector('#metadata-form');
 if (form) {
   const write = createPublicApi();
@@ -9,7 +9,7 @@ if (form) {
     event.preventDefault(); if (busy) return;
     let metadata;
     try { metadata = readMetadata(form); }
-    catch (error) { status.textContent = error.message || '简介最多 10000 字'; return; }
+    catch (error) { status.textContent = error.message || '简介最多 2000 字'; return; }
     busy = true;
     const controls = [...form.querySelectorAll('input, textarea, button')];
     controls.forEach(control => { control.disabled = true; });

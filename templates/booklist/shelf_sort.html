@@ -1,0 +1,1 @@
+<nav class="shelf-sort" aria-label="书单排序"><span class="shelf-sort-label">排序</span><div class="shelf-sort-options">{% for option in sort_options %}<a href="{{ option.url }}"{% if option.active %} aria-current="true"{% endif %}>{{ option.label }}</a>{% endfor %}</div></nav>

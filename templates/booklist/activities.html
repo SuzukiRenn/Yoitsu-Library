@@ -1,2 +1,15 @@
-{% extends 'booklist/base.html' %}{% block title %}推荐活动 · 共享书单{% endblock %}
-{% block content %}<section class="public-shelf"><div class="section-heading"><h1>推荐活动</h1></div><h2 class="period-heading">当前活动</h2><div class="period-list">{% for period in current %}{% include 'booklist/period.html' %}{% empty %}<p>暂无活动</p>{% endfor %}</div>{% if upcoming %}<h2 class="period-heading">待开始</h2><div class="period-list">{% for period in upcoming %}{% include 'booklist/period.html' %}{% endfor %}</div>{% endif %}{% if history %}<h2 class="period-heading">历史活动</h2><div class="period-list">{% for period in history %}{% include 'booklist/period.html' %}{% endfor %}</div>{% endif %}</section>{% endblock %}
+{% extends 'booklist/base.html' %}
+{% block title %}{% if archive %}往期活动{% else %}推荐活动{% endif %} · 共享书单{% endblock %}
+{% block content %}
+<section class="public-shelf">
+<div class="section-heading activity-index-heading"><h1>{% if archive %}往期活动{% else %}推荐活动{% endif %}</h1>{% if archive %}<a class="primary activity-current-link" href="/activities/">返回当前活动 <span aria-hidden="true">→</span></a>{% else %}<a class="reason-link" href="/activities/history/">回顾往期活动</a>{% endif %}</div>
+{% if not archive %}
+<h2 class="period-heading">当前活动</h2><div class="period-list">{% for period in current %}{% include 'booklist/period.html' %}{% empty %}<p class="section-note">暂无进行中的活动</p>{% endfor %}</div>
+{% if upcoming %}<h2 class="period-heading">待开始</h2><div class="period-list">{% for period in upcoming %}{% include 'booklist/period.html' %}{% endfor %}</div>{% endif %}
+{% endif %}
+{% if archive or history %}
+{% if not archive %}<h2 class="period-heading">往期活动</h2>{% endif %}
+<div class="period-list">{% for period in history %}{% include 'booklist/period.html' %}{% empty %}<p class="section-note">还没有往期活动</p>{% endfor %}</div>
+{% endif %}
+</section>
+{% endblock %}
