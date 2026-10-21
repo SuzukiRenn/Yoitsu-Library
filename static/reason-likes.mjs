@@ -1,7 +1,7 @@
 import {installReasonFolds} from './reason-folds.mjs?v=20261020-1';
-import {createPublicApi} from './public-api.mjs';
-import {renderReasonButton, reasonRow} from './reason-ui.mjs?v=20261020-4';
-import {updateInteraction} from './live-interactions.mjs?v=20261020-8';
+import {createPublicApi} from './public-api.mjs?v=20261021-identity1';
+import {renderReasonButton, reasonRow} from './reason-ui.mjs?v=20261021-identity1';
+import {updateInteraction} from './live-interactions.mjs?v=20261021-identity1';
 export function startReasonLikes({doc=document, win=window, fetcher=fetch, write=createPublicApi()}={}) {
   const status=doc.querySelector('#action-status');
   const section=doc.querySelector('[data-reasons-work]');

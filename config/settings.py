@@ -14,7 +14,7 @@ SECRET_KEY = os.environ.get('BOOKLIST_SECRET_KEY', '')
 if not SECRET_KEY:
     if ENV == 'production':
         raise ImproperlyConfigured('BOOKLIST_SECRET_KEY is required')
-    SECRET_KEY = 'local-development-only-not-for-production-' + 'x' * 32
+    SECRET_KEY = 'identity-local-development-only-not-for-production-' + 'x' * 32
 if ENV == 'production' and len(SECRET_KEY) < 50:
     raise ImproperlyConfigured('Production secret must contain at least 50 characters')
 ALLOWED_HOSTS = [v.strip() for v in os.environ.get('BOOKLIST_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if v.strip()]
@@ -67,8 +67,15 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = COOKIE_SECURE
 SECURE_HSTS_PRELOAD = False
 SECURE_CONTENT_TYPE_NOSNIFF = True
 DATA_UPLOAD_MAX_MEMORY_SIZE = 32768
-ANONYMOUS_COOKIE = 'booklist_anonymous'
-ADMIN_COOKIE = 'booklist_admin'
+# Cookies are host-scoped, not port-scoped. This branch must coexist with the
+# anonymous product even when both previews use localhost on different ports.
+CSRF_COOKIE_NAME = 'identity_booklist_csrf'
+ANONYMOUS_COOKIE = 'identity_booklist_anonymous'
+ADMIN_COOKIE = 'identity_booklist_admin'
 ANONYMOUS_AGE = 365 * 86400
 ADMIN_AGE = 12 * 3600
 IDEMPOTENCY_AGE = 86400
+ACCOUNT_COOKIE = 'identity_booklist_account'
+ACCOUNT_AGE = 30 * 86400
+# Only the legacy regression suite may opt into anonymous writes.
+REQUIRE_ACCOUNT = not (ENV == 'test' and os.environ.get('BOOKLIST_LEGACY_TESTS') == '1')

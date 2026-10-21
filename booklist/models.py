@@ -40,6 +40,49 @@ class AnonymousClient(Timestamped):
     revoked_at = models.DateTimeField(null=True)
 
 
+class Account(Timestamped):
+    username = models.CharField(max_length=32, unique=True)
+    display_name = models.CharField(max_length=40)
+    password_hash = models.CharField(max_length=256)
+    # A dedicated, never browser-issued principal preserves all existing ownership,
+    # uniqueness, moderation, merge and audit rules. Legacy clients are never claimed.
+    principal = models.OneToOneField(AnonymousClient, on_delete=P, related_name='account')
+    is_active = models.BooleanField(default=True)
+    session_version = models.PositiveIntegerField(default=1)
+
+
+class AccountSession(models.Model):
+    token_hash = models.CharField(max_length=64, unique=True)
+    account = models.ForeignKey(Account, on_delete=P)
+    session_version = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(db_index=True)
+
+
+class WorkLikeEvent(models.Model):
+    """Permanent dedup ledger; cancellations and recommendation cycles never reset it."""
+    work = models.ForeignKey('Work', on_delete=P)
+    actor = models.ForeignKey(Account, on_delete=P)
+    scope_key = models.CharField(max_length=40)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['work', 'actor', 'scope_key'], name='work_like_event_unique')]
+
+
+class Notification(models.Model):
+    event = models.ForeignKey(WorkLikeEvent, on_delete=P)
+    recipient = models.ForeignKey(Account, on_delete=P)
+    work_title = models.CharField(max_length=300)
+    activity_title = models.CharField(max_length=100, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    read_at = models.DateTimeField(null=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['event', 'recipient'], name='notification_recipient_event_unique')]
+        indexes = [models.Index(fields=['recipient', 'read_at', '-id'], name='notification_inbox')]
+
+
 class Work(Timestamped):
     wenku8_book_id = models.PositiveIntegerField(null=True, unique=True, validators=[MinValueValidator(1)])
     original_submitted_title = models.TextField(null=True)

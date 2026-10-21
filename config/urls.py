@@ -1,8 +1,25 @@
-from booklist import reason_likes, activity_export
+from booklist import reason_likes, activity_export, account_views, account_admin
 from django.urls import path
 from booklist import views, catalog_views, public_views, activity_views, recommend_views, admin_views, metadata_views, cover_cache, live_stats
 
 urlpatterns = [
+    path('manage/readers/', account_admin.index),
+    path('api/v1/admin/readers/<int:account_id>/status/', account_admin.status),
+    path('account/login/', account_views.screen),
+    path('account/register/', account_views.screen, {'mode': 'register'}),
+    path('account/', account_views.screen, {'mode': 'profile'}),
+    path('notifications/', account_views.screen, {'mode': 'notifications'}),
+    path('notifications/<int:notification_id>/work/', account_views.notification_target),
+    path('api/v1/account/register/', account_views.register),
+    path('api/v1/account/login/', account_views.login),
+    path('api/v1/account/logout/', account_views.logout),
+    path('api/v1/account/me/', account_views.me),
+    path('api/v1/account/profile/', account_views.profile),
+    path('api/v1/account/password/', account_views.password),
+    path('api/v1/notifications/', account_views.inbox),
+    path('api/v1/notifications/unread/', account_views.unread),
+    path('api/v1/notifications/read/', account_views.read),
+    path('api/v1/notifications/read-all/', account_views.read_all),
     path('manage/activities/<int:activity_id>/summary/', activity_export.preview),
     path('api/v1/admin/activities/<int:activity_id>/summary/', activity_export.data),
     path('media/covers/<str:name>', cover_cache.serve),

@@ -71,9 +71,11 @@ def listing(activity_id, client=None, page=1, page_size=20, *, work_id=None, sor
     own_likes = set(likes.filter(anonymous_client=client).values_list('work_id', flat=True)) if client else set()
     from .reason_likes import entries
     result = []
+    from .notifications import attribution
+    people = attribution(recommendations, [snap.work_id for snap in ordered[offset:offset+size]])
     for snap in ordered[offset:offset+size]:
         visible = recommendations.filter(activity_work=snap, text_hidden_at__isnull=True).exclude(reason='').order_by('created_at', 'id')
-        result.append({'id': snap.work_id, 'title': snap.snapshot_title, 'author': snap.snapshot_author,
+        result.append({**people[snap.work_id], 'id': snap.work_id, 'title': snap.snapshot_title, 'author': snap.snapshot_author,
             'cover_url': catalog.cover_url(snap.snapshot_cover_url), 'recommendation_count': rc.get(snap.pk, 0),
             'like_count': lc.get(snap.pk, 0), 'recommended': snap.work_id in own, 'liked': snap.work_id in own_likes,
             'own_reason': own[snap.work_id].reason if snap.work_id in own else '',
@@ -169,6 +171,8 @@ def like(activity_id, work_id, client, enabled):
         if snap is None or not recs(activity_id).filter(activity_work=snap).exists():
             raise services.DomainError('not_in_activity', '请先推荐到该活动', 409)
         Vote.objects.create(scope='activity', activity_id=activity_id, activity_work=snap, work_id=work_id, anonymous_client=client)
+        from .notifications import work_liked
+        work_liked(books.require_work(work_id), client, get(activity_id))
     return {'status': 'saved'}
 
 

@@ -1,4 +1,6 @@
-# 共享书单
+# 共享书单 · 身份版
+
+本分支为 `codex/identity-booklist`，基于匿名版 `3cb7bfb` 独立开发，尚未部署。匿名版工作区、`main`、服务和采集数据保持独立。当前账户规则见 [身份版设计与验收](项目文档/身份版设计与验收_2026-10-21.md)；历史文档中的匿名 Cookie 规则不适用于本分支的普通参与流程。
 
 一个面向读书群和小说爱好者的共同荐书网站。把大家推荐的作品集中到一份书单里，通过推荐、点赞和推荐理由，找到下一本想读的小说；也可以围绕某个主题举办限时推荐活动。
 
@@ -6,27 +8,31 @@
 
 | 功能 | 使用方式 |
 | --- | --- |
-| 公共书单 | 共同推荐作品、独立点赞，按标签筛选，按推荐数、点赞数或最新加入排序。 |
+| 公共书单 | 显示首次推荐者与共同推荐者；“+1”加入共同推荐，独立点赞，按标签和排序浏览。 |
 | 推荐活动 | 参与管理员创建的主题活动，查看本期书目与独立统计，回顾往期活动。 |
 | 作品资料 | 查看封面、作者、简介和标签；推荐时搜索已有作品，也可提交尚未收录的作品。 |
 | 推荐理由 | 自愿填写理由、为他人的理由点赞；作品卡片展示获赞最多的一条摘要，详情页查看完整理由。 |
 | 页面交互 | 推荐、点赞和新增书目近实时更新；切换排序无需刷新整页，长理由可展开阅读。 |
 | 群内分享 | 管理员导出活动总结 PNG，也可打包下载多张图片。图片包含封面、书名、作者、推荐数、点赞数和理由数，理由正文留在网站查看。 |
+| 账户 | 注册、登录、退出、修改展示名和密码；登录名唯一，跨设备保留自己的贡献权限。 |
+| 消息 | 作品收到点赞时通知该范围当前有效推荐者；支持未读、单条已读、全部已读和分页。 |
 
-界面同时适配桌面和手机。普通参与无需注册账号；管理员通过独立后台管理书单和活动。
+界面同时适配桌面和手机。访客可以浏览，推荐、点赞和编辑需要登录读者账户；管理员使用独立后台身份，普通账户不会获得管理权限。
 
 ## 怎样参与
 
-1. 在公共书单或活动页面点击“推荐”，先搜索并选择已有作品。
+1. 注册或登录账户，在公共书单或活动页面点击“推荐”，先搜索并选择已有作品。
 2. 没有匹配作品时，填写书名，并可补充作者、简介和标签。相似作品会要求确认，避免重复收录。
 3. 推荐理由可以留空。“推荐”表示你也推荐这本书，“点赞”是另一项独立评价。
 4. 从作品卡片进入详情页，查看资料和其他人的推荐理由，也可以赞同喜欢的理由。
 
-公共书单与每期活动分别统计。参与活动会同时建立公共推荐，同一浏览器身份对同一本作品的公共推荐不会重复计数；撤回活动推荐不会自动撤回公共推荐。
+公共书单与每期活动分别统计。参与活动会同时建立公共推荐，同一账户对同一本作品的公共推荐不会重复计数；撤回活动推荐不会自动撤回公共推荐。首次推荐者在本轮撤回后仍标记为“首次推荐（已撤回）”，共同推荐只显示当前有效成员。
 
 推荐数归零后，作品退出对应书单，结束这一轮互动；往期活动保留历史快照。手工作品在所有当前书单均归零后，再次推荐需要重新填写资料。
 
-个人推荐、点赞和编辑权限由浏览器 Cookie 识别。清除 Cookie、使用无痕窗口或更换设备后，不会自动继承原来的操作权限。
+个人推荐、点赞和编辑权限归属于账户，清除 Cookie 后重新登录即可恢复。已有匿名贡献保留为“历史匿名推荐者”，不猜测、自动绑定或开放认领。这里的身份是账户身份，不是实名或自然人核验。
+
+作品点赞按“点赞账户 + 作品 + 公共/活动范围”永久去重通知；取消后再点赞、推荐归零后重新入榜不会重复刷通知。自赞不通知自己，之后才加入的共同推荐者不补收旧点赞。理由赞同仍独立计数，本版不产生消息。
 
 ## 管理员功能
 
@@ -36,6 +42,7 @@
 - 核查作品，隐藏或恢复作品及理由，处理异常推荐和点赞。
 - 核对疑似重复来源，预览作品合并，并在满足保护条件时撤销合并。
 - 生成带封面的活动总结图片；同一份导出中的卡片保持统一高度，理由数量不会拉长卡片。
+- 在 `/manage/readers/` 查找、停用或恢复读者账户；停用撤销会话并记录原因，历史贡献保留。
 
 后台与前台有明确的往返入口。前台的“返回管理后台”和图片导出入口仅对已登录管理员显示。
 
@@ -46,27 +53,38 @@
 需要 Python 3.14，且 Python 实际链接的 SQLite 版本不低于 3.51.3。以下为 Windows PowerShell 示例：
 
 ```powershell
-git clone https://github.com/SuzukiRenn/shared-booklist.git
-cd shared-booklist
+# 在已检出的身份版工作树中执行；本分支尚未推送。
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --require-hashes -r requirements/parsing-win_amd64-cp314.lock
 
 $env:BOOKLIST_ENV='development'
 .\.venv\Scripts\python.exe -B manage.py migrate --noinput
 .\.venv\Scripts\python.exe -B manage.py init_admin owner
-.\.venv\Scripts\python.exe -B manage.py runserver 127.0.0.1:8000 --noreload
+.\.venv\Scripts\python.exe -B manage.py runserver 127.0.0.1:8877 --noreload
 ```
 
 初始化时在终端设置管理员密码，没有默认密码。启动后访问：
 
-- 普通页面：<http://127.0.0.1:8000/>
-- 管理员后台：<http://127.0.0.1:8000/manage/>
+- 普通页面：<http://127.0.0.1:8877/>
+- 管理员后台：<http://127.0.0.1:8877/manage/>
 
 首次运行的书库为空。开发数据默认保存在 `.runtime/`，也可通过 `BOOKLIST_DATA_DIR` 指定独立目录。线上数据库、用户贡献和封面文件不随源码分发。
 
+### 独立合成演示
+
+在本工作树执行，首次加 `--seed`；已有演示库后去掉此参数。启动器生成独立随机密钥、强制本工作树 `.runtime/identity-preview` 和独立临时目录，仅绑定回环地址，拒绝匿名站端口 8765。
+
+```powershell
+.\.venv\Scripts\python.exe -B scripts/run_identity_preview.py --seed --port 8877
+```
+
+可只读复用原目录的 Python 解释器：`& 'F:/Files/Code/Project/共享书单/.venv/Scripts/python.exe' -B scripts/run_identity_preview.py --port 8877`。合成账户 `alice`、`bob`、`carol` 及管理员 `demo_owner` 的随机密码保存在本地 `.runtime/identity-preview/preview-credentials.json`，不提交仓库。演示书目、封面、理由均为合成资料，不是抓取或真实用户数据。
+
 ## 部署与数据维护
 
-应用已完成服务器私有部署与验证，**目前尚未开放公众访问**。仓库中的部署工具提供 Docker Compose、活动调度、数据库备份和恢复校验；正式公开访问还需完成域名入口及对应部署配置。开发用 `runserver` 不用于生产。
+匿名版曾完成服务器私有部署与验证；**本身份版未部署，也未操作现有服务器**。正式运行需新建独立数据目录、独立随机密钥和访问入口，运行到迁移 `0011`，配置 HTTPS 并验收账户流程。不要沿用匿名版数据库、Cookie、管理员凭证或其历史部署验收结论。仓库中的旧版 HTTPS 集成验收脚本仍描述匿名流程，不能作为本身份版已完成部署的依据。开发用 `runserver` 不用于生产。
+
+账户会话仅在服务端保存令牌摘要，30 天到期；密码使用 Django 默认 PBKDF2，至少 12 位并检查常见/纯数字密码。改密撤销所有会话。无邮件或短信依赖，忘记密码仅提供运维命令 `manage.py reset_account_password 登录名`，交互输入新密码，不自动恢复停用账户。
 
 作品来源元数据支持校验、分批导入和断点恢复，封面支持本地缓存。疑似重复作品进入人工核对，不自动合并。项目用于整理书目与推荐，不提供小说正文下载。
 
@@ -88,8 +106,16 @@ $env:BOOKLIST_ENV='development'
 ```powershell
 $env:BOOKLIST_ENV='test'
 $env:BOOKLIST_DATA_DIR=Join-Path (Get-Location) '.runtime/local-tests'
+$env:TEMP=Join-Path (Get-Location) '.runtime/temp'
+$env:TMP=$env:TEMP
+New-Item -ItemType Directory -Force $env:TEMP | Out-Null
+.\.venv\Scripts\python.exe -B manage.py test booklist.tests.test_accounts --noinput
+# 旧测试用匿名夹具验证原业务；该开关仅在 test 环境生效。
+$env:BOOKLIST_LEGACY_TESTS='1'
 .\.venv\Scripts\python.exe -B manage.py test booklist.tests --noinput
 node scripts/test_activity_export.mjs
+node scripts/test_accounts.mjs
+.\.venv\Scripts\python.exe -B scripts/verify_identity_migration.py
 ```
 
 数据库、Cookie、密钥、日志、备份和封面缓存均不应提交到仓库。

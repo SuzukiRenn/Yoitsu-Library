@@ -1,7 +1,9 @@
-import {renderReasonPreview} from './reason-ui.mjs?v=20261020-4';
-import {createPublicApi} from './public-api.mjs';
+import {renderReasonPreview} from './reason-ui.mjs?v=20261021-identity1';
+import {createPublicApi} from './public-api.mjs?v=20261021-identity1';
+import {renderRecommenders} from './account.mjs?v=20261021-identity1';
 
 export function updateInteraction(container, work) {
+  renderRecommenders(container, work);
   const available = work.available !== false;
   const writable = available && work.writable !== false;
   container.dataset.readonly = String(!writable);

@@ -93,5 +93,5 @@ class SourceReviewTests(TestCase):
         self.assertContains(browser.get('/manage/?section=source_reviews'), '来源待核对')
         self.assertContains(browser.get(path), '确认同一本，关联资料')
         browser.get('/api/v1/csrf/')
-        response = browser.post(api, json.dumps(payload), content_type='application/json', HTTP_X_CSRFTOKEN=browser.cookies['csrftoken'].value)
+        response = browser.post(api, json.dumps(payload), content_type='application/json', HTTP_X_CSRFTOKEN=browser.cookies[settings.CSRF_COOKIE_NAME].value)
         self.assertEqual(response.status_code, 200, response.content)

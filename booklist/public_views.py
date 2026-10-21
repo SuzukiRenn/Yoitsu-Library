@@ -1,5 +1,6 @@
 from urllib.parse import urlencode
 from django.core.exceptions import ValidationError
+from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from .list_pagination import PAGE_SIZE, navigation
@@ -36,12 +37,19 @@ def listing(request, data):
 
 
 def write(request, scope, data, operation):
+    if settings.REQUIRE_ACCOUNT:
+        from .accounts import require
+        require(request)
     client = request.anonymous_client
     if client is None:
         raise services.DomainError('identity_required', '需要匿名身份', 401)
     services.rate_limit('public_write_ip', request.META.get('REMOTE_ADDR', ''), 120, 60)
     services.rate_limit('public_write_actor', str(client.pk), 60, 60)
-    return JsonResponse(services.idempotent(client, scope, request.headers.get('Idempotency-Key'), data, operation))
+    def authenticated_operation():
+        if settings.REQUIRE_ACCOUNT:
+            require(request)
+        return operation()
+    return JsonResponse(services.idempotent(client, scope, request.headers.get('Idempotency-Key'), data, authenticated_operation))
 
 
 @endpoint('POST', fields={'work_id': (int, type(None)), 'title': str, 'reason': str, 'confirmed_unmatched': bool}, optional_fields={'metadata': dict})

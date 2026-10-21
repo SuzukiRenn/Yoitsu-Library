@@ -106,6 +106,10 @@ def csrf_token(request, data):
 
 @endpoint('POST')
 def identity(request, data):
+    if settings.REQUIRE_ACCOUNT:
+        from .accounts import require
+        require(request)
+        return JsonResponse({'status': 'ready'})
     services.rate_limit('identity', request.META.get('REMOTE_ADDR', ''), 20, 3600)
     token, client = services.issue_anonymous(request.anonymous_client)
     response = JsonResponse({'status': 'ready'})
@@ -115,6 +119,8 @@ def identity(request, data):
 
 @endpoint('POST')
 def reset_identity(request, data):
+    if settings.REQUIRE_ACCOUNT:
+        raise services.DomainError('account_identity', '账户身份不可重置；请使用退出登录', 409)
     services.rate_limit('identity', request.META.get('REMOTE_ADDR', ''), 20, 3600)
     token, _ = services.issue_anonymous(request.anonymous_client, reset=True)
     response = JsonResponse({'status': 'reset', 'message': '旧贡献保留，新身份不继承其管理权限'})

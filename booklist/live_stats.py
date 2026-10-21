@@ -32,11 +32,13 @@ def snapshot(ids, client, activity_id=None):
     top_reasons = {row['id']: row for row in entries(reasons.filter(pk__in=[pk for pk in previews.values() if pk]), client,
         writable=activity['writable'] if activity else True)}
     result = []
+    from .notifications import attribution
+    people = attribution(recs, ids)
     for pk in ids:
         if pk not in previews:
             result.append({'id': pk, 'available': False})
             continue
-        result.append({'id': pk, 'available': True, 'recommendation_count': rc.get(pk, 0),
+        result.append({**people[pk], 'id': pk, 'available': True, 'recommendation_count': rc.get(pk, 0),
             'like_count': lc.get(pk, 0), 'recommended': pk in own_recs, 'liked': pk in own_likes,
             'own_reason': own_reasons.get(pk, ''), 'reason_count': reason_counts.get(pk, 0),
             'reason_preview': top_reasons.get(previews[pk], {}).get('reason', ''), 'top_reason': top_reasons.get(previews[pk]), 'writable': activity['writable'] if activity else True,

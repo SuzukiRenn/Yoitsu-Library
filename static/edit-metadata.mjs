@@ -1,4 +1,4 @@
-import {createPublicApi} from './public-api.mjs';
+import {createPublicApi} from './public-api.mjs?v=20261021-identity1';
 import {readMetadata} from './manual-metadata.mjs?v=20261020-5';
 const form = document.querySelector('#metadata-form');
 if (form) {

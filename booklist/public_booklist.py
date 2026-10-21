@@ -47,8 +47,11 @@ def serialize(works, client=None):
     reason_counts = counts(visible_reasons.filter(work_id__in=ids))
     from .reason_likes import entries
     result = catalog.serialize_works(works)
+    from .notifications import attribution
+    people = attribution(recs, ids)
     for row in result:
         pk = row['id']
+        row.update(people[pk])
         row.update(recommendation_count=rec_counts.get(pk, 0), like_count=like_counts.get(pk, 0),
                    recommended=pk in own_recs, liked=pk in own_likes, own_reason=own_reasons.get(pk, ''),
                    reason_count=reason_counts.get(pk, 0),
@@ -131,6 +134,9 @@ def set_relation(work, client, kind, enabled, origin='plus_one'):
         if kind == 'recommend' and work.review_status == 'clear' and not query.filter(work=work).exists():
             work.public_added_at = timezone.now(); work.save(update_fields=['public_added_at', 'updated_at'])
         model.objects.create(work=work, anonymous_client=client, **({'origin': origin} if kind == 'recommend' else {}))
+        if kind == 'like':
+            from .notifications import work_liked
+            work_liked(work, client)
     elif not enabled and row:
         field = 'withdrawn_at' if kind == 'recommend' else 'cancelled_at'
         setattr(row, field, timezone.now())

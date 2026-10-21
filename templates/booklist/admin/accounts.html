@@ -1,0 +1,6 @@
+{% extends 'booklist/admin/base.html' %}{% block content %}
+<h1>读者账户</h1><form method="get"><label>查找账户<input name="q" value="{{ query }}" maxlength="100"></label><button>搜索</button></form>
+{% for account in accounts %}<article><h2>{{ account.display_name }} <small>@{{ account.username }}</small></h2><p>{{ account.is_active|yesno:'正常,已停用' }} · {{ account.created_at|date:'Y-m-d' }}</p>
+<form data-api="/api/v1/admin/readers/{{ account.id }}/status/"><input type="hidden" name="enabled" data-boolean value="{{ account.is_active|yesno:'false,true' }}"><label>原因<input name="reason" required maxlength="500"></label><button>{{ account.is_active|yesno:'停用账户,恢复账户' }}</button><p role="status"></p></form></article>{% empty %}<p>暂无账户</p>{% endfor %}
+<nav aria-label="账户分页">{% if previous %}<a href="{{ previous }}">上一页</a>{% endif %} {% if next %}<a href="{{ next }}">下一页</a>{% endif %}</nav>
+{% endblock %}

@@ -9,7 +9,7 @@ for (const form of document.querySelectorAll('form[data-api]')) {
       for (const field of form.querySelectorAll('[name]')) {
         if (field.name.startsWith('choice:')) choices[field.name.slice(7)] = field.value;
         else if (field.type === 'datetime-local') data[field.name] = field.dataset.original && field.defaultValue === field.value ? field.dataset.original : field.value + '+08:00';
-        else data[field.name] = field.hasAttribute('data-integer') ? Number(field.value) : field.value;
+        else data[field.name] = field.hasAttribute('data-boolean') ? field.value === 'true' : field.hasAttribute('data-integer') ? Number(field.value) : field.value;
       }
       if (form.dataset.api === '/api/v1/admin/merges/') data.choices = choices;
       const csrf = await fetch('/api/v1/csrf/', {credentials:'same-origin',cache:'no-store'});

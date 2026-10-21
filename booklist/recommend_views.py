@@ -13,6 +13,11 @@ def positive(value):
 
 @endpoint('GET')
 def recommend(request, data, activity_id=None):
+    from django.conf import settings
+    if settings.REQUIRE_ACCOUNT and not request.account:
+        from django.shortcuts import redirect
+        from urllib.parse import urlencode
+        return redirect('/account/login/?' + urlencode({'next': request.get_full_path()}))
     parameters(request, ('work','edit')); read_limit(request)
     editing = request.GET.get('edit') == '1'
     if 'edit' in request.GET and not editing:

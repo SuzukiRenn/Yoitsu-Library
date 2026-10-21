@@ -19,7 +19,13 @@ def entries(query, client=None, *, limit=None, offset=0, popular=False, writable
     own = ReasonLike.objects.filter(recommendation_id=OuterRef('pk'), anonymous_client=client, cancelled_at__isnull=True) if client else None
     query = query.annotate(liked=Exists(own) if own is not None else Value(False, output_field=BooleanField()))
     query = query[offset:offset+limit] if limit is not None else query[offset:]
-    return [{**row, 'writable': writable} for row in query.values('id', 'reason', 'like_count', 'liked')]
+    from .models import Account
+    rows = list(query)
+    owners = {row.principal_id: row for row in Account.objects.filter(principal_id__in=[row.anonymous_client_id for row in rows])}
+    return [{'id': row.pk, 'reason': row.reason, 'like_count': row.like_count, 'liked': row.liked,
+        'author': {'display_name': owners[row.anonymous_client_id].display_name,
+                   'username': owners[row.anonymous_client_id].username} if row.anonymous_client_id in owners
+                   else {'display_name': '历史匿名推荐者', 'username': ''}, 'writable': writable} for row in rows]
 
 
 @endpoint('POST', fields={'enabled': bool})

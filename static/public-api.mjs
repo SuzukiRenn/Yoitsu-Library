@@ -4,6 +4,9 @@ export function createPublicApi({fetcher = fetch, newKey = () => crypto.randomUU
   async function decode(response) {
     const body = await response.json();
     if (!response.ok) {
+      if (body.error?.code === 'login_required' && typeof window !== 'undefined') {
+        window.location.assign('/account/login/?next=' + encodeURIComponent(window.location.pathname + window.location.search + window.location.hash));
+      }
       const error = Error(body.error?.message || '请求失败');
       error.status = response.status; error.code = body.error?.code;
       throw error;

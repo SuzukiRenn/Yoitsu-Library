@@ -1,4 +1,4 @@
-import {createPublicApi} from './public-api.mjs';
+import {createPublicApi} from './public-api.mjs?v=20261021-identity1';
 import {createSearchController} from './catalog-search.mjs';
 import {normalize} from './text.mjs';
 import {createCandidatePreview} from './candidate-preview.mjs';

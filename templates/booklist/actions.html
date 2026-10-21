@@ -5,4 +5,5 @@
 <button type="button" data-action="like" data-enabled="{% if work.liked %}false{% else %}true{% endif %}" aria-pressed="{{ work.liked|yesno:'true,false' }}">{% if work.liked %}已赞{% else %}点赞{% endif %}</button>
 <a class="reason-link" href="/recommend/?work={{ work.id }}&amp;edit=1">{% if work.own_reason %}编辑理由{% else %}写理由{% endif %}</a>
 </div>
+{% include 'booklist/recommenders.html' %}
 </div>

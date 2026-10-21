@@ -26,7 +26,7 @@ class AdminTests(TestCase):
     def post(self, url, payload, client=None):
         browser = client or self.client
         return browser.post(url, json.dumps(payload),content_type='application/json',
-            HTTP_X_CSRFTOKEN=browser.cookies.get('csrftoken').value if browser.cookies.get('csrftoken') else '')
+            HTTP_X_CSRFTOKEN=browser.cookies.get(settings.CSRF_COOKIE_NAME).value if browser.cookies.get(settings.CSRF_COOKIE_NAME) else '')
 
     def merge(self, choices=None):
         plan = merging.plan(self.first.pk,self.second.pk)

@@ -1,6 +1,6 @@
 {% extends 'booklist/base.html' %}{% load static %}
 {% block title %}编辑作品资料 · {{ work.title }}{% endblock %}
-{% block scripts %}<script type="module" src="{% static 'edit-metadata.mjs' %}?v=20261020-5"></script>{% endblock %}
+{% block scripts %}<script type="module" src="{% static 'edit-metadata.mjs' %}?v=20261021-identity1"></script>{% endblock %}
 {% block content %}<section class="recommend-page"><h1>编辑作品资料</h1><p class="scope-label">{{ work.title }}</p>
 <form id="metadata-form" data-work="{{ work.id }}" data-revision="{{ metadata.revision }}">
 {% include 'booklist/manual_fields.html' with tag_work_id=work.id %}
