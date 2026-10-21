@@ -39,6 +39,7 @@ def activity_result(request, activity_id, fixed_size=None):
 @endpoint('GET')
 def detail(request, data, activity_id):
     result = activity_result(request, activity_id, PAGE_SIZE)
+    result['can_export_summary'] = request.admin is not None
     base = f'?page_size={result["page_size"]}&sort={result["sort"]}&page='
     result['paging'] = navigation(result, lambda number: base+str(number))
     result['sort_options'] = controls(result)

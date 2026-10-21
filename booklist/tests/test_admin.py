@@ -52,6 +52,39 @@ class AdminTests(TestCase):
             self.assertEqual(response.status_code,200,url)
             self.assertNotContains(response,'<script>alert(1)</script>')
 
+    def test_admin_navigation_has_distinct_destinations(self):
+        response = self.client.get('/manage/')
+        self.assertContains(response, '<strong class="admin-brand">书单管理</strong>', html=True)
+        self.assertContains(response, '<a href="/manage/" aria-current="page">作品库</a>', html=True)
+        self.assertContains(response, '<a href="/manage/?section=public">公共书单</a>', html=True)
+        self.assertContains(response, '<a href="/">查看前台</a>', html=True)
+        self.assertNotContains(response, '>管理</a>')
+        response = self.client.get(f'/manage/activities/{self.period.pk}/')
+        self.assertContains(response, '<a href="/manage/?section=activities" aria-current="page">推荐活动</a>', html=True)
+
+    def test_admin_public_shelf_filters_and_counts_active_records(self):
+        PublicRecommendation.objects.create(work=self.first, anonymous_client=self.person)
+        PublicLike.objects.create(work=self.first, anonymous_client=self.person)
+        PublicLike.objects.create(work=self.second, anonymous_client=self.person)
+        response = self.client.get('/manage/?section=public')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '主作品')
+        self.assertNotContains(response, '待合并')
+        self.assertContains(response, '推荐 1 · 点赞 1')
+        self.assertContains(response, '管理作品与理由')
+        self.assertContains(response, '<a href="/manage/?section=public" aria-current="page">公共书单</a>', html=True)
+        self.assertNotContains(self.client.get('/manage/?section=public&q=不存在'), '主作品')
+        moderation.visibility(self.actor, self.first.pk, True, '测试隐藏')
+        self.assertNotContains(self.client.get('/manage/?section=public'), '主作品')
+        browser = Client()
+        self.assertRedirects(browser.get('/manage/?section=public'), '/manage/login/', fetch_redirect_response=False)
+
+    def test_public_pages_keep_admin_return_link_private(self):
+        for url in ('/', '/activities/', f'/activities/{self.period.pk}/', f'/works/{self.first.pk}/'):
+            with self.subTest(url=url):
+                self.assertContains(self.client.get(url), '<a class="admin-return" href="/manage/">返回管理后台</a>', html=True)
+                self.assertNotContains(Client().get(url), '返回管理后台')
+
     def test_visibility_and_reason_hiding_are_independent_from_counts(self):
         snap = self.snap(self.first)
         row = Recommendation.objects.create(scope='activity',activity=self.period,activity_work=snap,work=self.first,anonymous_client=self.person,reason='保留原文')

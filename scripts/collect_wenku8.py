@@ -82,12 +82,43 @@ def main():
                 from scripts.probe_wenku8 import NoRedirect
                 import time
                 from booklist.collection_parallel import PacedOpener
-                opener = PacedOpener(build_opener(NoRedirect()), pacing,
-                    lambda: state.get('robots', {}).get('minimum_interval_seconds', 10))
+                configuration = json.loads(pacing.read_text())
+                minimum = configuration.get('configured_interval', 10)
+                if minimum not in (8, 10):
+                    raise RuntimeError('Invalid coordinated interval')
+                # Opt-in trial affects scheduling only; parser/snapshot fingerprints remain unchanged.
+                import booklist.collecting as collector
+                collector.MIN_INTERVAL = minimum
+                policy = source.policy
+                def coordinated_policy(raw, media_type):
+                    result, rules = policy(raw, media_type)
+                    if rules is not None:
+                        rate = rules.request_rate(source.AGENT)
+                        explicit = max(rules.crawl_delay(source.AGENT) or 0,
+                                       rate.seconds/rate.requests if rate else 0)
+                        result = {**result, 'minimum_interval_seconds':max(minimum, explicit),
+                                  'configured_floor_seconds':minimum, 'robots_interval_seconds':explicit}
+                    return result, rules
+                source.policy = coordinated_policy
+                def coordinated_interval():
+                    robots = state.get('robots', {})
+                    # Old checkpoints combined the default 10s floor with robots timing.
+                    # Fresh robots are fetched before details; do not mistake that old
+                    # configured floor for an explicit site rule during this reviewed trial.
+                    explicit = robots.get('robots_interval_seconds')
+                    if explicit is None:
+                        old = robots.get('minimum_interval_seconds', minimum)
+                        explicit = old if old > 10 else 0
+                    return max(minimum, explicit)
+                opener = PacedOpener(build_opener(NoRedirect()), pacing, coordinated_interval)
                 fetch = source.fetch
                 # Queue waiting is not network time; preserve the original 30s I/O budget.
-                source.fetch = lambda url, limit, transport: fetch(url, limit, transport,
-                    clock=lambda: time.monotonic() - opener.wait_seconds)
+                def coordinated_fetch(url, limit, transport):
+                    record, raw = fetch(url, limit, transport,
+                        clock=lambda: time.monotonic() - opener.wait_seconds)
+                    opener.record_result(record)
+                    return record, raw
+                source.fetch = coordinated_fetch
             result = run(directory, state, opener=opener, max_items=args.max_items, retry_failed=args.retry_failed,
                          network_retries=args.network_retries,
                          progress=lambda item: print(json.dumps(item, ensure_ascii=True), flush=True))

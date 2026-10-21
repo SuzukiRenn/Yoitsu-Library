@@ -1,8 +1,10 @@
-from booklist import reason_likes
+from booklist import reason_likes, activity_export
 from django.urls import path
 from booklist import views, catalog_views, public_views, activity_views, recommend_views, admin_views, metadata_views, cover_cache, live_stats
 
 urlpatterns = [
+    path('manage/activities/<int:activity_id>/summary/', activity_export.preview),
+    path('api/v1/admin/activities/<int:activity_id>/summary/', activity_export.data),
     path('media/covers/<str:name>', cover_cache.serve),
     path('manage/login/', admin_views.login),
     path('manage/', admin_views.index),

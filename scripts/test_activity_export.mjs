@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import {writeFileSync} from 'node:fs';
+import {layout,wrap,crc32,zipParts} from '../static/activity-summary-layout.mjs';
+const measure=(text,size)=>Array.from(text).length*size;
+assert.deepEqual(wrap('甲乙\n丙丁',20,t=>t.length*10),['甲乙','丙丁']);
+assert.deepEqual(wrap('😀😀',10,t=>Array.from(t).length*10),['😀','😀']);
+const data={activity:{title:'十月推荐',theme:'',status_label:'进行中',start_label:'2026-10-01',end_label:'2026-10-31'},generated_label:'2026-10-20 22:00',total:30,recommendations:60,works:[]};
+for(let n=0;n<30;n++) data.works.push({title:`作品${n}`,author:'作者',recommendation_count:2,like_count:1,reason_count:n,reasons:[`理由${n}：`+'文字'.repeat(98),'另一条推荐理由']});
+const plan=layout(data,measure);
+assert.ok(plan.pages.length>1);
+assert.equal(plan.pages.flat().filter(row=>row.type==='cover').length,30);
+for(const page of plan.pages) {
+  const cards=page.filter(row=>row.type==='card');
+  for(let n=1;n<cards.length;n++) assert.ok(cards[n].y>=cards[n-1].y+cards[n-1].height+24);
+}
+const texts=plan.pages.flat().filter(row=>row.text&&!row.continuation).map(row=>row.text).join('');
+assert.ok(!texts.includes('文字'));
+assert.ok(!texts.includes('另一条推荐理由'));
+for(let n=0;n<30;n++) assert.ok(texts.includes(`理由 ${n}`));
+assert.equal(new Set(plan.pages.flat().filter(row=>row.type==='card').map(row=>row.height)).size,1);
+const withoutReasons=layout({...data,works:data.works.map(work=>({...work,reasons:[],reason_count:0}))},measure);
+assert.deepEqual(plan.pages.flat().filter(row=>row.type==='card'),withoutReasons.pages.flat().filter(row=>row.type==='card'));
+const longTitle=layout({...data,works:[{...data.works[0],title:'较长的作品书名'.repeat(12)},data.works[1]]},measure);
+assert.equal(new Set(longTitle.pages.flat().filter(row=>row.type==='card').map(row=>row.height)).size,1);
+for(const row of plan.pages.flat()) assert.ok(row.y+row.height<=1504,'Content overlaps footer');
+assert.equal(crc32(new TextEncoder().encode('123456789')),0xcbf43926);
+const zip=Buffer.concat(zipParts([{name:'测试.png',bytes:new Uint8Array([1,2,3])}]).map(x=>Buffer.from(x)));
+if (process.argv[2]) writeFileSync(process.argv[2],zip);
+assert.equal(zip.readUInt32LE(0),0x04034b50);
+assert.equal(zip.readUInt32LE(zip.length-22),0x06054b50);
+console.log(`Activity summary layout, uniform cards, reason counts, pagination and ZIP checks passed (${plan.pages.length} pages)`);

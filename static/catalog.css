@@ -211,3 +211,5 @@ button{color:var(--ink);background:white;border:1px solid var(--line);border-rad
 .reason-clip .reason-text{margin:0}
 
 .shelf-sort[aria-busy=true]::after{content:"正在排序…";font-size:12px;color:var(--muted)}
+
+.site-header.has-admin-tools{height:auto;min-height:76px;gap:18px;flex-wrap:wrap;padding-top:12px;padding-bottom:12px}.has-admin-tools .main-nav{margin-left:auto}.admin-return{font-size:13px;color:var(--accent);white-space:nowrap;text-underline-offset:4px}@media(max-width:700px){.site-header.has-admin-tools{gap:10px}.has-admin-tools .admin-return{flex-basis:100%;text-align:right;padding-bottom:2px}}

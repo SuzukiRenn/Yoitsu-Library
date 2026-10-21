@@ -1,2 +1,12 @@
-{% load static %}<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>管理 · 共享书单</title><link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}?v=1"><link rel="stylesheet" href="{% static 'admin.css' %}"><link rel="stylesheet" href="{% static 'motion.css' %}?v=20261019-3"><script type="module" src="{% static 'admin.mjs' %}"></script></head><body>
-<header><a href="/manage/">管理</a><nav aria-label="管理导航"><a href="/manage/?section=pending">待核查</a><a href="/manage/?section=source_reviews">来源待核对</a><a href="/manage/">作品</a><a href="/manage/?section=activities">推荐活动</a><a href="/manage/?section=merges">合并记录</a><a href="/manage/?section=audit">审计</a><a href="/">公共书单</a></nav><form data-api="/api/v1/admin/logout/" data-success="/manage/login/"><button>退出</button><p role="status"></p></form></header><main>{% block content %}{% endblock %}</main>{% include 'booklist/legal_footer.html' %}</body></html>
+{% load static %}<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>管理 · 共享书单</title><link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}?v=1"><link rel="stylesheet" href="{% static 'admin.css' %}?v=20261020-navigation"><link rel="stylesheet" href="{% static 'motion.css' %}?v=20261019-3"><script type="module" src="{% static 'admin.mjs' %}"></script></head><body>
+<header class="admin-header">
+<div class="admin-header-main"><strong class="admin-brand">书单管理</strong><div class="admin-utilities"><a href="/">查看前台</a><form data-api="/api/v1/admin/logout/" data-success="/manage/login/"><button>退出</button><p role="status"></p></form></div></div>
+<nav aria-label="管理导航">
+<a href="/manage/"{% if admin_navigation_section == 'works' %} aria-current="page"{% endif %}>作品库</a>
+<a href="/manage/?section=public"{% if admin_navigation_section == 'public' %} aria-current="page"{% endif %}>公共书单</a>
+<a href="/manage/?section=activities"{% if admin_navigation_section == 'activities' %} aria-current="page"{% endif %}>推荐活动</a>
+<a href="/manage/?section=pending"{% if admin_navigation_section == 'pending' %} aria-current="page"{% endif %}>待核查</a>
+<a href="/manage/?section=source_reviews"{% if admin_navigation_section == 'source_reviews' %} aria-current="page"{% endif %}>来源待核对</a>
+<a href="/manage/?section=merges"{% if admin_navigation_section == 'merges' %} aria-current="page"{% endif %}>合并记录</a>
+<a href="/manage/?section=audit"{% if admin_navigation_section == 'audit' %} aria-current="page"{% endif %}>审计</a>
+</nav></header><main>{% block content %}{% endblock %}</main>{% include 'booklist/legal_footer.html' %}</body></html>

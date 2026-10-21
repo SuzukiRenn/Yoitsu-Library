@@ -38,6 +38,55 @@ class ParallelPacingTests(TestCase):
         for available,expected in [(None,1),(200,1),(767,1),(768,2),(16000,2)]:
             self.assertEqual(concurrency_limit(available),expected)
 
+    def test_trial_has_a_hard_request_budget_then_reverts(self):
+        now=[100.0];starts=[]
+        class Fake:
+            def open(self,request,timeout):starts.append(now[0]);return object()
+        with TemporaryDirectory() as folder:
+            path=Path(folder)/'pacing.json'
+            path.write_text(json.dumps({'configured_interval':8,'interval':8,
+                'trial_requests_remaining':2,'trial_expires_at':10**12}))
+            gate=PacedOpener(Fake(),path,lambda:8,clock=lambda:now[0],
+                sleep=lambda t:now.__setitem__(0,now[0]+t))
+            for _ in range(4):gate.open(None,15)
+            self.assertEqual(starts,[100,108,118,128])
+            self.assertEqual(json.loads(path.read_text())['configured_interval'],10)
+
+    def test_transport_failure_rolls_back_without_relaxing_robot_rules(self):
+        now=[100.0];starts=[]
+        class Fake:
+            def open(self,request,timeout):starts.append(now[0]);return object()
+        with TemporaryDirectory() as folder:
+            path=Path(folder)/'pacing.json'
+            path.write_text(json.dumps({'configured_interval':8,'interval':8,
+                'trial_requests_remaining':40,'trial_expires_at':10**12}))
+            gate=PacedOpener(Fake(),path,lambda:8,clock=lambda:now[0],
+                sleep=lambda t:now.__setitem__(0,now[0]+t))
+            gate.open(None,15)
+            gate.record_result({'result':'transport_failed','status':None,'elapsed_ms':100})
+            gate.open(None,15)
+            self.assertEqual(starts,[100,110])
+            strict=PacedOpener(Fake(),path,lambda:20,clock=lambda:now[0],
+                sleep=lambda t:now.__setitem__(0,now[0]+t))
+            strict.open(None,15)
+            self.assertEqual(starts[-1],130)
+
+    def test_steady_mode_keeps_eight_seconds_and_failure_fallback_is_sticky(self):
+        now=[100.0];starts=[]
+        class Fake:
+            def open(self,request,timeout):starts.append(now[0]);return object()
+        with TemporaryDirectory() as folder:
+            path=Path(folder)/'pacing.json'
+            path.write_text(json.dumps({'mode':'steady','configured_interval':8,'interval':8}))
+            gate=PacedOpener(Fake(),path,lambda:8,clock=lambda:now[0],
+                sleep=lambda t:now.__setitem__(0,now[0]+t))
+            for _ in range(42):gate.open(None,15)
+            self.assertEqual(starts[-1]-starts[-2],8)
+            gate.record_result({'result':'received','status':200,'elapsed_ms':16000})
+            gate.open(None,15);gate.open(None,15)
+            self.assertEqual(starts[-1]-starts[-2],10)
+            self.assertEqual(json.loads(path.read_text())['configured_interval'],10)
+
 class ParallelCoordinatorTests(TestCase):
     def test_two_disjoint_collectors_with_a_single_importer_and_preserved_ledger(self):
         import importlib.util

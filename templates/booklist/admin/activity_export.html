@@ -1,0 +1,14 @@
+{% extends 'booklist/admin/base.html' %}{% load static %}
+{% block content %}
+<a href="/manage/activities/{{ period.id }}/">← 返回活动管理</a>
+<h1>{{ period.title }} · 总结图片</h1>
+<p>按推荐数排序，包含作品封面、书名、作者、推荐数、点赞数和推荐理由数；理由正文请到网站查看。</p>
+<div class="summary-export" data-summary-export data-source="/api/v1/admin/activities/{{ period.id }}/summary/">
+  <div class="summary-toolbar"><button type="button" data-generate>生成总结图片</button><button type="button" data-save hidden>保存当前 PNG</button><button type="button" data-save-all hidden>打包下载全部</button></div>
+  <p role="status" aria-live="polite" data-summary-status></p>
+  <p data-summary-note hidden>图片保留生成时的快照；需要更新数据时，请重新生成。手机上也可以长按下方图片保存。</p>
+  <div class="summary-paging" hidden><button type="button" data-previous>上一张</button><span data-page-label></span><button type="button" data-next>下一张</button></div>
+  <img class="summary-image" data-summary-image hidden alt="活动推荐总结图片预览">
+</div>
+<script type="module" src="{% static 'activity-export.mjs' %}?v=5"></script>
+{% endblock %}

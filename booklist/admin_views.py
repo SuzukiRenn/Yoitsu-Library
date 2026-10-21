@@ -2,8 +2,8 @@ from functools import wraps
 from urllib.parse import urlencode
 from django.http import JsonResponse
 from django.shortcuts import redirect
-from django.db.models import Q
-from . import activities, moderation, merging, catalog
+from django.db.models import Count, Q
+from . import activities, moderation, merging, catalog, public_booklist
 from .models import Work, Recommendation, Activity, ActivityTransition, AdminAuditLog, PublicRecommendation, PublicLike, Vote, WorkMergeOperation, SourceIdentityReview
 from .views import endpoint
 from .catalog_views import page, parameters
@@ -36,6 +36,11 @@ def index(request, data):
         rows = Work.objects.filter(merged_into__isnull=True).order_by('-id')
         if section == 'pending': rows = rows.filter(review_status='pending')
         if query: rows = rows.filter(Q(original_submitted_title__icontains=query) | Q(title_override__icontains=query) | Q(wenku8_title__icontains=query))
+    elif section == 'public':
+        rows = public_booklist.public_works()
+        if query:
+            rows = rows.filter(Q(original_submitted_title__icontains=query) | Q(title_override__icontains=query) | Q(wenku8_title__icontains=query))
+        rows = rows.order_by('-public_added_at', '-id')
     elif section == 'activities': rows = Activity.objects.order_by('-start_at','-id')
     elif section == 'audit': rows = AdminAuditLog.objects.select_related('admin').order_by('-id')
     elif section == 'merges': rows = WorkMergeOperation.objects.select_related('primary_work','merged_work').order_by('-id')
@@ -43,7 +48,17 @@ def index(request, data):
     else:
         from .services import DomainError
         raise DomainError('invalid_section','页面不存在',404)
-    context['rows'] = rows[offset:offset+size]
+    context['rows'] = list(rows[offset:offset+size])
+    if section == 'public':
+        context['total'] = rows.count()
+        ids = [row.pk for row in context['rows']]
+        def counts(queryset):
+            return dict(queryset.filter(work_id__in=ids).values('work_id').annotate(total=Count('id')).values_list('work_id', 'total'))
+        rec_counts = counts(public_booklist.recommendations())
+        like_counts = counts(public_booklist.likes())
+        for row in context['rows']:
+            row.recommendation_count = rec_counts.get(row.pk, 0)
+            row.like_count = like_counts.get(row.pk, 0)
     if section == 'activities':
         for row in context['rows']: row.status_label = activities.LABELS[row.status]
     if section == 'merges':
