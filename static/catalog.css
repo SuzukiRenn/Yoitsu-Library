@@ -327,3 +327,14 @@ button{color:var(--ink);background:white;border:1px solid var(--line);border-rad
 .shelf-pagination:not(.shelf-pagination-top)>.page-links{grid-row:2}
 .shelf-pagination:not(.shelf-pagination-top)>.page-size-form{grid-row:2}
 @media(max-width:1000px){.shelf-pagination:not(.shelf-pagination-top)>.page-size-form{grid-row:3}}
+
+.activity-heading{align-items:center;flex-wrap:wrap;gap:16px 24px}
+.activity-heading-info{flex:1 1 280px;min-width:0}
+.activity-heading>.activity-history-link{flex-shrink:0;margin:0}
+.activity-heading .activity-title h1{margin:0}
+.activity-heading .activity-dates{margin:10px 0 0;line-height:1.7}
+.activity-theme{margin:10px 0 0;overflow-wrap:anywhere}
+.activity-heading-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px 12px}
+.activity-heading-actions>.back-link{margin:0}
+.activity-heading-actions>a{white-space:nowrap}
+@media(max-width:700px){.activity-heading-actions{justify-content:flex-start}.activity-heading-actions>.back-link{font-size:14px;min-height:42px;padding:8px 12px}}

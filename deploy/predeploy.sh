@@ -80,11 +80,17 @@ PY
 install -d -m 0700 "$config/backups"
 install -m 0600 "$config/predeploy.env" "$config/backups/$release-$(date -u +%Y%m%dT%H%M%S)-$$.env"
 compose=(docker compose -p shared-booklist-predeploy --env-file "$config/predeploy.env" -f deploy/compose.yaml)
+services=(app scheduler backup)
+if [[ -f "$config/ssh-access/active" ]]; then
+  python3 deploy/ssh_access.py prepare "$release"
+  compose+=(-f "$config/ssh-access/compose.json")
+  services+=(proxy)
+fi
 "${compose[@]}" config --quiet
 "${compose[@]}" run -T --rm --no-deps app python scripts/check_production.py </dev/null
 echo 'PHASE stop_writes_and_back_up'
-trap 'code=$?; "${compose[@]}" stop app scheduler backup || true; echo "Deployment failed; services stopped and data retained."; exit "$code"' ERR
-"${compose[@]}" stop app scheduler backup
+trap 'code=$?; "${compose[@]}" stop "${services[@]}" || true; echo "Deployment failed; services stopped and data retained."; exit "$code"' ERR
+"${compose[@]}" stop "${services[@]}"
 if [[ -f "$state/data/booklist.sqlite3" ]]; then
   "${compose[@]}" run -T --rm --no-deps backup python scripts/sqlite_backup.py --source /var/lib/shared-booklist/booklist.sqlite3 --output-dir /backups --verify-restore </dev/null
 fi
@@ -92,12 +98,15 @@ echo 'PHASE migrate'
 # Failure after writes stop leaves the application stopped. No blind rollback across schemas.
 "${compose[@]}" run -T --rm --no-deps app python manage.py migrate --noinput </dev/null
 echo 'PHASE start_and_verify'
-if ! "${compose[@]}" up -d --no-build --wait --wait-timeout 120 app scheduler backup; then
-  "${compose[@]}" stop app scheduler backup
+if ! "${compose[@]}" up -d --no-build --wait --wait-timeout 120 "${services[@]}"; then
+  "${compose[@]}" stop "${services[@]}"
   echo 'Private service check failed. Data retained; operator review required.'
   exit 1
 fi
 "${compose[@]}" exec -T app python scripts/predeploy_health.py </dev/null
+if [[ -f "$config/ssh-access/active" ]]; then
+  python3 deploy/ssh_access.py verify "$release"
+fi
 "${compose[@]}" run -T --rm --no-deps backup python scripts/sqlite_backup.py --source /var/lib/shared-booklist/booklist.sqlite3 --output-dir /backups --verify-restore </dev/null
 "${compose[@]}" exec -T app python -c "import json,sqlite3,platform;print(json.dumps({'python':platform.python_version(),'sqlite':sqlite3.sqlite_version,'ports_published':False,'mode':'private_predeploy'}))" </dev/null
 ln -s "$checkout" "$root/current.$$.new"
