@@ -17,9 +17,7 @@ def configuration(release):
     overlay['services'].pop('certbot')
     proxy=overlay['services']['proxy']
     proxy['ports']=['127.0.0.1:8443:8443']
-    proxy['networks'].pop('edge_front')
     proxy['volumes']=[str(DIRECTORY)+'/nginx.conf:/etc/nginx/nginx.conf:ro',str(DIRECTORY)+'/tls:/etc/nginx/tls:ro','/var/lib/shared-booklist/predeploy/static/${BOOKLIST_RELEASE}:/srv/static:ro']
-    overlay['networks'].pop('edge_front')
     nginx=rendered['nginx.https.conf'].replace('proxy_set_header Host '+DOMAIN+';','proxy_set_header Host $http_host;')
     return overlay,nginx
 

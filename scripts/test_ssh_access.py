@@ -8,6 +8,7 @@ class ConfigurationTests(unittest.TestCase):
   self.assertEqual(config['services']['proxy']['ports'],['127.0.0.1:8443:8443'])
   self.assertNotIn('ports',config['services']['app'])
   self.assertTrue(config['networks']['edge_backend']['internal'])
+  self.assertTrue(any(not config['networks'][name].get('internal',False) for name in config['services']['proxy']['networks']))
   self.assertIn('proxy_set_header Host $http_host;',nginx)
   self.assertIn('${BOOKLIST_RELEASE}',json.dumps(config))
   self.assertEqual(config['services']['app']['environment']['BOOKLIST_TRUSTED_PROXY_IPS'],'172.30.29.2')
