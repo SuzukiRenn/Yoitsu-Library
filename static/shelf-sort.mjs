@@ -1,4 +1,4 @@
-// Enhance only shelf sorting. Real links remain usable without JavaScript.
+// Enhance sort and public-only time-range links. Native links remain the fallback.
 export function installShelfSort(refresh, {doc=document,win=window,fetcher=fetch}={}) {
   const shelf=doc.querySelector('[data-live-shelf]');
   if(!shelf || !refresh?.apply)return;
@@ -42,7 +42,7 @@ export function installShelfSort(refresh, {doc=document,win=window,fetcher=fetch
   }
   doc.addEventListener('click',event=>{
     if(event.defaultPrevented || event.button!==0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)return;
-    const link=event.target.closest?.('.shelf-sort a[href]');
+    const link=event.target.closest?.('.shelf-sort a[href], .shelf-period a[href]');
     if(!link || !shelf.contains(link) || link.hasAttribute('download') || (link.target&&link.target!=='_self'))return;
     const url=new URL(link.href,win.location.href);
     if(url.origin!==win.location.origin || url.pathname!==path)return;

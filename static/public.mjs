@@ -1,7 +1,7 @@
-import {installShelfSort} from './shelf-sort.mjs?v=20261020-1';
+import {installShelfSort} from './shelf-sort.mjs?v=20261021-period2';
 import {startReasonLikes} from './reason-likes.mjs?v=20261021-identity1';
 import {startLiveInteractions} from './live-interactions.mjs?v=20261021-identity1';
-import {createShelfRefresh} from './live-shelf.mjs?v=20261020-5';
+import {createShelfRefresh} from './live-shelf.mjs?v=20261021-period2';
 import './navigation-motion.mjs?v=20261020-1';
 import './work-motion.mjs?v=20261020-1';
 const status = document.querySelector('#action-status');

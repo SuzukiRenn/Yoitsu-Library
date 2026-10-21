@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Count, Exists, OuterRef, Q
 from django.utils import timezone
-from . import catalog, services
+from . import catalog, services, public_period
 from .models import PublicRecommendation, PublicLike, Recommendation, Work, WorkAlias, WorkTag, TagSuppression
 from .protocol import pagination
 from .text import normalize
@@ -60,8 +60,11 @@ def serialize(works, client=None):
     return result
 
 
-def listing(client=None, page=1, page_size=20, tags=(), sort="recommendations"):
+def listing(client=None, page=1, page_size=20, tags=(), sort="recommendations", period='all'):
     sort = validate_sort(sort)
+    period = public_period.validate(period, sort)
+    now = timezone.now()
+    cutoff = public_period.cutoff(period, now)
     offset, size = pagination(page, page_size)
     if len(tags) > 20 or any(not str(tag).isascii() or not str(tag).isdecimal() or str(int(tag)) != str(tag) or int(tag) <= 0 for tag in tags):
         raise ValidationError('标签无效')
@@ -71,14 +74,21 @@ def listing(client=None, page=1, page_size=20, tags=(), sort="recommendations"):
         query = query.filter(pk__in=effective_tags().filter(tag_id=tag).values('work_id'))
     active = Q(publicrecommendation__withdrawn_at__isnull=True, publicrecommendation__invalidated_at__isnull=True, publicrecommendation__archived_at__isnull=True)
     active_likes = Q(publiclike__cancelled_at__isnull=True, publiclike__invalidated_at__isnull=True, publiclike__archived_at__isnull=True)
+    active &= Q(publicrecommendation__created_at__lte=now)
+    active_likes &= Q(publiclike__created_at__lte=now)
+    if cutoff is not None:
+        active &= Q(publicrecommendation__created_at__gte=cutoff)
+        active_likes &= Q(publiclike__created_at__gte=cutoff)
     query = query.annotate(rank_count=Count('publicrecommendation', filter=active, distinct=True),
                            rank_likes=Count('publiclike', filter=active_likes, distinct=True))
+    if period != 'all':
+        query = query.filter(**{'rank_count__gt' if sort == 'recommendations' else 'rank_likes__gt': 0})
     ordering = {'recommendations': ('-rank_count', '-rank_likes'),
                 'likes': ('-rank_likes', '-rank_count'), 'newest': ()}
     query = query.order_by(*ordering[sort], '-public_added_at', 'id')
     tag_rows = effective_tags().filter(work_id__in=public_works().values('id')).values('tag_id', 'tag__name').annotate(count=Count('work_id', distinct=True)).order_by('-count', 'tag__name', 'tag_id')
     return {'results': serialize(query[offset:offset+size], client), 'total': query.count(), 'page': int(page),
-            'page_size': size, 'selected_tags': tags, 'sort': sort,
+            'page_size': size, 'selected_tags': tags, 'sort': sort, 'period': period,
             'tags': [{'id': row['tag_id'], 'name': row['tag__name'], 'count': row['count']} for row in tag_rows]}
 
 

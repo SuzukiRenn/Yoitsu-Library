@@ -13,8 +13,12 @@ function harness() {
  const refresh={apply:(next,options)=>applied.push({next,options})};
  const controller=installShelfSort(refresh,{doc,win,fetcher:(url,options)=>new Promise(resolve=>{requests.push({url,options,resolve});})});
  const reply=(index,ok=true)=>requests[index].resolve({ok,status:ok?200:503,url:requests[index].url,text:async()=>`page${index}`});
- function click(flags={}) {
-  const event={button:0,defaultPrevented:false,target:{closest:()=>({href:'http://local/?tag=4&sort=likes',target:'',hasAttribute:()=>false})},preventDefault(){this.defaultPrevented=true;},...flags};
+ function click(flags={}, href='http://local/?tag=4&sort=likes') {
+  const event={button:0,defaultPrevented:false,target:{closest:selector=>{
+    assert.match(selector,/\.shelf-sort a\[href\]/);
+    assert.match(selector,/\.shelf-period a\[href\]/);
+    return {href,target:'',hasAttribute:()=>false};
+  }},preventDefault(){this.defaultPrevented=true;},...flags};
   const done=events.click(event);return {event,done};
  }
  return {controller,reply,requests,applied,pushed,notices,attrs,status,win,windowEvents,click};
@@ -36,3 +40,15 @@ h.win.location.href='http://local/?tag=4&page=2';p=h.windowEvents.popstate({stat
 assert.equal(h.applied.length,2);assert.equal(h.pushed.length,1);
 p=h.controller.navigate('http://local/?sort=newest');h.windowEvents.pagehide();h.reply(2);await p;assert.equal(h.applied.length,2);
 console.log('In-page sorting preserves native modified clicks, filters and history; cancels stale requests; keeps old content on failure and coordinates polling.');
+
+h=harness();p=h.click({},'http://local/?tag=4&sort=likes&period=week');
+h.reply(0);await p.done;
+assert.equal(h.win.location.href,'http://local/?tag=4&sort=likes&period=week');
+assert.equal(h.applied.length,1);
+h.win.location.href='http://local/?tag=4&sort=likes&period=month';
+p=h.windowEvents.popstate({state:{booklistShelf:'/'}});h.reply(1);await p;
+assert.equal(h.applied.length,2);assert.equal(h.pushed.length,1);
+assert.equal(h.requests.at(-1).url,'http://local/?tag=4&sort=likes&period=month');
+p=h.click({},'http://local/?tag=4&sort=newest&period=all');h.reply(2);await p.done;
+assert.equal(h.win.location.href,'http://local/?tag=4&sort=newest&period=all');
+console.log('Public period switching and back/forward restoration keep the chosen period and tags without reloading the page.');

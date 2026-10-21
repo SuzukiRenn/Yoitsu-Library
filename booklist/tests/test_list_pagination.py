@@ -74,7 +74,7 @@ class ShelfPaginationTests(TestCase):
         response = self.client.get('/', {'tag': self.tag.pk, 'page': 99, 'page_size': 20})
         self.assertEqual(response.status_code, 302)
         query = parse_qs(urlsplit(response['Location']).query)
-        self.assertEqual(query, {'tag': [str(self.tag.pk)], 'page_size': ['20'], 'sort': ['recommendations'], 'page': ['2']})
+        self.assertEqual(query, {'tag': [str(self.tag.pk)], 'page_size': ['20'], 'sort': ['recommendations'], 'period': ['all'], 'page': ['2']})
         response = self.client.get(f'/activities/{self.period.pk}/', {'page': 99})
         self.assertEqual(response.status_code, 302)
         self.assertEqual(parse_qs(urlsplit(response['Location']).query)['page'], ['2'])

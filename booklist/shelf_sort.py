@@ -15,5 +15,6 @@ def controls(result):
     parameters = [('tag', tag) for tag in result.get('selected_tags', [])]
     parameters.append(('page_size', result['page_size']))
     return [{'label': label, 'active': value == result['sort'],
-             'url': '?' + urlencode(parameters + [('sort', value)])}
+             'url': '?' + urlencode(parameters + [('sort', value)] + (
+                 [('period', 'all' if value == 'newest' else result['period'])] if 'period' in result else []))}
             for value, label in OPTIONS]

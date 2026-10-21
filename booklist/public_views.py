@@ -5,16 +5,16 @@ from django.http import JsonResponse
 from django.shortcuts import redirect
 from .list_pagination import PAGE_SIZE, navigation
 from .shelf_sort import controls
-from . import public_booklist as books, services
+from . import public_booklist as books, services, public_period
 from .catalog_views import page, parameters, read_limit
 from .protocol import pagination
 from .views import endpoint
 
 
 def list_data(request, fixed_size=None):
-    if set(request.GET) - {'page', 'page_size', 'tag', 'sort'} or any(len(request.GET.getlist(key)) != 1 for key in request.GET if key != 'tag'):
+    if set(request.GET) - {'page', 'page_size', 'tag', 'sort', 'period'} or any(len(request.GET.getlist(key)) != 1 for key in request.GET if key != 'tag'):
         raise ValidationError('查询参数无效')
-    return books.listing(request.anonymous_client, request.GET.get('page', '1'), fixed_size if fixed_size is not None else request.GET.get('page_size', '20'), request.GET.getlist('tag'), request.GET.get('sort', 'recommendations'))
+    return books.listing(request.anonymous_client, request.GET.get('page', '1'), fixed_size if fixed_size is not None else request.GET.get('page_size', '20'), request.GET.getlist('tag'), request.GET.get('sort', 'recommendations'), request.GET.get('period', 'all'))
 
 
 @endpoint('GET')
@@ -22,9 +22,10 @@ def home(request, data):
     read_limit(request)
     result = list_data(request, PAGE_SIZE)
     def link(number):
-        return '?' + urlencode([('tag', tag) for tag in result['selected_tags']] + [('page_size', result['page_size']), ('sort', result['sort']), ('page', number)])
+        return '?' + urlencode([('tag', tag) for tag in result['selected_tags']] + [('page_size', result['page_size']), ('sort', result['sort']), ('period', result['period']), ('page', number)])
     result['paging'] = navigation(result, link)
     result['sort_options'] = controls(result)
+    result['period_options'] = public_period.controls(result)
     if result['page'] > result['paging']['count']:
         return redirect(request.path + result['paging']['last_url'])
     return page(request, 'booklist/public.html', result)

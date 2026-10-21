@@ -103,6 +103,25 @@ export function createShelfRefresh({doc = document, win = window, fetcher = fetc
       const sort=active ? new URL(active.getAttribute('href'), win.location.href).searchParams.get('sort') : null;
       if (sort) for (const input of shelf.querySelectorAll('input[name="sort"]')) input.value=sort;
     }
+    // Only public shelves include time controls. Keep form values and clear links
+    // aligned with the URL after sorting, period changes and browser history.
+    const periodControls=shelf.querySelector('[data-public-period-controls]');
+    const nextPeriod=next.querySelector('[data-public-period-controls]');
+    if(periodControls && nextPeriod) {
+      periodControls.hidden=nextPeriod.hidden;
+      const period=next.getAttribute('data-public-period');
+      shelf.setAttribute('data-public-period',period);
+      for(const input of shelf.querySelectorAll('input[name="period"]'))input.value=period;
+      for(const link of periodControls.querySelectorAll('[data-period]')) {
+        const incoming=nextPeriod.querySelector(`[data-period="${link.dataset.period}"]`);
+        link.setAttribute('href',incoming.getAttribute('href'));
+        if(incoming.hasAttribute('aria-current'))link.setAttribute('aria-current','true');
+        else link.removeAttribute('aria-current');
+      }
+      const clear=shelf.querySelector('.tag-filter-actions a.reason-link');
+      const nextClear=next.querySelector('.tag-filter-actions a.reason-link');
+      if(clear && nextClear)clear.setAttribute('href',nextClear.getAttribute('href'));
+    }
     if (focused?.isConnected && doc.activeElement !== focused) focused.focus({preventScroll: true});
     else if (focusRemoved) {
       const target = grid.querySelector('.book-title') || shelf.querySelector('h1');
