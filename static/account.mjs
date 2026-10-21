@@ -27,6 +27,8 @@ export function renderRecommenders(container, work) {
   if (work.co_recommenders?.length) {
     const details=doc.createElement('details'), summary=doc.createElement('summary'), ul=doc.createElement('ul');
     details.open=expanded;
+    ul.tabIndex=0;
+    ul.setAttribute('aria-label','共同推荐者');
     summary.textContent=`共同推荐 · ${work.co_recommenders.length} 人`;
     for (const person of work.co_recommenders) {const li=doc.createElement('li');li.textContent=label(person);ul.append(li);}
     details.append(summary,ul);slot.append(details);
@@ -67,7 +69,17 @@ if (typeof document !== 'undefined') {
     } catch(error) {status.textContent=error.message;} finally {button.disabled=false;}
   });
   const status = document.querySelector('#action-status');
+  document.addEventListener('keydown', event => {
+    if(event.key!=='Escape')return;
+    for(const details of document.querySelectorAll('[data-recommenders] details[open]')) {
+      details.open=false;
+      if(details.contains(document.activeElement))details.querySelector('summary').focus();
+    }
+  });
   document.addEventListener('click', async event => {
+    for(const details of document.querySelectorAll('[data-recommenders] details[open]')) {
+      if(!details.contains(event.target))details.open=false;
+    }
     const button=event.target.closest('[data-account-logout],[data-read],[data-read-all]');
     if(!button || button.disabled)return;button.disabled=true;
     try {

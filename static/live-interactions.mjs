@@ -1,6 +1,6 @@
 import {renderReasonPreview} from './reason-ui.mjs?v=20261021-identity1';
 import {createPublicApi} from './public-api.mjs?v=20261021-identity1';
-import {renderRecommenders} from './account.mjs?v=20261021-identity1';
+import {renderRecommenders} from './account.mjs?v=20261021-identity2';
 
 export function updateInteraction(container, work) {
   renderRecommenders(container, work);
