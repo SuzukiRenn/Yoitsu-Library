@@ -13,6 +13,7 @@ def run(*args):
 def configuration(release):
     rendered=render(DOMAIN,release)
     overlay=json.loads(rendered['compose.https.json'])
+    overlay['services']['app']['networks']['edge_backend']={'ipv4_address':'172.30.29.3'}
     overlay['services'].pop('certbot')
     proxy=overlay['services']['proxy']
     proxy['ports']=['127.0.0.1:8443:8443']
@@ -49,7 +50,7 @@ def prepare(release):
     for path in [DIRECTORY,*DIRECTORY.parents]:assert not path.is_symlink(),'Linked configuration path'
     DIRECTORY.mkdir(mode=0o750,exist_ok=True)
     os.chown(DIRECTORY,0,10001);DIRECTORY.chmod(0o750)
-    tls=DIRECTORY/'tls';tls.mkdir(mode=0o750,exist_ok=True);os.chown(tls,0,10001)
+    tls=DIRECTORY/'tls';tls.mkdir(mode=0o750,exist_ok=True);os.chown(tls,0,10001);tls.chmod(0o750)
     cert=Path('/etc/shared-booklist/acme-dns-production/live/sharedbooklist-xyz-production')
     run('openssl','x509','-in',str(cert/'fullchain.pem'),'-noout','-checkhost',DOMAIN)
     run('openssl','x509','-in',str(cert/'fullchain.pem'),'-noout','-checkend','1209600')
