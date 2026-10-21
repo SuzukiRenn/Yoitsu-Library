@@ -1,6 +1,6 @@
 {% extends 'booklist/base.html' %}
 {% load static %}
-{% block scripts %}<link rel="stylesheet" href="{% static 'public-period.css' %}?v=20261021-2">{% endblock %}
+{% block scripts %}<link rel="stylesheet" href="{% static 'public-period.css' %}?v=20261021-3">{% endblock %}
 {% block content %}
 <section class="public-shelf" data-live-shelf data-public-period="{{ period }}"><div class="section-heading"><h1>公共书单</h1><div><a class="primary" href="/recommend/">推荐</a></div></div>
 {% if tags %}<form class="tag-filter" method="get" data-tag-filter>
@@ -16,7 +16,7 @@
 </form>{% endif %}
 {% include 'booklist/shelf_sort.html' %}
 <div class="public-period-controls" data-public-period-controls{% if sort == 'newest' %} hidden{% endif %}>
-<nav class="shelf-period" aria-label="公共书单时间范围"><span>范围</span><div>{% for option in period_options %}<a href="{{ option.url }}" data-period="{{ option.value }}"{% if option.active %} aria-current="true"{% endif %}>{{ option.label }}</a>{% endfor %}</div></nav>
+<nav class="shelf-period" aria-label="公共书单时间范围"><span class="shelf-sort-label">范围</span><div class="shelf-sort-options">{% for option in period_options %}<a href="{{ option.url }}" data-period="{{ option.value }}"{% if option.active %} aria-current="true"{% endif %}>{{ option.label }}</a>{% endfor %}</div></nav>
 </div>
 <div data-shelf-pagination="top">{% include 'booklist/list_pagination.html' with compact=True %}</div><p class="sr-only" data-shelf-status role="status"></p>
 <div class="book-grid" data-shelf-grid>{% for work in results %}<article class="public-card" data-shelf-work="{{ work.id }}"><div class="public-card-main"><a class="card-open" href="/works/{{ work.id }}/" tabindex="-1" aria-label="{{ work.title }}"></a><div class="public-book"><a class="book-cover" href="/works/{{ work.id }}/" aria-label="{{ work.title }}">{% include 'booklist/cover_image.html' %}</a><div class="book-info"><a class="book-title" href="/works/{{ work.id }}/">{{ work.title }}</a>{% if work.author %}<p class="book-author">{{ work.author }}</p>{% endif %}<div class="tags">{% for tag in work.tags %}<span class="tag">{{ tag.name }}</span>{% endfor %}</div></div></div>
