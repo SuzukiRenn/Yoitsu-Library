@@ -11,6 +11,11 @@ class ConfigurationTests(unittest.TestCase):
   self.assertTrue(any(not config['networks'][name].get('internal',False) for name in config['services']['proxy']['networks']))
   self.assertIn('proxy_set_header Host $http_host;',nginx)
   self.assertIn('image/svg+xml svg;',nginx)
+  icon_location=nginx.split('location = /static/favicon.svg {',1)[1].split('}',1)[0]
+  self.assertIn('default_type image/svg+xml;',icon_location)
+  self.assertIn('etag off;',icon_location)
+  self.assertIn('if_modified_since off;',icon_location)
+  self.assertIn('Cache-Control "no-store"',icon_location)
   self.assertIn('${BOOKLIST_RELEASE}',json.dumps(config))
   self.assertEqual(config['services']['app']['environment']['BOOKLIST_TRUSTED_PROXY_IPS'],'172.30.29.2')
   self.assertEqual(config['services']['app']['networks']['edge_backend']['ipv4_address'],'172.30.29.3')
