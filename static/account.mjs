@@ -21,7 +21,7 @@ export function renderRecommenders(container, work) {
   slot.dataset.people=signature;
   const expanded=Boolean(slot.querySelector('details')?.open);
   slot.replaceChildren();
-  const label = person => `${person.display_name}${person.username ? ` @${person.username}` : ''}`;
+  const label = person => person.display_name;
   if (!first) return;
   const p = doc.createElement('p'); p.textContent = `首次推荐：${label(first)}${first.withdrawn ? '（已撤回）' : ''}`; slot.append(p);
   if (work.co_recommenders?.length) {
@@ -96,7 +96,7 @@ if (typeof document !== 'undefined') {
       const data=await response.json();
       if(append)for(const item of data.results) {
         const li=document.createElement('li');li.className=`notification${item.read ? '' : ' unread'}`;
-        const p=document.createElement('p');p.textContent=`${item.actor.display_name} @${item.actor.username} 赞了你推荐的《${item.work_title}》`;
+        const p=document.createElement('p');p.textContent=`${item.actor.display_name} 赞了你推荐的《${item.work_title}》`;
         const note=document.createElement('p');note.className='section-note';note.textContent=`${item.activity_title || '公共书单'} · ${new Date(item.created_at).toLocaleString()}`;
         const a=document.createElement('a');a.textContent='查看作品';a.href=item.url;
         li.append(p,note,a);

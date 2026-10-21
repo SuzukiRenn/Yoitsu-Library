@@ -85,6 +85,10 @@ class AccountTests(TestCase):
         client = self.browser('bob')
         self.assertEqual(self.post(client, '/api/v1/account/profile/', {'display_name': '青禾'}).status_code, 200)
         self.assertEqual(Account.objects.get(username='bob').display_name, '青禾')
+        profile = client.get('/account/')
+        self.assertContains(profile, '保存昵称')
+        self.assertContains(profile, '<strong>bob</strong>', html=True)
+        self.assertNotContains(client.get('/'), '@bob')
         self.assertEqual(self.post(client, '/api/v1/account/profile/', {'display_name': '\u200b'}).status_code, 400)
         self.assertEqual(self.post(client, '/api/v1/account/profile/', {'display_name': '好', 'username': 'alice'}).status_code, 400)
 
@@ -164,7 +168,9 @@ class AccountTests(TestCase):
         self.assertNotContains(page, 'data-recommenders')
         detail = self.browser('bob').get(f'/works/{self.work.pk}/')
         self.assertContains(detail, '首次推荐')
-        self.assertContains(detail, '@alice')
+        self.assertContains(detail, '青禾')
+        self.assertNotContains(detail, '@alice')
+        self.assertNotContains(detail, '@bob')
         self.assertContains(detail, '共同推荐')
 
     def test_work_likes_notify_all_current_recommenders_once_except_self(self):
@@ -223,6 +229,9 @@ class AccountTests(TestCase):
         self.assertEqual(row['author']['username'], 'alice')
         self.assertEqual(row['like_count'], 1)
         self.assertEqual(PublicLike.objects.count(), 0)
+        detail = client.get(f'/works/{self.work.pk}/')
+        self.assertContains(detail, '青禾')
+        self.assertNotContains(detail, '@alice')
 
     def test_notification_read_permissions_unread_count_and_idempotence(self):
         self.recommend('alice'); self.recommend('bob'); self.relation('carol', 'like')
@@ -238,7 +247,10 @@ class AccountTests(TestCase):
         self.assertEqual(bob.get('/api/v1/notifications/').json()['unread_count'], 1)
         self.assertEqual(self.post(alice, '/api/v1/notifications/read/', {'ids': [True]}).status_code, 400)
         self.assertEqual(self.post(bob, '/api/v1/notifications/read-all/').json()['changed'], 1)
-        self.assertContains(alice.get('/notifications/'), '赞了你推荐的')
+        page = alice.get('/notifications/')
+        self.assertContains(page, '赞了你推荐的')
+        self.assertContains(page, '小满')
+        self.assertNotContains(page, '@carol')
 
     def test_no_cross_account_reason_or_metadata_edits_or_identity_spoofing(self):
         alice, bob = self.browser('alice'), self.browser('bob')

@@ -22,7 +22,7 @@ def username(value):
 def display_name(value):
     value = unicodedata.normalize('NFC', value.strip())
     if not 1 <= len(value) <= 40 or any(unicodedata.category(c).startswith('C') for c in value):
-        raise DomainError('invalid_display_name', '展示名须为 1–40 字，不含控制字符')
+        raise DomainError('invalid_display_name', '昵称须为 1–40 字，不含控制字符')
     return value
 
 

@@ -33,6 +33,6 @@ export function reasonRow(doc, item, number, work, activity) {
   const toggle=doc.createElement('button');toggle.type='button';toggle.className='reason-expand';toggle.dataset.reasonExpand='';toggle.textContent='展开全文';toggle.hidden=true;
   toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls',clip.id);
   body.append(clip,toggle);
-  if(item.author){const author=doc.createElement('p');author.className='reason-author';author.textContent=`${item.author.display_name}${item.author.username ? ` @${item.author.username}` : ''}`;content.append(author);}
+  if(item.author){const author=doc.createElement('p');author.className='reason-author';author.textContent=item.author.display_name;content.append(author);}
   content.append(body,reasonButton(doc,item,work,activity));row.append(badge,content);return row;
 }

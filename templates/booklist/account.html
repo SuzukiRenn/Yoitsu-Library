@@ -5,20 +5,20 @@
 <div class="section-heading"><h1>消息</h1><button type="button" data-read-all>全部已读</button></div>
 <p class="section-note">作品点赞会通知当前推荐者；理由赞同单独计数。</p>
 <ol class="notification-list" data-notifications>{% for item in notifications %}<li class="notification{% if not item.read_at %} unread{% endif %}" data-notification="{{ item.id }}">
-<p><strong>{{ item.event.actor.display_name }}</strong> <span class="account-handle">@{{ item.event.actor.username }}</span> 赞了你推荐的《{{ item.work_title }}》</p>
+<p><strong>{{ item.event.actor.display_name }}</strong> 赞了你推荐的《{{ item.work_title }}》</p>
 <p class="section-note">{% if item.activity_title %}{{ item.activity_title }}{% else %}公共书单{% endif %} · {{ item.created_at|date:'Y-m-d H:i' }}</p>
 <a href="/notifications/{{ item.id }}/work/">查看作品</a>
 {% if not item.read_at %}<button type="button" data-read="{{ item.id }}">标为已读</button>{% endif %}</li>{% empty %}<li class="empty-state">暂无消息</li>{% endfor %}</ol>
 <button type="button" data-more-notifications hidden>加载更多</button>
 {% elif mode == 'profile' %}
-<h1>我的账户</h1><p>登录名 <strong>@{{ current_account.username }}</strong></p>
-<form method="post" data-account-form="profile"><label>展示名<input name="display_name" required maxlength="40" value="{{ current_account.display_name }}" autocomplete="nickname"></label><button class="primary">保存展示名</button><p role="status"></p></form>
+<h1>我的账户</h1><p>登录名 <strong>{{ current_account.username }}</strong></p>
+<form method="post" data-account-form="profile"><label>昵称<input name="display_name" required maxlength="40" value="{{ current_account.display_name }}" autocomplete="nickname"></label><button class="primary">保存昵称</button><p role="status"></p></form>
 <h2>修改密码</h2><form method="post" data-account-form="password"><label>当前密码<input name="current_password" type="password" required maxlength="1024" autocomplete="current-password"></label><label>新密码<input name="new_password" type="password" required minlength="12" maxlength="1024" autocomplete="new-password"></label><label>确认新密码<input name="confirmation" type="password" required minlength="12" maxlength="1024" autocomplete="new-password"></label><button>修改并重新登录</button><p role="status"></p></form>
 {% else %}
 <h1>{% if mode == 'register' %}注册{% else %}登录{% endif %}</h1>
 <form method="post" data-account-form="{{ mode }}">
 <label>登录名<input name="username" required minlength="3" maxlength="32" pattern="[A-Za-z0-9_]{3,32}" autocomplete="username" autocapitalize="none" spellcheck="false"><span class="section-note">3–32 位字母、数字或下划线</span></label>
-{% if mode == 'register' %}<label>展示名<input name="display_name" required maxlength="40" autocomplete="nickname"></label>{% endif %}
+{% if mode == 'register' %}<label>昵称<input name="display_name" required maxlength="40" autocomplete="nickname"></label>{% endif %}
 <label>密码<input name="password" type="password" required {% if mode == 'register' %}minlength="12" autocomplete="new-password"{% else %}autocomplete="current-password"{% endif %} maxlength="1024"></label>
 {% if mode == 'register' %}<label>确认密码<input name="confirmation" type="password" required minlength="12" maxlength="1024" autocomplete="new-password"></label><p class="section-note">密码至少 12 位，不能是常见密码或纯数字。</p>{% endif %}
 <button class="primary">{% if mode == 'register' %}创建账户{% else %}登录{% endif %}</button><p role="status"></p></form>
