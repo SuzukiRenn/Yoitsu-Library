@@ -151,11 +151,12 @@ def main():
             checks.append('https_health_without_redirect_loop')
             if production_certificate:
                 checks.append('production_certificate_hostname_key_and_system_ca_trust')
-            for extension, mime in (('css', 'text/css'), ('mjs', 'text/javascript')):
+            for extension, mime in (('css', 'text/css'), ('mjs', 'text/javascript'), ('svg', 'image/svg+xml')):
                 asset = next((stage / 'static').rglob('*.' + extension))
                 status, head, _ = request('/static/' + asset.relative_to(stage / 'static').as_posix())
                 require(status == 200 and 'content-type: ' + mime in head.lower(), 'Static MIME check failed')
             checks.append('css_and_module_mime')
+            checks.append('svg_icon_mime')
             require(request('/')[0] == 200, 'Public shelf did not render')
             require(request('/recommend/')[0] == 200, 'Recommendation form did not render')
             checks.append('shelf_and_recommendation_form')

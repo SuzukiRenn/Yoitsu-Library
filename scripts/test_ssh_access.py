@@ -10,6 +10,7 @@ class ConfigurationTests(unittest.TestCase):
   self.assertTrue(config['networks']['edge_backend']['internal'])
   self.assertTrue(any(not config['networks'][name].get('internal',False) for name in config['services']['proxy']['networks']))
   self.assertIn('proxy_set_header Host $http_host;',nginx)
+  self.assertIn('image/svg+xml svg;',nginx)
   self.assertIn('${BOOKLIST_RELEASE}',json.dumps(config))
   self.assertEqual(config['services']['app']['environment']['BOOKLIST_TRUSTED_PROXY_IPS'],'172.30.29.2')
   self.assertEqual(config['services']['app']['networks']['edge_backend']['ipv4_address'],'172.30.29.3')

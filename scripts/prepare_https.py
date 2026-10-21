@@ -65,7 +65,7 @@ http {
     ssl_protocols TLSv1.2 TLSv1.3;
     location /static/ {{
       alias /srv/static/;
-      types {{ text/css css; text/javascript js mjs; }}
+      types {{ text/css css; text/javascript js mjs; image/svg+xml svg; }}
       autoindex off;
       add_header X-Content-Type-Options nosniff always;
     }}

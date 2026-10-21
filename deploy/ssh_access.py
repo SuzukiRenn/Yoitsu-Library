@@ -73,7 +73,7 @@ def prepare(release):
 def verify(release):
     output=run('curl','--noproxy','*','--fail','--silent','--show-error','--resolve',DOMAIN+':8443:127.0.0.1','https://'+DOMAIN+':8443/health/')
     assert json.loads(output)['status']=='ok'
-    for asset,kind in [('catalog.css','text/css'),('public.mjs','text/javascript')]:
+    for asset,kind in [('catalog.css','text/css'),('public.mjs','text/javascript'),('favicon.svg','image/svg+xml')]:
         output=run('curl','--noproxy','*','--fail','--silent','--show-error','--resolve',DOMAIN+':8443:127.0.0.1','-o','/dev/null','-w','%{http_code} %{content_type}','https://'+DOMAIN+':8443/static/'+asset)
         assert output=='200 '+kind,output
     ids=run(*compose(release),'ps','-q','proxy').split();assert len(ids)==1
