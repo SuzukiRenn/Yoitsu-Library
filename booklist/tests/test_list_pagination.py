@@ -74,10 +74,20 @@ class ShelfPaginationTests(TestCase):
         response = self.client.get('/', {'tag': self.tag.pk, 'page': 99, 'page_size': 20})
         self.assertEqual(response.status_code, 302)
         query = parse_qs(urlsplit(response['Location']).query)
-        self.assertEqual(query, {'tag': [str(self.tag.pk)], 'page_size': ['20'], 'sort': ['recommendations'], 'page': ['2']})
+        self.assertEqual(query, {'tag': [str(self.tag.pk)], 'page_size': ['20'], 'sort': ['recommendations'], 'period': ['all'], 'page': ['2']})
         response = self.client.get(f'/activities/{self.period.pk}/', {'page': 99})
         self.assertEqual(response.status_code, 302)
         self.assertEqual(parse_qs(urlsplit(response['Location']).query)['page'], ['2'])
+
+    def test_public_rolling_window_survives_pagination_and_stale_redirect(self):
+        for period in ['week','month']:
+            response=self.client.get('/',{'period':period,'tag':self.tag.pk,'page':2})
+            self.assertEqual(len(response.context['results']),1)
+            for item in response.context['paging']['links']:
+                if not item.get('gap'):
+                    self.assertEqual(parse_qs(urlsplit(item['url']).query)['period'],[period])
+            redirected=self.client.get('/',{'period':period,'tag':self.tag.pk,'page':99})
+            self.assertEqual(parse_qs(urlsplit(redirected['Location']).query)['period'],[period])
 
     def test_api_contract_keeps_twenty_per_page_and_empty_out_of_range_results(self):
         for path in ('/api/v1/public/works/', f'/api/v1/activities/{self.period.pk}/'):

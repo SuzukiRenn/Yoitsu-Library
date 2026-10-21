@@ -27,6 +27,14 @@ def deployment_status(expected_release):
 
     result = {'expected_release': expected_release, 'passed': False, 'services': {}}
     try:
+        checkout = '/opt/shared-booklist/releases/'+expected_release
+        migration_paths = read(['git', '-C', checkout, 'ls-tree', '-r', '--name-only',
+            expected_release, 'booklist/migrations']).splitlines()
+        expected_migrations = sorted(path.rsplit('/', 1)[1][:-3] for path in migration_paths
+            if re.fullmatch(r'booklist/migrations/\d{4}_[a-z0-9_]+\.py', path))
+        if not expected_migrations:
+            raise ValueError('Release contains no migrations')
+        result['expected_migration'] = expected_migrations[-1]
         for service in ('app', 'scheduler', 'backup'):
             identifiers = read(['docker', 'ps', '-aq', '--filter',
                 'label=com.docker.compose.project=shared-booklist-predeploy', '--filter',
@@ -55,7 +63,7 @@ def deployment_status(expected_release):
                 runtime = json.loads(read(['docker', 'exec', identifier, 'python', '-c', probe]))
                 result['runtime'] = runtime
                 item['passed'] = item['passed'] and runtime == {'python':'3.14.8', 'sqlite':'3.53.2',
-                    'migration':'0006_pending_activity_submission'}
+                    'migration':expected_migrations[-1]}
             else:
                 logs = subprocess.run(['docker', 'logs', '--tail', '30', identifier],
                     capture_output=True, text=True, timeout=10, check=True)

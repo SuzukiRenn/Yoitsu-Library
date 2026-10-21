@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {installShelfSort} from '../static/shelf-sort.mjs';
+import {installShelfSort,filterURL} from '../static/shelf-sort.mjs';
 function harness() {
  const events={},windowEvents={},requests=[],applied=[],pushed=[],notices=[],attrs=new Set();
  const status={textContent:''},controls={setAttribute:n=>attrs.add(n),removeAttribute:n=>attrs.delete(n),hasAttribute:n=>attrs.has(n)};
@@ -19,10 +19,10 @@ function harness() {
  }
  return {controller,reply,requests,applied,pushed,notices,attrs,status,win,windowEvents,click};
 }
-let h=harness(),p=h.click();assert.equal(p.event.defaultPrevented,true);assert.equal(h.pushed.length,0);
-h.reply(0);await p.done;assert.equal(h.applied.length,1);assert.deepEqual(h.applied[0].options,{preserveAnchor:false,animateReorder:true});
+let h=harness(),p=h.click();assert.equal(p.event.defaultPrevented,true);assert.equal(h.pushed.length,0);assert.equal(h.status.textContent,'正在排序…');
+h.reply(0);await p.done;assert.equal(h.applied.length,1);assert.deepEqual(h.applied[0].options,{preserveAnchor:false,animateReorder:true,syncFilters:true});
 assert.equal(h.win.location.href,'http://local/?tag=4&sort=likes');assert.deepEqual(h.notices,[true,false]);
-assert.equal(h.attrs.has('aria-busy'),false);
+assert.equal(h.attrs.has('aria-busy'),false);assert.equal(h.status.textContent,'');
 for(const flags of [{ctrlKey:true},{metaKey:true},{shiftKey:true},{altKey:true},{button:1},{defaultPrevented:true}]){
  h=harness();h.click(flags);assert.equal(h.requests.length,0);
 }
@@ -34,5 +34,9 @@ assert.equal(h.applied.length,0);assert.equal(h.pushed.length,0);assert.match(h.
 h=harness();p=h.controller.navigate('http://local/?sort=likes');h.reply(0);await p;
 h.win.location.href='http://local/?tag=4&page=2';p=h.windowEvents.popstate({state:{booklistShelf:'/'}});h.reply(1);await p;
 assert.equal(h.applied.length,2);assert.equal(h.pushed.length,1);
-p=h.controller.navigate('http://local/?sort=newest');h.windowEvents.pagehide();h.reply(2);await p;assert.equal(h.applied.length,2);
+p=h.controller.navigate('http://local/?sort=newest');h.windowEvents.pagehide();assert.equal(h.status.textContent,'');h.reply(2);await p;assert.equal(h.applied.length,2);
 console.log('In-page sorting preserves native modified clicks, filters and history; cancels stale requests; keeps old content on failure and coordinates polling.');
+
+const submitted=filterURL({},'http://local/?page=8&tag=old&q=old',class{constructor(){return [['q','Alice'],['tag','1'],['tag','2'],['sort','likes'],['page_size','20']];}});
+const filtered=new URL(submitted);assert.equal(filtered.searchParams.get('q'),'Alice');assert.deepEqual(filtered.searchParams.getAll('tag'),['1','2']);assert.equal(filtered.searchParams.has('page'),false);assert.equal(filtered.searchParams.get('sort'),'likes');
+console.log('Search and multi-tag submissions preserve sort/size, replace old filters and reset pagination.');

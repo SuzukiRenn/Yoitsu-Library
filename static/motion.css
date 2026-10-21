@@ -3,6 +3,10 @@
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+@keyframes booklist-work-enter {
+  from { opacity: 0; transform: translateY(18px) scale(.94); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
 @keyframes booklist-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -21,7 +25,7 @@
   ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
   ::view-transition-old(page-content) { animation: booklist-fade-out 120ms ease-out both; }
   ::view-transition-new(page-content) { animation: booklist-content-enter 240ms cubic-bezier(.2,.7,.3,1) both; }
-  html:active-view-transition main { animation: none; }
+  html.native-page-transition main { animation: none; }
 
   main { animation: booklist-content-enter 240ms cubic-bezier(.2,.7,.3,1) backwards; }
   a, button, input, textarea, select, summary, .tag-filter label {
@@ -100,17 +104,25 @@ summary { cursor: pointer; }
   .public-card.work-opening .book-cover, .work-detail .detail-cover { view-transition-name: work-cover; }
   .public-card.work-opening .book-title, .work-detail .detail-heading h1 { view-transition-name: work-title; }
   .public-card.work-opening { transform: none; }
+  /* Let the card itself travel, without a second transition on its parent. */
+  main:has(.work-opening), main:has(.work-detail) { view-transition-name: none; }
+  main:has(.work-detail) { animation: none; }
+  .work-detail {
+    transform-origin: center top;
+    animation: booklist-work-enter 480ms cubic-bezier(.22,.75,.25,1) backwards;
+  }
+  html.native-page-transition .work-detail { animation: none; }
   ::view-transition-group(work-surface), ::view-transition-group(work-cover),
   ::view-transition-group(work-title) {
-    animation-duration: 360ms;
+    animation-duration: 520ms;
     animation-timing-function: cubic-bezier(.22,.75,.25,1);
   }
   ::view-transition-image-pair(work-surface) { overflow: clip; border-radius: 8px; }
-  ::view-transition-old(work-surface) { animation: booklist-fade-out 160ms ease-out both; }
-  ::view-transition-new(work-surface) { animation: booklist-fade-in 300ms ease-out both; }
+  ::view-transition-old(work-surface) { animation: booklist-fade-out 280ms ease-out both; }
+  ::view-transition-new(work-surface) { animation: booklist-fade-in 440ms ease-out both; }
   ::view-transition-old(work-cover), ::view-transition-new(work-cover) {
     height: 100%; object-fit: cover; mix-blend-mode: normal;
-    animation-duration: 360ms;
+    animation-duration: 520ms;
   }
-  ::view-transition-old(work-title), ::view-transition-new(work-title) { animation-duration: 240ms; }
+  ::view-transition-old(work-title), ::view-transition-new(work-title) { animation-duration: 420ms; }
 }

@@ -1,8 +1,8 @@
-<div class="public-actions" data-work="{{ work.id }}">
-{% include 'booklist/work_stats.html' %}
+<div class="public-actions combined-actions" data-work="{{ work.id }}">
+
 <div class="action-buttons">
-{% include 'booklist/recommend_button.html' %}
-<button type="button" data-action="like" data-enabled="{% if work.liked %}false{% else %}true{% endif %}" aria-pressed="{{ work.liked|yesno:'true,false' }}">{% if work.liked %}已赞{% else %}点赞{% endif %}</button>
+{% include 'booklist/recommend_button.html' with combined_counts=True %}
+{% include 'booklist/like_button.html' %}
 <a class="reason-link" href="/recommend/?work={{ work.id }}&amp;edit=1">{% if work.own_reason %}编辑理由{% else %}写理由{% endif %}</a>
 </div>
 </div>

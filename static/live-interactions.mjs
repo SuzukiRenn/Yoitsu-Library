@@ -1,15 +1,16 @@
-import {renderReasonPreview} from './reason-ui.mjs?v=20261020-4';
+import {renderReasonPreview} from './reason-ui.mjs?v=20261021-11';
 import {createPublicApi} from './public-api.mjs';
 
 export function updateInteraction(container, work) {
   const available = work.available !== false;
   const writable = available && work.writable !== false;
   container.dataset.readonly = String(!writable);
-  const stats = container.querySelectorAll('.work-stats strong');
+  const stats = container.querySelectorAll('.work-stats strong, [data-action-count]');
   if (available) {
     [work.recommendation_count, work.like_count].forEach((value, index) => {
-      if (stats[index] && stats[index].textContent !== String(value)) {
-        stats[index].textContent = String(value);
+      const displayed=stats[index]?.hasAttribute('data-action-count') && value>99 ? '99+' : String(value);
+      if (stats[index] && stats[index].textContent !== displayed) {
+        stats[index].textContent = displayed;
         stats[index].classList.remove('count-updated');
         // Restart the short feedback only when the server count actually changes.
         void stats[index].offsetWidth;
@@ -26,7 +27,11 @@ export function updateInteraction(container, work) {
     if (available) {
       button.dataset.enabled = String(!enabled);
       button.setAttribute('aria-pressed', String(enabled));
-      button.textContent = recommended ? enabled ? '取消推荐' : '+1' : enabled ? '已赞' : '点赞';
+      const label = button.querySelector('[data-action-label]');
+      const text = recommended ? label ? enabled ? '已推荐' : '推荐' : enabled ? '取消推荐' : '+1' : enabled ? '已赞' : '点赞';
+      if(label)button.setAttribute('aria-label',`${recommended ? enabled ? '取消推荐' : '推荐这本书' : enabled ? '取消点赞' : '点赞'}，${recommended ? '推荐' : '点赞'}总数 ${recommended ? work.recommendation_count : work.like_count}`);
+      if (label) label.textContent = text;
+      else button.textContent = text;
     }
     button.disabled = !writable || Boolean(emptyActivity) || emptyPublic;
     if (recommended) {

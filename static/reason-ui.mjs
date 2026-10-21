@@ -4,7 +4,14 @@ export function renderReasonButton(button, item) {
   button.dataset.writable = String(item.writable !== false);
   button.setAttribute('aria-pressed', String(Boolean(item.liked)));
   button.setAttribute('aria-label', item.liked ? '取消赞同这条推荐理由' : '赞同这条推荐理由');
-  button.textContent = `${item.liked ? '已赞同' : '赞同'} · ${item.like_count}`;
+  let label=button.querySelector('[data-reason-label]'),count=button.querySelector('[data-reason-count]');
+  if(!label || !count){
+    label=button.ownerDocument.createElement('span');label.dataset.reasonLabel='';
+    count=button.ownerDocument.createElement('span');count.dataset.reasonCount='';
+    button.replaceChildren(label,count);
+  }
+  label.textContent=item.liked ? '已赞同' : '赞同';
+  count.textContent=` · ${item.like_count}`;
   button.disabled = item.writable === false || button.dataset.busy === 'true';
 }
 export function reasonButton(doc, item, work, activity) {

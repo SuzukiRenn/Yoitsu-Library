@@ -1,6 +1,7 @@
+import {createShelfMotion} from './shelf-motion.mjs?v=20261021-9';
 import {initializeCovers} from './cover-images.mjs?v=20261020-2';
 import {initializePageSizes} from './page-size.mjs?v=20261020-2';
-import {initializeTagFilters, updateTagFilter} from './tag-filter.mjs?v=20261020-4';
+import {initializeTagFilters, updateTagFilter} from './tag-filter.mjs?v=20261021-19';
 
 const ids = grid => [...grid.querySelectorAll('[data-shelf-work]')].map(card => card.dataset.shelfWork);
 export function membershipChanged(before, after) {
@@ -17,14 +18,15 @@ export function createShelfRefresh({doc = document, win = window, fetcher = fetc
   if (!shelf) return;
   const grid = shelf.querySelector('[data-shelf-grid]');
   const status = shelf.querySelector('[data-shelf-status]');
+  const motion=createShelfMotion({doc,win});
   let pagerSignature;
-  function sync(next, {preserveAnchor=true, animateReorder=false} = {}) {
+  function sync(next, {preserveAnchor=true, animateReorder=true, syncFilters=false} = {}) {
     const focused = doc.activeElement;
     const before = ids(grid), after = ids(next.querySelector('[data-shelf-grid]'));
     const changed = membershipChanged(before, after);
     const existing = new Map([...grid.querySelectorAll('[data-shelf-work]')].map(card => [card.dataset.shelfWork, card]));
     const newCards = [...next.querySelectorAll('[data-shelf-grid] > [data-shelf-work]')];
-    const positions = animateReorder ? new Map([...existing].map(([id, card]) => [id, card.getBoundingClientRect()])) : null;
+    const finishMotion=changed && animateReorder ? motion.capture(grid) : null;
     const focusCard = focused?.closest('[data-shelf-work]');
     const focusRemoved = changed && focusCard && !after.includes(focusCard.dataset.shelfWork);
     const anchor = preserveAnchor && win.scrollY > 60 ? [...existing.values()].find(card =>
@@ -43,16 +45,6 @@ export function createShelfRefresh({doc = document, win = window, fetcher = fetc
       if (!newCards.length) {
         for (const child of next.querySelector('[data-shelf-grid]').children) grid.append(doc.importNode(child, true));
       }
-      if (positions && !win.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        for (const [id, card] of existing) {
-          if (!card.isConnected || !after.includes(id) || typeof card.animate !== 'function') continue;
-          const from=positions.get(id), to=card.getBoundingClientRect();
-          if (from.bottom<=0 || to.bottom<=0 || from.top>=win.innerHeight || to.top>=win.innerHeight) continue;
-          const x=from.left-to.left, y=from.top-to.top;
-          if (x || y) card.animate([{transform:`translate(${x}px,${y}px)`},{transform:'translate(0,0)'}],
-            {duration:240,easing:'cubic-bezier(.2,.7,.3,1)'});
-        }
-      }
       initializeCovers(grid);
       const added = after.filter(id => !before.includes(id)).length;
       status.textContent = added ? `书单已更新，本页新增 ${added} 部作品` : '书单已更新';
@@ -64,6 +56,7 @@ export function createShelfRefresh({doc = document, win = window, fetcher = fetc
       for (const position of ['top', 'bottom']) {
         const slot = shelf.querySelector(`[data-shelf-pagination="${position}"]`);
         const incoming = next.querySelector(`[data-shelf-pagination="${position}"]`);
+        if (!slot || !incoming) continue;
         const nav = slot.querySelector('nav'), nextNav = incoming.querySelector('nav');
         if (nav && nextNav) {
           for (const selector of ['.page-summary', '.page-links']) {
@@ -82,13 +75,18 @@ export function createShelfRefresh({doc = document, win = window, fetcher = fetc
       pagerSignature = incomingPagerSignature;
     }
     const form = shelf.querySelector('[data-tag-filter]'), nextForm = next.querySelector('[data-tag-filter]');
-    if (nextForm && tagSignature(form) !== tagSignature(nextForm)) {
-      if (form) updateTagFilter(form, nextForm);
+    if (nextForm && (syncFilters || tagSignature(form) !== tagSignature(nextForm))) {
+      if (form) {
+        updateTagFilter(form, nextForm, {syncSelection:syncFilters});
+        if(syncFilters)form.querySelector('[name="q"]').value=nextForm.querySelector('[name="q"]').value;
+      }
       else {
         shelf.insertBefore(doc.importNode(nextForm, true), shelf.querySelector('[data-shelf-pagination]'));
         initializeTagFilters(shelf);
       }
     }
+    const clearTags=shelf.querySelector('[data-clear-tags]'), nextClearTags=next.querySelector('[data-clear-tags]');
+    if(clearTags && nextClearTags)clearTags.setAttribute('href',nextClearTags.getAttribute('href'));
     const nextSort = next.querySelector('.shelf-sort');
     if (nextSort) {
       const links = [...nextSort.querySelectorAll('a')];
@@ -98,6 +96,12 @@ export function createShelfRefresh({doc = document, win = window, fetcher = fetc
         link.setAttribute('href', incoming.getAttribute('href'));
         if (incoming.hasAttribute('aria-current')) link.setAttribute('aria-current', 'true');
         else link.removeAttribute('aria-current');
+      }
+      const periodGroup=shelf.querySelector('.shelf-period'), incomingPeriod=nextSort.querySelector('.shelf-period');
+      if(periodGroup && incomingPeriod)periodGroup.hidden=incomingPeriod.hidden;
+      const periodLink=nextSort.querySelector('.shelf-period [aria-current]');
+      if(periodLink)for(const input of shelf.querySelectorAll('input[name="period"]')) {
+        input.value=new URL(periodLink.getAttribute('href'),win.location.href).searchParams.get('period') || 'all';
       }
       const active=nextSort.querySelector('[aria-current]');
       const sort=active ? new URL(active.getAttribute('href'), win.location.href).searchParams.get('sort') : null;
@@ -112,6 +116,7 @@ export function createShelfRefresh({doc = document, win = window, fetcher = fetc
       }
     }
     if (anchor?.isConnected) win.scrollBy(0, anchor.getBoundingClientRect().top - anchorTop);
+    finishMotion?.();
   }
   const refresh = async ({signal, isCurrent}) => {
     const url = win.location.href;

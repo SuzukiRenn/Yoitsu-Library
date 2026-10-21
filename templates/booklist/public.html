@@ -1,20 +1,9 @@
 {% extends 'booklist/base.html' %}
 {% block content %}
 <section class="public-shelf" data-live-shelf><div class="section-heading"><h1>公共书单</h1><div><a class="primary" href="/recommend/">推荐</a></div></div>
-{% if tags %}<form class="tag-filter" method="get" data-tag-filter>
-<input type="hidden" name="sort" value="{{ sort }}">
-<input type="hidden" name="page_size" value="{{ page_size }}">
-<div class="tag-filter-selected" hidden><span class="tag-filter-caption">已选标签</span><div class="tags" data-selected-tags></div></div>
-<div class="tag-filter-search" hidden><label for="tag-search">搜索标签</label><input id="tag-search" type="search" placeholder="输入标签名称" autocomplete="off" aria-controls="filter-tags"></div>
-<div class="tags" id="filter-tags">{% for tag in tags %}<label class="tag" data-tag-name="{{ tag.name }}"><input type="checkbox" name="tag" value="{{ tag.id }}" {% if tag.id in selected_tags %}checked{% endif %}>{{ tag.name }} <span class="tag-count">{{ tag.count }}</span></label>{% endfor %}</div>
-<p class="tag-filter-empty" role="status" hidden>没有其他匹配的标签</p>
-<div class="tag-filter-actions"><button type="button" data-expand-tags aria-expanded="false" aria-controls="filter-tags">展开全部</button><button type="submit" class="primary">筛选</button>{% if selected_tags %}<a class="reason-link" href="?page_size={{ page_size }}&amp;sort={{ sort }}">清除筛选</a>{% endif %}</div>
-<noscript><style>[data-expand-tags]{display:none!important}</style></noscript>
-</form>{% endif %}
-{% include 'booklist/shelf_sort.html' %}
-<div data-shelf-pagination="top">{% include 'booklist/list_pagination.html' with compact=True %}</div><p class="sr-only" data-shelf-status role="status"></p>
+{% include 'booklist/shelf_controls.html' %}<p class="sr-only" data-shelf-status role="status"></p>
 <div class="book-grid" data-shelf-grid>{% for work in results %}<article class="public-card" data-shelf-work="{{ work.id }}"><div class="public-card-main"><a class="card-open" href="/works/{{ work.id }}/" tabindex="-1" aria-label="{{ work.title }}"></a><div class="public-book"><a class="book-cover" href="/works/{{ work.id }}/" aria-label="{{ work.title }}">{% include 'booklist/cover_image.html' %}</a><div class="book-info"><a class="book-title" href="/works/{{ work.id }}/">{{ work.title }}</a>{% if work.author %}<p class="book-author">{{ work.author }}</p>{% endif %}<div class="tags">{% for tag in work.tags %}<span class="tag">{{ tag.name }}</span>{% endfor %}</div></div></div>
 {% include 'booklist/actions.html' %}</div>
-{% include 'booklist/reason_preview.html' %}</article>{% empty %}<div class="empty-state"><h2>暂无推荐</h2></div>{% endfor %}</div>
+{% include 'booklist/reason_preview.html' %}</article>{% empty %}<div class="empty-state"><h2>{% if query or selected_tags %}没有找到匹配的作品{% else %}暂无推荐{% endif %}</h2></div>{% endfor %}</div>
 <div data-shelf-pagination="bottom">{% include 'booklist/list_pagination.html' %}</div></section>
 {% endblock %}

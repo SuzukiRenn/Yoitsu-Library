@@ -1,8 +1,21 @@
+export function filterURL(form,base,Form=FormData){
+  const url=new URL(base);url.search=new URLSearchParams(new Form(form)).toString();return url.href;
+}
 // Enhance only shelf sorting. Real links remain usable without JavaScript.
 export function installShelfSort(refresh, {doc=document,win=window,fetcher=fetch}={}) {
   const shelf=doc.querySelector('[data-live-shelf]');
   if(!shelf || !refresh?.apply)return;
   const controls=shelf.querySelector('.shelf-sort');
+  const dropdown=controls.closest?.('[data-sort-dropdown]');
+  if(dropdown){
+    doc.addEventListener('pointerdown',event=>{if(dropdown.open && !dropdown.contains(event.target))dropdown.open=false;});
+    dropdown.addEventListener('toggle',()=>{
+      if(dropdown.open){const tags=shelf.querySelector('[data-tag-dropdown]');if(tags)tags.open=false;}
+    });
+    dropdown.addEventListener('keydown',event=>{
+      if(event.key==='Escape' && dropdown.open){event.preventDefault();dropdown.open=false;dropdown.querySelector('summary').focus();}
+    });
+  }
   const status=doc.querySelector('#action-status');
   const path=win.location.pathname;
   let generation=0,request,timer;
@@ -10,13 +23,13 @@ export function installShelfSort(refresh, {doc=document,win=window,fetcher=fetch
   const marker='booklistShelf';
   win.history.replaceState({...win.history.state,[marker]:path},'',win.location.href);
   const announce=pending=>doc.dispatchEvent(new win.CustomEvent('booklist:shelf-navigation',{detail:{pending}}));
-  async function navigate(url,push=true) {
+  async function navigate(url,push=true,loading='正在排序…') {
     generation++;const epoch=generation;request?.abort();win.clearTimeout(timer);
     const controller=new AbortController();request=controller;
     const startingURL=win.location.href;
     let timedOut=false;
     timer=win.setTimeout(()=>{timedOut=true;controller.abort();},15000);
-    controls.setAttribute('aria-busy','true');status.textContent='';announce(true);
+    controls.setAttribute('aria-busy','true');status.textContent=loading;announce(true);
     try {
       const response=await fetcher(url,{credentials:'same-origin',cache:'no-store',signal:controller.signal});
       if(!response.ok)throw Error(response.status===429?'操作较频繁，请稍后重试':'排序加载失败，请重试');
@@ -26,7 +39,7 @@ export function installShelfSort(refresh, {doc=document,win=window,fetcher=fetch
       if(epoch!==generation || win.location.href!==startingURL)return;
       const next=new win.DOMParser().parseFromString(html,'text/html').querySelector('[data-live-shelf]');
       if(!next || !next.querySelector('.shelf-sort') || !next.querySelector('[data-shelf-grid]'))throw Error('排序加载失败，请重试');
-      refresh.apply(next,{preserveAnchor:false,animateReorder:true});
+      refresh.apply(next,{preserveAnchor:false,animateReorder:true,syncFilters:true});
       if(push)win.history.pushState({...win.history.state,[marker]:path},'',destination.href);
       else if(destination.href!==win.location.href)win.history.replaceState({...win.history.state,[marker]:path},'',destination.href);
       renderedURL=destination.href;
@@ -37,9 +50,17 @@ export function installShelfSort(refresh, {doc=document,win=window,fetcher=fetch
         else if(error.name!=='AbortError')status.textContent=error.message || '排序加载失败，请重试';
       }
     }finally{
-      if(epoch===generation){win.clearTimeout(timer);controls.removeAttribute('aria-busy');announce(false);}
+      if(epoch===generation){win.clearTimeout(timer);controls.removeAttribute('aria-busy');if(status.textContent===loading)status.textContent='';announce(false);}
     }
   }
+  doc.addEventListener('submit',event=>{
+    const form=event.target;
+    if(!form.matches?.('[data-tag-filter]') || !shelf.contains(form))return;
+    event.preventDefault();
+    const url=filterURL(form,win.location.href);
+    const dropdown=form.querySelector('[data-tag-dropdown]');if(dropdown)dropdown.open=false;
+    return navigate(url,true,'正在筛选…');
+  });
   doc.addEventListener('click',event=>{
     if(event.defaultPrevented || event.button!==0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)return;
     const link=event.target.closest?.('.shelf-sort a[href]');
@@ -54,7 +75,7 @@ export function installShelfSort(refresh, {doc=document,win=window,fetcher=fetch
     if(event.state?.[marker]===path && win.location.pathname===path)return navigate(win.location.href,false);
   });
   win.addEventListener('pagehide',()=>{
-    generation++;request?.abort();win.clearTimeout(timer);controls.removeAttribute('aria-busy');announce(false);
+    generation++;request?.abort();win.clearTimeout(timer);controls.removeAttribute('aria-busy');if(['正在排序…','正在筛选…'].includes(status.textContent))status.textContent='';announce(false);
   });
   return {navigate};
 }
