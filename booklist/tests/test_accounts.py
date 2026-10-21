@@ -161,9 +161,11 @@ class AccountTests(TestCase):
         row = self.relation('alice', 'recommend').json()['work']
         self.assertFalse(row['first_recommender']['withdrawn'])
         page = self.browser('bob').get('/')
-        self.assertContains(page, '首次推荐')
-        self.assertContains(page, '@alice')
-        self.assertContains(page, '共同推荐')
+        self.assertNotContains(page, 'data-recommenders')
+        detail = self.browser('bob').get(f'/works/{self.work.pk}/')
+        self.assertContains(detail, '首次推荐')
+        self.assertContains(detail, '@alice')
+        self.assertContains(detail, '共同推荐')
 
     def test_work_likes_notify_all_current_recommenders_once_except_self(self):
         self.recommend('alice'); self.recommend('bob')
@@ -205,6 +207,9 @@ class AccountTests(TestCase):
         self.assertEqual(Notification.objects.count(), 4)
         self.assertEqual(books.serialize([self.work])[0]['recommendation_count'], 2)
         self.assertEqual(activities.listing(self.activity.pk)['results'][0]['co_recommenders'][0]['username'], 'bob')
+        browser = self.browser('alice')
+        self.assertNotContains(browser.get(f'/activities/{self.activity.pk}/'), 'data-recommenders')
+        self.assertContains(browser.get(f'/works/{self.work.pk}/?activity={self.activity.pk}'), 'data-recommenders')
 
     def test_reason_likes_are_separate_and_show_author(self):
         self.recommend('alice')
