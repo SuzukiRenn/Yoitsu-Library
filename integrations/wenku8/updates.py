@@ -32,8 +32,11 @@ def listing_page(root, today):
             updated = date.fromisoformat(next(iter(dates)))
             if updated > today:
                 raise SourceStop('source_listing_future_date')
-            titles = parent.xpath('.//a[b]')
-            title = ' '.join((titles[0] if titles else link).text_content().split())
+            titles = [node for node in parent.xpath('.//b/a[@href] | .//a[b]')
+                      if urlsplit(urljoin(BASE, node.get('href'))).path == parsed.path]
+            if len(titles) != 1:
+                raise SourceStop('source_listing_title_changed')
+            title = ' '.join(titles[0].text_content().split())
             if not title or len(title) > 500:
                 raise SourceStop('source_listing_title_changed')
             entries[book_id] = {'book_id': book_id, 'source_url': url, 'title': title, 'date': updated.isoformat()}

@@ -29,6 +29,22 @@ class ListingTests(SimpleTestCase):
         self.assertEqual([row['title'] for row in rows], ['作品甲', '作品乙'])
         self.assertEqual(set(pages), {1, 2})
 
+    def test_observed_source_bold_parent_of_title_link(self):
+        root = page([(1531, '真实标题嵌套', '2026-10-22')])
+        anchor = root.xpath('//a[b]')[0]
+        bold = anchor[0]
+        text = bold.text
+        anchor.remove(bold)
+        anchor.text = text
+        parent = anchor.getparent()
+        position = parent.index(anchor)
+        parent.remove(anchor)
+        bold.text = None
+        bold.append(anchor)
+        parent.insert(position, bold)
+        rows, _ = listing_page(root, date(2026, 10, 22))
+        self.assertEqual(rows[0]['title'], '真实标题嵌套')
+
     def test_date_boundary_requires_observed_pagination_and_complete_scan(self):
         client = type('Client', (), {})()
         first = page([(1, '甲', '2026-10-22')], (1, 2))

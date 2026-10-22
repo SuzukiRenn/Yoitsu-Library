@@ -2,9 +2,12 @@ param(
     [Parameter(Mandatory=$true)][ValidatePattern('^[A-Za-z0-9][A-Za-z0-9.-]*$')][string]$ServerHost,
     [Parameter(Mandatory=$true)][ValidatePattern('^[a-f0-9]{40}$')][string]$Release,
     [ValidatePattern('^[A-Za-z_][A-Za-z0-9_-]*$')][string]$ServerUser='root',
-    [ValidateRange(1,65535)][int]$Port=22
+    [ValidateRange(1,65535)][int]$Port=22,
+    [switch]$InstallSourceUpdates,
+    [switch]$ArchiveEmptyPreviewTitleStop
 )
 $ErrorActionPreference='Stop'
+if($ArchiveEmptyPreviewTitleStop -and !$InstallSourceUpdates){throw 'Preview recovery requires source setup'}
 $repoRoot=Split-Path $PSScriptRoot -Parent
 $scriptPath=Join-Path $repoRoot 'deploy/predeploy.sh'
 $outputDir=Join-Path $repoRoot '.runtime/server_predeploy'
@@ -46,7 +49,13 @@ try {
     # Merge remote stderr before SSH so Git/Docker progress is retained in the log.
     # Local SSH diagnostics remain on stderr. Judge SSH by its exit code.
     $ErrorActionPreference='Continue'
-    $script | ssh -p $Port -o ConnectTimeout=10 -o StrictHostKeyChecking=yes -o ForwardAgent=no -o ClearAllForwardings=yes -T "$ServerUser@$ServerHost" "bash -s -- $Release 2>&1" | Tee-Object -FilePath $outputFile
+    $taskRemoteCommand="bash -s -- $Release 2>&1"
+    if($InstallSourceUpdates){
+        $taskRemoteCommand+=" && python3 /opt/shared-booklist/releases/$Release/deploy/install_source_updates.py"
+        if($ArchiveEmptyPreviewTitleStop){$taskRemoteCommand+=' --archive-empty-preview-title-stop'}
+        $taskRemoteCommand+=' 2>&1'
+    }
+    $script | ssh -p $Port -o ConnectTimeout=10 -o StrictHostKeyChecking=yes -o ForwardAgent=no -o ClearAllForwardings=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -T "$ServerUser@$ServerHost" $taskRemoteCommand | Tee-Object -FilePath $outputFile
     $predeployExitCode=$LASTEXITCODE
 } finally { $ErrorActionPreference=$predeployErrorPreference }
 if ($predeployExitCode -ne 0) { throw "Predeployment stopped. Inspect $outputFile; do not restore an old database blindly." }

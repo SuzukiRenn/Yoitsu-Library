@@ -1,5 +1,6 @@
 """Install only after a successful server preview and initial bounded refresh."""
 import json
+import argparse
 import hashlib
 import os
 from pathlib import Path
@@ -43,6 +44,10 @@ def database_evidence():
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--archive-empty-preview-title-stop', action='store_true',
+                        help='Operator-reviewed recovery of the initial title parser preview; never an imported run')
+    args = parser.parse_args()
     if os.geteuid() != 0:
         raise RuntimeError('root_required')
     active = subprocess.run(['systemctl', 'is-active', '--quiet', 'booklist-source-update.service'])
@@ -59,6 +64,16 @@ def main():
     call('systemd-analyze', 'verify', '/etc/systemd/system/booklist-source-update.service',
          '/etc/systemd/system/booklist-source-update.timer')
     call('systemctl', 'daemon-reload')
+    if args.archive_empty_preview_title_stop:
+        checkpoint = Path('/var/lib/shared-booklist/predeploy/data/source_updates/daily.json')
+        if checkpoint.is_symlink():
+            raise RuntimeError('linked_source_checkpoint')
+        state = json.loads(checkpoint.read_text())
+        if state.get('status') != 'needs_attention' or state.get('reason') != 'source_listing_title_changed' or state.get('items') or state.get('last_success_at'):
+            raise RuntimeError('preview_checkpoint_not_eligible_for_reviewed_recovery')
+        archived = checkpoint.with_name('preview-title-stop-'+str(time.time_ns())+'.json')
+        checkpoint.rename(archived)
+        print('REVIEWED_EMPTY_PREVIEW_STOP_ARCHIVED '+archived.name, flush=True)
     print('SOURCE_UPDATE_READ_ONLY_PREVIEW', flush=True)
     call('flock', '-w', '30', '/opt/shared-booklist/deploy.lock', 'python3', str(root/'run_source_update.py'), '--dry-run')
     preview = json.loads(Path('/var/lib/shared-booklist/predeploy/data/source_updates/dry_run.json').read_text())
