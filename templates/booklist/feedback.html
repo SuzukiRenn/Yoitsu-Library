@@ -1,0 +1,18 @@
+{% extends 'booklist/base.html' %}{% load static %}
+{% block title %}问题反馈 · 共享书单{% endblock %}
+{% block feedback_footer %}{% endblock %}
+{% block scripts %}<script type="module" src="{% static 'feedback.mjs' %}?v=1"></script>{% endblock %}
+{% block content %}<section class="feedback-page">
+<h1>问题反馈</h1><p>资料有误、推荐理由不合适，或发现疑似刷票，都可以告诉管理员。</p>
+<form id="feedback-form">
+<label for="feedback-category">问题类型</label><select id="feedback-category" name="category">{% for value,label in categories %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select>
+<label for="feedback-message">具体情况</label><textarea id="feedback-message" name="message" rows="5" maxlength="1000" required placeholder="请写明作品名、相关理由或你发现的问题（最多 1000 字）"></textarea>
+<input type="hidden" name="page_url" value="{{ source_url }}">
+{% if source_url %}<p class="feedback-hint">已附上<a href="{{ source_url }}">相关页面</a>。</p>{% endif %}
+<p class="feedback-hint">内容仅你和管理员可见。请勿填写密码等敏感信息；提交后可在此查看处理结果。登录同一账户即可查看原反馈。</p>
+<div class="form-actions"><button class="primary" type="submit">提交反馈</button><a href="/">返回书单</a></div><p id="feedback-status" role="status" aria-live="polite"></p>
+<noscript><p>提交反馈需要开启 JavaScript，也可以直接在群内联系管理员。</p></noscript>
+</form>
+<section id="feedback-history"><h2>我的近期反馈</h2><p class="feedback-hint">仅当前账户可见，展示最近 20 条。</p>
+{% for row in feedback_rows %}<article><div class="feedback-meta"><strong>{{ row.get_category_display }}</strong><span>{{ row.get_status_display }}</span><time>{{ row.created_at|date:'Y-m-d H:i' }}</time></div><p class="feedback-text">{{ row.message }}</p>{% if row.reply %}<p class="feedback-text"><strong>管理员回复：</strong>{{ row.reply }}</p>{% endif %}</article>{% empty %}<p data-feedback-empty>暂无反馈</p>{% endfor %}
+</section></section>{% endblock %}

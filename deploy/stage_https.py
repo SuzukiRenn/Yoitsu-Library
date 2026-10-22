@@ -97,7 +97,7 @@ def main():
         try:
             namespace_pid = run('docker', 'inspect', '-f', '{{.State.Pid}}', test_container)
             time.sleep(1)
-            for extension, expected in (('css', 'text/css'), ('mjs', 'text/javascript')):
+            for extension, expected in (('css', 'text/css'), ('mjs', 'text/javascript'), ('svg', 'image/svg+xml')):
                 asset = next(static.rglob('*.' + extension))
                 path = asset.relative_to(static).as_posix()
                 response = run('nsenter', '-t', namespace_pid, '-n', 'curl',

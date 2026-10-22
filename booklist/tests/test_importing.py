@@ -28,6 +28,36 @@ def snapshot(book=4151):
 
 
 class ImportTests(TestCase):
+    def test_comment_update_cells_do_not_create_metadata_tables(self):
+        raw=(FIXTURE/'details/4151.htm').read_bytes()
+        expected=extract(raw,4151,'https://www.wenku8.net/book/4151.htm')
+        for cells in ('<td>最后更新：三年前/:|</td>',
+                      '<td>最后更新：三年前</td><td>最后更新：昨天</td>'):
+            with self.subTest(cells=cells):
+                text,_=parser().LEGACY.decode_html(raw)
+                changed=text.replace('</body>',f'<table class="grid"><tr>{cells}</tr></table></body>')
+                result=extract(changed.encode('utf-8'),4151,'https://www.wenku8.net/book/4151.htm')
+                self.assertEqual(result['fields'],expected['fields'])
+                self.assertTrue(result['document_diagnostics']['complete'])
+
+    def test_comment_filter_keeps_ambiguous_tables_and_wrong_identity_rejected(self):
+        raw=(FIXTURE/'details/4151.htm').read_bytes()
+        text,_=parser().LEGACY.decode_html(raw)
+        comment='<table><tr><td>最后更新：三年前</td></tr></table>'
+        with self.assertRaises(SnapshotError):
+            extract(text.replace('</body>',comment+'</body>').encode('utf-8'),3219,
+                    'https://www.wenku8.net/book/3219.htm')
+        second='<table><tr><td>小说作者：另一作者</td><td>文库分类：其他文库</td></tr></table>'
+        with self.assertRaises(SnapshotError):
+            extract(text.replace('</body>',second+'</body>').encode('utf-8'),4151,
+                    'https://www.wenku8.net/book/4151.htm')
+        root=parser().html.fromstring(raw)
+        for link in root.xpath('//a[contains(@href,"uservote.php")]'):
+            link.getparent().remove(link)
+        with self.assertRaises(SnapshotError):
+            extract(parser().html.tostring(root,encoding='utf-8',include_meta_content_type=True),4151,
+                    'https://www.wenku8.net/book/4151.htm')
+
     def test_gbk_declared_gb18030_extension_is_lossless_and_keeps_identity_checks(self):
         raw=(FIXTURE/'details/4151.htm').read_bytes()
         text, _=parser().LEGACY.decode_html(raw)

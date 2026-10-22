@@ -1,3 +1,4 @@
+from urllib.parse import urlencode
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.core.exceptions import ValidationError
@@ -32,15 +33,18 @@ def index(request, data, archive=False):
 
 
 def activity_result(request, activity_id, fixed_size=None):
-    parameters(request, ('page', 'page_size', 'sort')); read_limit(request); activities.advance_due()
-    return activities.listing(activity_id, request.anonymous_client, request.GET.get('page', '1'), fixed_size if fixed_size is not None else request.GET.get('page_size', '20'), sort=request.GET.get('sort', 'recommendations'))
+    if set(request.GET)-{'page','page_size','sort','q','tag'} or any(len(request.GET.getlist(key))!=1 for key in request.GET if key!='tag'):
+        raise ValidationError('查询参数无效')
+    read_limit(request); activities.advance_due()
+    return activities.listing(activity_id, request.anonymous_client, request.GET.get('page', '1'), fixed_size if fixed_size is not None else request.GET.get('page_size', '20'), sort=request.GET.get('sort', 'recommendations'), q=request.GET.get('q',''), tags=request.GET.getlist('tag'))
 
 
 @endpoint('GET')
 def detail(request, data, activity_id):
     result = activity_result(request, activity_id, PAGE_SIZE)
     result['can_export_summary'] = request.admin is not None
-    base = f'?page_size={result["page_size"]}&sort={result["sort"]}&page='
+    params=[('tag',tag) for tag in result['selected_tags']]+([('q',result['query'])] if result['query'] else [])
+    base = '?'+urlencode(params+[('page_size',result['page_size']),('sort',result['sort'])])+'&page='
     result['paging'] = navigation(result, lambda number: base+str(number))
     result['sort_options'] = controls(result)
     if result['page'] > result['paging']['count']:

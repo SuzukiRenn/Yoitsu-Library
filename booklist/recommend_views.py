@@ -1,7 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from . import catalog, public_booklist as books, activities
-from .catalog_views import parameters, read_limit, page
+from .catalog_views import parameters, read_limit, page, search_offset
 from .views import endpoint
 
 
@@ -39,6 +39,9 @@ def recommend(request, data, activity_id=None):
             work['own_reason'] = own.reason if own else ''
     elif work:
         work.update(books.serialize([books.require_work(work_id, public=editing)], request.anonymous_client)[0])
+        if editing and not work['recommended']:
+            from .services import DomainError
+            raise DomainError('recommendation_required', '请先推荐这本书，再写推荐理由', 409)
     if work:
         if activity_id:
             work['recommendation_count'] = activities.recs(activity_id).filter(work_id=work_id).count()
@@ -55,11 +58,11 @@ def recommend(request, data, activity_id=None):
 
 @endpoint('GET')
 def candidates(request, data):
-    parameters(request, ('q','activity')); read_limit(request, search=True)
+    parameters(request, ('q','activity','offset')); read_limit(request, search=True)
     activity_id = positive(request.GET['activity']) if 'activity' in request.GET else None
     if activity_id:
         activities.advance_due(); activities.get(activity_id)
-    payload = catalog.search(request.GET.get('q',''))
+    payload = catalog.search(request.GET.get('q',''), offset=search_offset(request))
     client = request.anonymous_client
     for row in payload['results']:
         recs = activities.recs(activity_id).filter(work_id=row['id']) if activity_id else books.recommendations().filter(work_id=row['id'])

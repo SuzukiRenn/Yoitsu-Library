@@ -10,7 +10,8 @@ def navigation(result, link):
     for number in numbers:
         if links and number - links[-1]['number'] > 1:
             links.append({'number': number-1, 'gap': True})
-        links.append({'number': number, 'url': link(number), 'current': number == current})
+        links.append({'number': number, 'url': link(number), 'current': number == current,
+                      'mobile': abs(number - current) <= 1})
     return {'current': current, 'count': count, 'links': links,
         'previous': link(current-1) if current > 1 else None,
         'next': link(current+1) if current < count else None,

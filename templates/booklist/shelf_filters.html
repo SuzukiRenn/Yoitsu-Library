@@ -1,0 +1,12 @@
+<form class="shelf-filters" method="get" data-tag-filter>
+<input type="hidden" name="sort" value="{{ sort }}">
+{% if period %}<input type="hidden" name="period" value="{{ period }}">{% endif %}
+<input type="hidden" name="page_size" value="{{ page_size }}">
+<div class="shelf-filter-row"><label class="sr-only" for="shelf-search">搜索书名或作者</label><input id="shelf-search" name="q" type="search" value="{{ query }}" maxlength="100" placeholder="搜索书名或作者" autocomplete="off"><button type="submit" class="primary">搜索</button>
+<details class="tag-dropdown" data-tag-dropdown><summary>标签筛选<span data-tag-selection-count{% if not selected_tags %} hidden{% endif %}>{{ selected_tags|length }}</span></summary>
+<div class="tag-dropdown-panel" id="tag-filter-panel"><div class="tag-panel-heading"><strong>筛选标签</strong><button type="button" data-clear-tag-selection>清空标签</button></div>
+<div class="tag-picked" data-picked-section hidden><p>已选标签</p><div class="tags" data-picked-tags></div></div>
+<label class="sr-only" for="tag-search">搜索标签</label><input id="tag-search" type="search" placeholder="查找标签" autocomplete="off" aria-controls="filter-tags">
+<div class="tags" id="filter-tags">{% for tag in tags %}<label class="tag" data-tag-name="{{ tag.name }}"><input type="checkbox" name="tag" value="{{ tag.id }}" {% if tag.id in selected_tags %}checked{% endif %}>{{ tag.name }} <span class="tag-count">{{ tag.count }}</span></label>{% endfor %}</div>
+<p class="tag-filter-empty" role="status"{% if tags %} hidden{% endif %}>没有匹配的标签</p><div class="tag-panel-footer"><button type="submit" class="primary">应用筛选</button></div></div></details></div>
+</form>

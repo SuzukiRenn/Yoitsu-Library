@@ -63,9 +63,17 @@ http {
     ssl_certificate /etc/nginx/tls/fullchain.pem;
     ssl_certificate_key /etc/nginx/tls/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
+    location = /static/favicon.svg {{
+      alias /srv/static/favicon.svg;
+      default_type image/svg+xml;
+      etag off;
+      if_modified_since off;
+      add_header Cache-Control "no-store" always;
+      add_header X-Content-Type-Options nosniff always;
+    }}
     location /static/ {{
       alias /srv/static/;
-      types {{ text/css css; text/javascript js mjs; }}
+      types {{ text/css css; text/javascript js mjs; image/svg+xml svg; image/png png; }}
       autoindex off;
       add_header X-Content-Type-Options nosniff always;
     }}

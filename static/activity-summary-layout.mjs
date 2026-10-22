@@ -18,17 +18,17 @@ export function wrap(text,width,measure) {
 
 export function layout(snapshot,measure) {
   const pages=[[]],gap=24,padding=30,inner=RIGHT-LEFT-padding*2;
-  const textRows=(text,width,size=28,bold=false,color='#263d34',height=43)=>wrap(text,width,t=>measure(t,size,bold)).map(text=>({text,size,bold,color,height}));
-  const header=textRows(snapshot.activity.title,RIGHT-LEFT,44,true,'#203b30',58);
+  const textRows=(text,width,size=28,bold=false,color='#222222',height=43)=>wrap(text,width,t=>measure(t,size,bold)).map(text=>({text,size,bold,color,height}));
+  const header=textRows(snapshot.activity.title,RIGHT-LEFT,44,true,'#222222',58);
   const top=Math.max(250,98+header.length*58+90);
   const entries=snapshot.works.map((work,index)=>({work,rank:String(index+1).padStart(2,'0'),
-    title:textRows(work.title,inner-180,34,true,'#203b30',47),
-    author:textRows(work.author||'作者未填写',inner-180,25,false,'#68766d',36)}));
+    title:textRows(work.title,inner-180,34,true,'#222222',47),
+    author:textRows(work.author||'作者未填写',inner-180,25,false,'#717171',36)}));
   // All cards in one export share a height; reason counts never change it.
   const height=Math.max(260,...entries.map(entry=>padding*2+entry.title.length*47+entry.author.length*36+50));
   if(top+height>BOTTOM) throw new Error('书名或活动名称过长，无法排版，请调整后重试');
   let y=top;
-  if(!entries.length) pages[0].push({text:'本期暂无推荐作品',x:LEFT,y,size:30,color:'#68766d',height:50});
+  if(!entries.length) pages[0].push({text:'本期暂无推荐作品',x:LEFT,y,size:30,color:'#717171',height:50});
   for(const {work,rank,title,author} of entries) {
     if(y+height>BOTTOM) {pages.push([]);y=top;}
     const rows=pages.at(-1),base=y+padding;
@@ -37,7 +37,7 @@ export function layout(snapshot,measure) {
     let ty=base;
     for(const row of [...title,...author]) {rows.push({...row,x:LEFT+padding+180,y:ty});ty+=row.height;}
     rows.push({text:`推荐 ${work.recommendation_count}   ·   点赞 ${work.like_count}   ·   理由 ${work.reason_count??0}`,
-      size:24,color:'#496c48',x:LEFT+padding+180,y:ty+16,height:34});
+      size:24,color:'#555555',x:LEFT+padding+180,y:ty+16,height:34});
     y+=height+gap;
   }
   if(pages.length>300) throw new Error('图片超过 300 张，暂无法一次导出');
@@ -49,11 +49,11 @@ export function render(canvas,plan,index,images=new Map()) {
   const height=index===plan.pages.length-1?Math.min(HEIGHT,Math.max(700,bottom+104)):HEIGHT;
   canvas.width=WIDTH;canvas.height=height;
   const ctx=canvas.getContext('2d');ctx.fillStyle='#f1f3ed';ctx.fillRect(0,0,WIDTH,height);ctx.textBaseline='top';
-  const text=(value,x,y,size=24,color='#68766d',bold=false)=>{ctx.font=`${bold?650:400} ${size}px ${FONT}`;ctx.fillStyle=color;ctx.fillText(value,x,y);};
-  text('共享书单  /  活动推荐',LEFT,46,22,'#607765');
+  const text=(value,x,y,size=24,color='#717171',bold=false)=>{ctx.font=`${bold?650:400} ${size}px ${FONT}`;ctx.fillStyle=color;ctx.fillText(value,x,y);};
+  text('共享书单  /  活动推荐',LEFT,46,22,'#717171');
   let hy=94;for(const row of plan.header){text(row.text,LEFT,hy,row.size,row.color,true);hy+=row.height;}
   text(`${plan.snapshot.activity.start_label} — ${plan.snapshot.activity.end_label}`,LEFT,hy+10,22);
-  text(`${plan.snapshot.total} 部作品  ·  ${plan.snapshot.recommendations} 次推荐`,LEFT,hy+47,24,'#496c48');
+  text(`${plan.snapshot.total} 部作品  ·  ${plan.snapshot.recommendations} 次推荐`,LEFT,hy+47,24,'#555555');
   for(const row of plan.pages[index]) {
     if(row.type==='card') {
       ctx.fillStyle='#fffefa';ctx.beginPath();ctx.roundRect(LEFT,row.y,RIGHT-LEFT,row.height,14);ctx.fill();
@@ -62,7 +62,7 @@ export function render(canvas,plan,index,images=new Map()) {
       const img=images.get(row.url);
       if(img) {const scale=Math.min(140/img.naturalWidth,200/img.naturalHeight),w=img.naturalWidth*scale,h=img.naturalHeight*scale;ctx.drawImage(img,row.x+(140-w)/2,row.y+(200-h)/2,w,h);}
       else {text('暂无',row.x+45,row.y+76,24);text('封面',row.x+45,row.y+110,24);}
-      ctx.fillStyle='#243c32';ctx.fillRect(row.x-8,row.y-8,46,34);text(row.rank,row.x+1,row.y-3,22,'#ffffff',true);
+      ctx.fillStyle='#222222';ctx.fillRect(row.x-8,row.y-8,46,34);text(row.rank,row.x+1,row.y-3,22,'#ffffff',true);
     } else if(row.text) text(row.text,row.x??LEFT,row.y,row.size,row.color,row.bold);
   }
   text('推荐理由请到网站的活动书单查看',LEFT,height-78,21);

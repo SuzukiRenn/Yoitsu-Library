@@ -1,4 +1,4 @@
-import {layout,render,FONT,zipParts} from './activity-summary-layout.mjs?v=5';
+import {layout,render,FONT,zipParts} from './activity-summary-layout.mjs?v=20261022-charcoal-1';
 const root=document.querySelector('[data-summary-export]');
 if (root) {
   const find=name=>root.querySelector(`[data-${name}]`),generate=find('generate'),save=find('save'),all=find('save-all'),status=find('summary-status'),image=find('summary-image');

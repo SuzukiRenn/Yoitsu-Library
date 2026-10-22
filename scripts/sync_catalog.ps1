@@ -59,6 +59,9 @@ incoming=/var/lib/shared-booklist/predeploy/incoming/__STAMP__
 cd "$checkout"
 export BOOKLIST_RELEASE=__RELEASE__
 compose=(docker compose -p shared-booklist-predeploy --env-file /etc/shared-booklist/predeploy.env -f deploy/compose.yaml)
+if [[ -f /etc/shared-booklist/ssh-access/active ]]; then
+    compose+=(-f /etc/shared-booklist/ssh-access/compose.json)
+fi
 run_import=("${compose[@]}" run -T --rm --no-deps -v "$incoming:/transfer:ro" app python /transfer/import_catalog.py --bundle /transfer/catalog.zip --sha256 __SHA__)
 recovery_needed=0
 restore_services() {

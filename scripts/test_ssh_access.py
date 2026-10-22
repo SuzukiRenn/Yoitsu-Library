@@ -1,0 +1,26 @@
+import importlib.util,unittest,json
+from pathlib import Path
+spec=importlib.util.spec_from_file_location('ssh_access',Path('deploy/ssh_access.py'));module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+class ConfigurationTests(unittest.TestCase):
+ def test_only_loopback_https_is_published(self):
+  config,nginx=module.configuration('a'*40)
+  self.assertEqual(set(config['services']),{'app','proxy'})
+  self.assertEqual(config['services']['proxy']['ports'],['127.0.0.1:8443:8443'])
+  self.assertNotIn('ports',config['services']['app'])
+  self.assertTrue(config['networks']['edge_backend']['internal'])
+  self.assertTrue(any(not config['networks'][name].get('internal',False) for name in config['services']['proxy']['networks']))
+  self.assertIn('proxy_set_header Host $http_host;',nginx)
+  self.assertIn('image/svg+xml svg;',nginx)
+  self.assertIn('image/png png;',nginx)
+  icon_location=nginx.split('location = /static/favicon.svg {',1)[1].split('}',1)[0]
+  self.assertIn('default_type image/svg+xml;',icon_location)
+  self.assertIn('etag off;',icon_location)
+  self.assertIn('if_modified_since off;',icon_location)
+  self.assertIn('Cache-Control "no-store"',icon_location)
+  self.assertIn('${BOOKLIST_RELEASE}',json.dumps(config))
+  self.assertEqual(config['services']['app']['environment']['BOOKLIST_TRUSTED_PROXY_IPS'],'172.30.29.2')
+  self.assertEqual(config['services']['app']['networks']['edge_backend']['ipv4_address'],'172.30.29.3')
+  self.assertNotEqual(config['services']['app']['networks']['edge_backend']['ipv4_address'],config['services']['proxy']['networks']['edge_backend']['ipv4_address'])
+ def test_invalid_release_is_refused(self):
+  with self.assertRaises(ValueError):module.configuration('invalid')
+if __name__=='__main__':unittest.main()

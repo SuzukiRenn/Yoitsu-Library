@@ -8,6 +8,7 @@ from .models import Activity, ActivityTransition, ActivityWork, Recommendation, 
 from .protocol import pagination, utc_milliseconds
 from .text import normalize
 from .shelf_sort import validate as validate_sort
+from .shelf_filters import search_text,tag_ids
 
 LABELS = {'draft': '草稿', 'scheduled': '待开始', 'active': '进行中', 'paused': '暂停', 'ended': '已结束', 'cancelled': '已取消'}
 
@@ -50,8 +51,10 @@ def summary(row):
         'end_label': timezone.localtime(row.ended_at or row.scheduled_end_at, ZoneInfo('Asia/Shanghai')).strftime('%Y-%m-%d %H:%M')}
 
 
-def listing(activity_id, client=None, page=1, page_size=20, *, work_id=None, sort="recommendations"):
+def listing(activity_id, client=None, page=1, page_size=20, *, work_id=None, sort="recommendations", q="", tags=()):
     sort = validate_sort(sort)
+    q = search_text(q)
+    tags = tag_ids(tags)
     activity = get(activity_id)
     offset, size = pagination(page, page_size)
     snaps = ActivityWork.objects.filter(activity=activity, archived_at__isnull=True, merged_into__isnull=True,
@@ -67,6 +70,19 @@ def listing(activity_id, client=None, page=1, page_size=20, *, work_id=None, sor
         return (*counts[sort], -snap.created_at.timestamp(), snap.pk)
     ordered = sorted(snaps, key=rank)
     ordered = [snap for snap in ordered if rc.get(snap.pk, 0)]
+    # Use frozen snapshot tags, never current catalog tags for historical activities.
+    tag_counts={}
+    def snapshot_tags(snap):
+        return {tag['id']:tag['name'] for tag in (snap.snapshot_tags or []) if isinstance(tag,dict) and type(tag.get('id')) is int and isinstance(tag.get('name'),str)}
+    for snap in ordered:
+        for tag_id,name in snapshot_tags(snap).items():
+            row=tag_counts.setdefault(tag_id,{'id':tag_id,'name':name,'count':0});row['count']+=1
+    if q:
+        # Python casefold preserves non-ASCII case matching on snapshot strings.
+        key=q.casefold()
+        ordered=[snap for snap in ordered if key in snap.snapshot_title.casefold() or key in (snap.snapshot_author or '').casefold()]
+    if tags:ordered=[snap for snap in ordered if set(tags)<=snapshot_tags(snap).keys()]
+
     own = {rec.work_id: rec for rec in recommendations.filter(anonymous_client=client)} if client else {}
     own_likes = set(likes.filter(anonymous_client=client).values_list('work_id', flat=True)) if client else set()
     from .reason_likes import entries
@@ -81,7 +97,8 @@ def listing(activity_id, client=None, page=1, page_size=20, *, work_id=None, sor
             'own_reason': own[snap.work_id].reason if snap.work_id in own else '',
             'reason_count': visible.count(), 'reasons': entries(visible, client, limit=2, writable=writable(activity)),
             'top_reason': next(iter(entries(visible, client, limit=1, popular=True, writable=writable(activity))), None)})
-    return {'activity': summary(activity), 'results': result, 'total': len(ordered), 'page': int(page), 'page_size': size, 'sort': sort}
+    return {'activity': summary(activity), 'results': result, 'total': len(ordered), 'page': int(page), 'page_size': size, 'sort': sort, 'query':q,'selected_tags':tags,
+            'tags':sorted(tag_counts.values(),key=lambda tag:(-tag['count'],tag['name'],tag['id']))}
 
 
 def submit(activity_id, client, data):
@@ -99,7 +116,7 @@ def submit(activity_id, client, data):
         snap = ActivityWork.objects.create(activity=activity, work=work, snapshot_title=normalize(work.display_title, 'title', required=True),
             snapshot_author=normalize(metadata['author'], 'title'),
             snapshot_description=metadata['description'], snapshot_tags=metadata['tags'],
-            snapshot_cover_url=catalog.cover_url(work.cover_url_override if work.cover_url_overridden else work.wenku8_cover_url, cached=False) or '')
+            snapshot_cover_url=catalog.snapshot_cover(work))
     row = recs(activity_id).filter(work=work, anonymous_client=client).first()
     if row:
         edit_reason(row, reason)

@@ -51,6 +51,30 @@ class PublicTests(TestCase):
         self.assertEqual((self.current()['recommendation_count'], Work.objects.count()), (2, 1))
         self.assertEqual(PublicLike.objects.count(), 0)
 
+    def test_reason_edit_requires_own_active_recommendation_on_pages_and_api(self):
+        other = Client(); self.actor(other)
+        self.submit(work_id=self.work.pk, browser=other)
+        edit = f'/recommend/?work={self.work.pk}&edit=1'
+        reason = f'/api/v1/public/works/{self.work.pk}/reason/'
+        for path in ['/', f'/works/{self.work.pk}/']:
+            self.assertNotContains(self.client.get(path), f'/recommend/?work={self.work.pk}&amp;edit=1')
+        self.assertEqual(self.client.get(edit).status_code, 409)
+        self.assertEqual(self.post(reason, {'reason': '尚未推荐'}).status_code, 409)
+        self.action('like')
+        self.assertEqual(self.post(reason, {'reason': '只点赞'}).status_code, 409)
+        self.assertFalse(books.reasons().filter(anonymous_client=self.person).exists())
+        self.action('recommend')
+        for path in ['/', f'/works/{self.work.pk}/']:
+            self.assertContains(self.client.get(path), f'/recommend/?work={self.work.pk}&amp;edit=1')
+        self.assertEqual(self.client.get(edit).status_code, 200)
+        self.assertEqual(self.post(reason, {'reason': '已推荐的理由'}).status_code, 200)
+        self.action('recommend', False)
+        self.assertEqual(self.client.get(edit).status_code, 409)
+        self.assertEqual(self.post(reason, {'reason': '取消后的旧页面写入'}).status_code, 409)
+        self.assertEqual(books.reasons().get(anonymous_client=self.person).reason, '已推荐的理由')
+        self.action('recommend')
+        self.assertEqual(self.client.get(edit).status_code, 200)
+
     def test_source_cycle_blocks_off_shelf_likes_and_resets_reasons(self):
         self.work.wenku8_book_id=123; self.work.identity_status='matched'; self.work.save()
         self.assertEqual(self.action('like').status_code,409)

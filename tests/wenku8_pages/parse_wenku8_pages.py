@@ -98,15 +98,17 @@ def word_count(value):
 
 
 def metadata_tables(root):
-    tables = []
+    tables = {}
     for cell in root.xpath("//td[not(.//td)]"):
-        # More than one recognized label allows damaged metadata to stay a detail page.
-        if any(re.match(re.escape(label) + r"\s*[:：]", clean(cell.text_content()))
-               for label in LEGACY.LABELS.values()):
+        text = clean(cell.text_content())
+        labels = {label for label in LEGACY.LABELS.values()
+                  if re.match(re.escape(label) + r"\s*[:：]", text)}
+        if labels:
             table = cell.xpath("ancestor::table[1]")[0]
-            if table not in tables:
-                tables.append(table)
-    return tables
+            tables.setdefault(table, set()).update(labels)
+    # Comments also contain isolated "最后更新" cells. Require distinct fields,
+    # while retaining incomplete metadata for explicit field-level diagnostics.
+    return [table for table, labels in tables.items() if len(labels) >= 2]
 
 
 def search_tables(root):

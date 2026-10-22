@@ -11,14 +11,28 @@ from scripts import cache_wenku8_covers as worker
 URL = 'http://img.wenku8.com/image/4/4151/4151s.png'
 
 
-def png(width=1, height=1):
+def png(width=1, height=1, rgba=b'\xff\x00\x00\xff'):
     def chunk(kind, data):
         return struct.pack('>I', len(data))+kind+data+struct.pack('>I', zlib.crc32(kind+data) & 0xffffffff)
     return b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 6, 0, 0, 0))+chunk(
-        b'IDAT', zlib.compress(b'\x00\xff\x00\x00\xff'))+chunk(b'IEND', b'')
+        b'IDAT', zlib.compress((b'\x00'+rgba*width)*height))+chunk(b'IEND', b'')
 
 
 class CoverCacheTests(SimpleTestCase):
+    def test_same_url_refresh_keeps_old_cover_and_exposes_immutable_new_revision(self):
+        with TemporaryDirectory() as directory, override_settings(COVER_CACHE_DIR=Path(directory)):
+            old = png(); new = png(2, 1)
+            cover_cache.store(URL, old, 'image/png')
+            revision = cover_cache.store_version(URL, new, 'image/png')
+            pinned = '/media/covers/'+revision['name']
+            self.assertEqual((Path(directory)/cover_cache.filename(URL)).read_bytes(), old)
+            self.assertEqual((Path(directory)/revision['name']).read_bytes(), new)
+            self.assertEqual(cover_cache.local_url(pinned), pinned)
+            self.assertNotEqual(pinned, cover_cache.local_url(URL))
+            with self.assertRaises(ValueError):
+                cover_cache.store_version(URL, b'broken', 'image/png')
+            self.assertEqual((Path(directory)/revision['name']).read_bytes(), new)
+
     def test_allowlist_prevents_arbitrary_hosts_redirect_targets_and_path_guesses(self):
         self.assertEqual(cover_cache.source_url(URL), URL.replace('http:', 'https:'))
         self.assertEqual(cover_cache.filename(URL), cover_cache.filename(URL.replace('http:', 'https:')))
@@ -96,6 +110,32 @@ class CoverCacheTests(SimpleTestCase):
 
 
 class CachedActivityCoverTests(TestCase):
+    def test_current_cover_updates_without_changing_a_pinned_activity(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from booklist import activities, services
+        from booklist.models import Activity, ActivityWork, Work
+        with TemporaryDirectory() as directory, override_settings(COVER_CACHE_DIR=Path(directory)):
+            first = cover_cache.store_version(URL, png(), 'image/png')
+            work = Work.objects.create(original_submitted_title='版本封面作品', wenku8_cover_url=URL,
+                source_metadata={'cover_cache_version': first})
+            actor = services.initialize_admin('owner', 'Cover-Revision!Testing-Password-49')
+            _, person = services.issue_anonymous()
+            now = timezone.now()
+            period = Activity.objects.create(title='固定封面活动', start_at=now-timedelta(hours=1),
+                started_at=now-timedelta(hours=1), scheduled_end_at=now+timedelta(hours=1),
+                status='active', created_by=actor)
+            activities.submit(period.pk, person, {'work_id':work.pk,'title':work.display_title,
+                'reason':'','copy_public_reason':False})
+            pinned = ActivityWork.objects.get().snapshot_cover_url
+            self.assertEqual(pinned, '/media/covers/'+first['name'])
+            second = cover_cache.store_version(URL, png(rgba=b'\x00\xff\x00\xff'), 'image/png')
+            work.source_metadata['cover_cache_version'] = second
+            work.save(update_fields=['source_metadata'])
+            self.assertEqual(catalog.work_detail(work.pk)['cover_url'], '/media/covers/'+second['name'])
+            self.assertEqual(activities.listing(period.pk)['results'][0]['cover_url'], pinned)
+            self.assertNotEqual(first['name'], second['name'])
+
     def test_new_activity_snapshot_keeps_origin_url_when_cover_is_cached(self):
         from datetime import timedelta
         from django.utils import timezone

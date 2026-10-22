@@ -1,5 +1,5 @@
-import {createPublicApi} from './public-api.mjs?v=20261021-identity1';
-import {createSearchController} from './catalog-search.mjs';
+import {createPublicApi} from './public-api.mjs?v=20261022-identity-sync';
+import {createSearchController} from './catalog-search.mjs?v=20261022-1';
 import {normalize} from './text.mjs';
 import {createCandidatePreview} from './candidate-preview.mjs';
 import {readMetadata} from './manual-metadata.mjs?v=20261020-5';
@@ -23,6 +23,7 @@ if (form) {
   let timer = null, composing = false, busy = false, searchState = selected || editing ? 'ready' : 'idle';
   let manualNew = false;
   let candidateQuery = query.value;
+  let candidateSummary = '';
   function candidateContent(work) {
     const cover = document.createElement('span'); cover.className='book-cover candidate-cover'; cover.setAttribute('aria-hidden','true');
     const placeholder = () => { const rule=document.createElement('span'); rule.className='cover-rule'; return rule; };
@@ -67,18 +68,28 @@ if (form) {
       params.delete('limit'); if (activity) params.set('activity',activity);
       return fetch('/api/v1/recommend/candidates/?'+params,options);
     },
-    onStatus: (text, pending) => { searchStatus.textContent = text; if (pending) searchState='searching'; else if (searchState!=='ready') searchState='error'; },
-    onResult: payload => {
-      searchState='ready'; manualNew=false; preview.hide(); candidates.replaceChildren();
+    onStatus: (text, pending, {append=false}={}) => { searchStatus.textContent = text; if (!append) { if (pending) searchState='searching'; else if (searchState!=='ready') searchState='error'; } },
+    onResult: (payload, {append=false}={}) => {
+      const scrollTop = append ? candidates.scrollTop : 0;
+      const moveFocus = append && document.activeElement === candidates.querySelector('[data-load-more]');
+      let firstNewCandidate;
+      searchState='ready'; manualNew=false; preview.hide();
+      if (append) {
+        candidates.querySelector('[data-load-more]')?.remove();
+        candidates.querySelector('[data-manual-new]')?.remove();
+      } else candidates.replaceChildren();
+      candidateSummary = `已展示 ${payload.loaded} 部／共匹配 ${payload.total} 部`;
       candidateQuery = payload.query || query.value;
       candidateList(true);
       if (!selected) {selectedStatus.textContent=''; hideSelectedCard();}
-      manualState(!editing && !selected && !payload.results.length);
+      manualState(!editing && !selected && !payload.loaded);
       for (const work of payload.results) {
         const button = document.createElement('button'); button.type='button'; button.className='candidate'; button.setAttribute('aria-pressed','false');
+        firstNewCandidate ||= button;
         button.append(...candidateContent(work));
         button.addEventListener('click',()=>{
           if (busy) return;
+          search.cancel(); searchStatus.textContent=candidateSummary;
           for (const item of candidates.querySelectorAll('button')) item.setAttribute('aria-pressed','false');
           selected=work; query.value=work.title; reason.value=work.own_reason || ''; count();
           manualNew=false;
@@ -93,7 +104,19 @@ if (form) {
         });
         preview.bind(button, work); candidates.append(button);
       }
-      if (!editing && payload.results.length && payload.strategy === 'local') {
+      if (payload.has_more) {
+        const more=document.createElement('button');
+        more.type='button'; more.className='candidate-load-more'; more.dataset.loadMore='';
+        more.textContent='加载更多';
+        more.addEventListener('click',async()=>{
+          if (busy || more.disabled) return;
+          more.disabled=true; more.textContent='正在加载…';
+          try { await search.loadMore(); }
+          finally { if (more.isConnected) {more.disabled=false;more.textContent='加载更多';} }
+        });
+        candidates.append(more);
+      }
+      if (!editing && payload.loaded && payload.strategy === 'local') {
         const choice=document.createElement('button');
         choice.type='button'; choice.className='manual-candidate'; choice.dataset.manualNew='';
         choice.setAttribute('aria-pressed','false');
@@ -102,6 +125,7 @@ if (form) {
         choice.append(title,hint);
         choice.addEventListener('click',()=>{
           if (busy) return;
+          search.cancel(); searchStatus.textContent=candidateSummary;
           preview.hide(); selected=null; manualNew=true;
           hideSelectedCard();
           for (const item of candidates.querySelectorAll('button')) item.setAttribute('aria-pressed','false');
@@ -112,6 +136,8 @@ if (form) {
         });
         candidates.append(choice);
       }
+      candidates.scrollTop=scrollTop;
+      if (moveFocus) firstNewCandidate?.focus({preventScroll:true});
     }
   });
   function invalidate() {
@@ -121,6 +147,7 @@ if (form) {
     preview.hide();
     if (selected && reason.value === selected.own_reason) { reason.value=''; count(); }
     clearTimeout(timer); search.cancel(); selected=null; searchState='idle'; candidates.replaceChildren(); selectedStatus.textContent='';
+    candidateSummary='';
     searchStatus.textContent=''; status.textContent=''; label();
     candidateList(true);
     if (!composing && query.value.trim()) { searchState='pending'; timer=setTimeout(()=>search.run(query.value),300); }

@@ -2,6 +2,14 @@
 from urllib.parse import urlencode
 from django.core.exceptions import ValidationError
 
+PERIODS = (('all', '全部时间'), ('month', '近一个月'), ('week', '近一周'))
+
+def validate_period(value):
+    if value not in dict(PERIODS):
+        raise ValidationError('时间范围无效')
+    return value
+
+
 OPTIONS = (('recommendations', '推荐最多'), ('likes', '点赞最多'), ('newest', '最新加入'))
 
 
@@ -13,8 +21,17 @@ def validate(value):
 
 def controls(result):
     parameters = [('tag', tag) for tag in result.get('selected_tags', [])]
+    if result.get('query'):parameters.append(('q',result['query']))
     parameters.append(('page_size', result['page_size']))
     return [{'label': label, 'active': value == result['sort'],
-             'url': '?' + urlencode(parameters + [('sort', value)] + (
-                 [('period', 'all' if value == 'newest' else result['period'])] if 'period' in result else []))}
+             'url': '?' + urlencode(parameters + [('sort', value)] + ([('period', result['period'])] if 'period' in result else []))}
             for value, label in OPTIONS]
+
+
+def period_controls(result):
+    parameters = [('tag', tag) for tag in result.get('selected_tags', [])]
+    if result.get('query'):parameters.append(('q',result['query']))
+    parameters += [('page_size', result['page_size']), ('sort', result['sort'])]
+    return [{'label': label, 'active': value == result['period'],
+             'url': '?' + urlencode(parameters + [('period', value)])}
+            for value, label in PERIODS]

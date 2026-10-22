@@ -31,12 +31,14 @@ class ShelfPaginationTests(TestCase):
             self.assertEqual(first.status_code, 200)
             self.assertEqual(len(first.context['results']), 20)
             self.assertEqual(first.context['paging']['count'], 2)
-            self.assertContains(first, '第 1 / 2 页')
+            self.assertContains(first, '共 21 本')
+            self.assertNotContains(first, '第 1 / 2 页')
             self.assertContains(first, 'aria-current="page">1</span>')
             self.assertContains(first, 'aria-label="第 2 页"')
             second = self.client.get(path, {'page': 2})
             self.assertEqual(len(second.context['results']), 1)
-            self.assertContains(second, '第 2 / 2 页')
+            self.assertNotContains(second, '第 2 / 2 页')
+            self.assertContains(second, 'aria-current="page">2</span>')
             self.assertFalse(set(r['id'] for r in first.context['results']) & set(r['id'] for r in second.context['results']))
             self.assertIsNone(second.context['paging']['next'])
 
@@ -53,14 +55,15 @@ class ShelfPaginationTests(TestCase):
         for direction in ('previous',):
             self.assertEqual(parse_qs(urlsplit(response.context['paging'][direction]).query)['tag'], [str(self.tag.pk)])
 
-    def test_single_page_still_shows_current_and_total_pages(self):
+    def test_single_page_shows_current_page_and_book_count(self):
         PublicRecommendation.objects.filter(work__original_submitted_title='作品20').delete()
         Recommendation.objects.filter(work__original_submitted_title='作品20').delete()
         for path in self.paths():
             response = self.client.get(path, {'page_size': 40})
-            self.assertContains(response, '第 1 / 1 页')
+            self.assertContains(response, '共 20 本')
+            self.assertNotContains(response, '第 1 / 1 页')
             self.assertContains(response, 'aria-current="page">1</span>')
-            self.assertContains(response, 'aria-disabled="true">下一页</span>')
+            self.assertContains(response, 'aria-disabled="true" aria-label="下一页"')
 
     def test_page_size_selector_removed_and_old_urls_use_twenty(self):
         for path in self.paths():
@@ -79,6 +82,16 @@ class ShelfPaginationTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(parse_qs(urlsplit(response['Location']).query)['page'], ['2'])
 
+    def test_public_rolling_window_survives_pagination_and_stale_redirect(self):
+        for period in ['week','month']:
+            response=self.client.get('/',{'period':period,'tag':self.tag.pk,'page':2})
+            self.assertEqual(len(response.context['results']),1)
+            for item in response.context['paging']['links']:
+                if not item.get('gap'):
+                    self.assertEqual(parse_qs(urlsplit(item['url']).query)['period'],[period])
+            redirected=self.client.get('/',{'period':period,'tag':self.tag.pk,'page':99})
+            self.assertEqual(parse_qs(urlsplit(redirected['Location']).query)['period'],[period])
+
     def test_api_contract_keeps_twenty_per_page_and_empty_out_of_range_results(self):
         for path in ('/api/v1/public/works/', f'/api/v1/activities/{self.period.pk}/'):
             result = self.client.get(path).json()
@@ -91,3 +104,9 @@ class PageWindowTests(SimpleTestCase):
         result = navigation({'page': 500, 'page_size': 20, 'total': 20000}, lambda n: f'?page={n}')
         self.assertLessEqual(len(result['links']), 9)
         self.assertEqual([p['number'] for p in result['links'] if not p.get('gap')], [1, 498, 499, 500, 501, 502, 1000])
+
+    def test_mobile_window_keeps_only_current_and_immediate_neighbors(self):
+        for current, expected in [(1, [1, 2]), (500, [499, 500, 501]), (1000, [999, 1000])]:
+            result = navigation({'page': current, 'page_size': 20, 'total': 20000}, lambda n: f'?page={n}')
+            self.assertEqual([item['number'] for item in result['links'] if item.get('mobile')], expected)
+            self.assertTrue(all(item['url'] == f'?page={item["number"]}' for item in result['links'] if item.get('mobile')))

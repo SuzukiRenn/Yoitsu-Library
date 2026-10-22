@@ -1,4 +1,5 @@
-<div class="public-actions" data-work="{{ work.id }}" data-activity="{{ activity.id }}">
-{% include 'booklist/work_stats.html' %}
-{% if activity.writable %}<div class="action-buttons">{% include 'booklist/recommend_button.html' %}<button type="button" data-action="like" data-enabled="{{ work.liked|yesno:'false,true' }}" aria-pressed="{{ work.liked|yesno:'true,false' }}">{{ work.liked|yesno:'已赞,点赞' }}</button>{% if work.recommended %}<a class="reason-link" href="/activities/{{ activity.id }}/recommend/?work={{ work.id }}&amp;edit=1">{% if work.own_reason %}编辑理由{% else %}写理由{% endif %}</a>{% endif %}</div>{% endif %}
-{% if show_recommenders %}{% include 'booklist/recommenders.html' %}{% endif %}</div>
+<div class="public-actions{% if activity.writable %} combined-actions{% endif %}" data-work="{{ work.id }}" data-activity="{{ activity.id }}">
+{% if not activity.writable %}{% include 'booklist/work_stats.html' %}{% endif %}
+{% if activity.writable %}<div class="action-buttons">{% include 'booklist/recommend_button.html' with combined_counts=True %}{% include 'booklist/like_button.html' %}{% if work.recommended %}<a class="reason-link" href="/activities/{{ activity.id }}/recommend/?work={{ work.id }}&amp;edit=1">{% if work.own_reason %}编辑理由{% else %}写理由{% endif %}</a>{% endif %}</div>{% endif %}
+{% if show_recommenders %}{% include 'booklist/recommenders.html' %}{% endif %}
+</div>

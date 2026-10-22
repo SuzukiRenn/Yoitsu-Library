@@ -51,6 +51,26 @@ def cover_url(value, *, cached=True):
         return None
 
 
+def versioned_cover(work):
+    from . import cover_cache
+    if work.cover_url_overridden:
+        return None
+    pointer = work.source_metadata.get('cover_cache_version')
+    if not isinstance(pointer, dict) or pointer.get('source_url') != cover_cache.source_url(work.wenku8_cover_url):
+        return None
+    name = pointer.get('name')
+    if not isinstance(name, str) or not cover_cache.NAME.fullmatch(name): return None
+    info = cover_cache.cache_info(name)
+    if not info or info.get('versioned') is not True or info['source_url'] != pointer['source_url']:
+        return None
+    return '/media/covers/'+name
+
+
+def snapshot_cover(work):
+    return versioned_cover(work) or cover_url(
+        work.cover_url_override if work.cover_url_overridden else work.wenku8_cover_url, cached=False) or ''
+
+
 def serialize_works(works, detail=False):
     ids = [work.pk for work in works]
     public_ids = set(public_works().filter(pk__in=ids).values_list('pk', flat=True))
@@ -73,7 +93,7 @@ def serialize_works(works, detail=False):
             author = manual.author or author
         row = {'id': work.pk, 'title': work.display_title,
                'author': author,
-               'cover_url': cover_url(work.cover_url_override if work.cover_url_overridden else work.wenku8_cover_url),
+               'cover_url': versioned_cover(work) or cover_url(work.cover_url_override if work.cover_url_overridden else work.wenku8_cover_url),
                'is_public': work.pk in public_ids,
                'source_book_id': work.wenku8_book_id,
                'tags': sorted(tags[work.pk].values(), key=lambda tag: (tag['name'], tag['id']))}
@@ -109,10 +129,10 @@ def terms():
     return result
 
 
-def search(query, limit=10):
+def search(query, limit=10, offset=0):
     query = normalize(query, 'title', required=True)
     key = search_key(query)
-    if not key or type(limit) is not int or not 1 <= limit <= 20:
+    if not key or type(limit) is not int or not 1 <= limit <= 20 or type(offset) is not int or not 0 <= offset <= MAX_TERMS:
         raise ValidationError('查询或候选数量无效')
     candidates = terms()
     exact = [(work, (0 if kind == 'title' else 1, -1.0, work), 'exact_'+kind)
@@ -146,10 +166,15 @@ def search(query, limit=10):
     for work, rank, kind in matches:
         if work not in chosen or rank < chosen[work][0]:
             chosen[work] = (rank, kind)
-    ordered = sorted(chosen, key=lambda work: chosen[work][0])[:limit]
+    visible_ids = set(visible_works().filter(pk__in=chosen).values_list('pk', flat=True))
+    ranked = [pk for pk in sorted(chosen, key=lambda work: chosen[work][0]) if pk in visible_ids]
+    total = len(ranked)
+    ordered = ranked[offset:offset+limit]
     current = {work.pk: work for work in visible_works().filter(pk__in=ordered)}
     rows = serialize_works([current[pk] for pk in ordered if pk in current])
     for row in rows:
         row['match_kind'] = chosen[row['id']][1]
-    return {'query': query, 'results': rows, 'strategy': strategy if rows else 'none',
+    next_offset = offset + limit if offset + limit < total else None
+    return {'query': query, 'results': rows, 'strategy': strategy if total else 'none',
+            'total': total, 'offset': offset, 'next_offset': next_offset, 'has_more': next_offset is not None,
             'requires_confirmation': True, 'ai_used': False}

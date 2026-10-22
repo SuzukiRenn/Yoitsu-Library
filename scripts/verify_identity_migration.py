@@ -1,4 +1,4 @@
-"""Synthetic 0010 -> 0011 -> 0010 -> 0011 check in a new worktree-local database."""
+"""Synthetic 0010 -> 0012 -> 0010 -> 0012 check in a new worktree-local database."""
 import json
 import os
 from pathlib import Path
@@ -16,7 +16,7 @@ from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from django.utils import timezone
 
-old, new = ('booklist', '0010_reason_likes'), ('booklist', '0011_accounts_and_notifications')
+old, new = ('booklist', '0010_reason_likes'), ('booklist', '0012_merge_accounts_feedback')
 executor = MigrationExecutor(connection)
 executor.migrate([old])
 apps = executor.loader.project_state([old]).apps
@@ -43,8 +43,8 @@ for target, label in [(new, 'upgrade_preserves_all_legacy_rows'), (old, 'empty_u
     MigrationExecutor(connection).migrate([target])
     assert snapshot() == baseline, label
     checks.append(label)
-from booklist.models import Account, Notification
-assert Account.objects.count() == Notification.objects.count() == 0
+from booklist.models import Account, Notification, Feedback
+assert Account.objects.count() == Notification.objects.count() == Feedback.objects.count() == 0
 checks.append('no_guessed_account_binding_or_historical_notifications')
 with connection.cursor() as cursor:
     assert cursor.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'

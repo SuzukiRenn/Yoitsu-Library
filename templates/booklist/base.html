@@ -1,20 +1,26 @@
 {% load static %}<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{% block title %}共享书单{% endblock %}</title>
-<link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}?v=1">
+<link rel="icon" type="image/png" href="{% static 'logo.png' %}?v=20261022-charcoal-1">
 <link rel="preconnect" href="https://img.wenku8.com">
 <link rel="dns-prefetch" href="//img.wenku8.com">
-<link rel="stylesheet" href="{% static 'catalog.css' %}?v=20261020-30">
-<link rel="stylesheet" href="{% static 'motion.css' %}?v=20261020-5">
-<script type="module" src="{% static 'public.mjs' %}?v=20261021-nickname1"></script>
-<link rel="stylesheet" href="{% static 'account.css' %}?v=20261021-identity4">
-<script type="module" src="{% static 'account.mjs' %}?v=20261021-nickname1"></script>
+<script src="{% static 'motion-boot.js' %}?v=20261021-5"></script>
+<link rel="stylesheet" href="{% static 'catalog.css' %}?v=20261022-charcoal-1">
+<link rel="stylesheet" href="{% static 'feedback.css' %}?v=20261022-6">
+<link rel="stylesheet" href="{% static 'first-visit.css' %}?v=20261022-3">
+<script type="module" src="{% static 'first-visit.mjs' %}?v=20261022-identity-sync"></script>
+<link rel="stylesheet" href="{% static 'motion.css' %}?v=20261022-charcoal-1">
+<script type="module" src="{% static 'public.mjs' %}?v=20261022-identity-sync"></script>
+<link rel="stylesheet" href="{% static 'account.css' %}?v=20261022-identity-sync">
+<script type="module" src="{% static 'account.mjs' %}?v=20261022-identity-sync"></script>
 {% block scripts %}{% endblock %}</head>
 <body><a class="skip-link" href="#main">跳到内容</a>
-<header class="site-header{% if has_admin_access %} has-admin-tools{% endif %}"><a class="brand" href="/"><img src="{% static 'favicon.svg' %}" width="28" height="28" alt="" aria-hidden="true">共享书单</a><div class="header-controls">
+<header class="site-header{% block header_class %}{% endblock %}{% if has_admin_access %} has-admin-tools{% endif %}"><div class="header-location"><a class="brand" href="/"><img src="{% static 'logo.png' %}?v=20261022-charcoal-1" width="28" height="28" alt="" aria-hidden="true">共享书单</a>{% block site_location %}{% endblock %}</div><div class="header-controls">
 <nav class="account-nav" aria-label="账户导航">{% if current_account %}<a href="/notifications/">消息 <span data-unread-count{% if not unread_notifications %} hidden{% endif %}>{{ unread_notifications }}</span></a><a href="/account/">{{ current_account.display_name }}</a><button type="button" data-account-logout>退出</button>{% else %}<a href="/account/login/">登录</a><a href="/account/register/">注册</a>{% endif %}</nav>
 <nav class="main-nav" aria-label="主导航"><a href="/"{% if not navigation_activities %} aria-current="true"{% endif %}>公共书单</a><a href="/activities/"{% if navigation_activities %} aria-current="true"{% endif %}>推荐活动</a></nav>{% if has_admin_access %}<a class="admin-return" href="/manage/">返回管理后台</a>{% endif %}</div></header>
 <main id="main">{% block content %}{% endblock %}</main>
+<button type="button" class="back-to-top" data-back-to-top aria-label="回到顶部" title="回到顶部" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5h14M12 20V9m-5 5 5-5 5 5"/></svg></button>
 <p id="action-status" class="action-status" role="status"></p>
 {% include 'booklist/legal_footer.html' %}
+{% block feedback_footer %}<footer class="feedback-footer"><a href="/feedback/{% if feedback_source %}?from={{ feedback_source|urlencode }}{% endif %}">问题反馈</a></footer>{% endblock %}
 </body></html>

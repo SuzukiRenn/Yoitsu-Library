@@ -1,20 +1,20 @@
+from django.conf import settings
 from urllib.parse import urlencode
 from django.core.exceptions import ValidationError
-from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from .list_pagination import PAGE_SIZE, navigation
-from .shelf_sort import controls
-from . import public_booklist as books, services, public_period
+from .shelf_sort import controls, period_controls
+from . import public_booklist as books, services
 from .catalog_views import page, parameters, read_limit
 from .protocol import pagination
 from .views import endpoint
 
 
 def list_data(request, fixed_size=None):
-    if set(request.GET) - {'page', 'page_size', 'tag', 'sort', 'period'} or any(len(request.GET.getlist(key)) != 1 for key in request.GET if key != 'tag'):
+    if set(request.GET) - {'page', 'page_size', 'tag', 'sort', 'period', 'q'} or any(len(request.GET.getlist(key)) != 1 for key in request.GET if key != 'tag'):
         raise ValidationError('查询参数无效')
-    return books.listing(request.anonymous_client, request.GET.get('page', '1'), fixed_size if fixed_size is not None else request.GET.get('page_size', '20'), request.GET.getlist('tag'), request.GET.get('sort', 'recommendations'), request.GET.get('period', 'all'))
+    return books.listing(request.anonymous_client, request.GET.get('page', '1'), fixed_size if fixed_size is not None else request.GET.get('page_size', '20'), request.GET.getlist('tag'), request.GET.get('sort', 'recommendations'), period=request.GET.get('period', 'all'), q=request.GET.get('q', ''))
 
 
 @endpoint('GET')
@@ -22,10 +22,10 @@ def home(request, data):
     read_limit(request)
     result = list_data(request, PAGE_SIZE)
     def link(number):
-        return '?' + urlencode([('tag', tag) for tag in result['selected_tags']] + [('page_size', result['page_size']), ('sort', result['sort']), ('period', result['period']), ('page', number)])
+        return '?' + urlencode([('tag', tag) for tag in result['selected_tags']] + ([('q', result['query'])] if result['query'] else []) + [('page_size', result['page_size']), ('sort', result['sort']), ('period', result['period']), ('page', number)])
     result['paging'] = navigation(result, link)
     result['sort_options'] = controls(result)
-    result['period_options'] = public_period.controls(result)
+    result['period_options'] = period_controls(result)
     if result['page'] > result['paging']['count']:
         return redirect(request.path + result['paging']['last_url'])
     return page(request, 'booklist/public.html', result)
@@ -82,8 +82,8 @@ def relation(request, data, work_id, kind):
 def reason(request, data, work_id):
     def operation():
         work = books.require_work(work_id)
-        if not books.recommendations().filter(work=work).exists():
-            raise services.DomainError('not_in_public', '请先重新推荐这本书', 409)
+        if not books.recommendations().filter(work=work, anonymous_client=request.anonymous_client).exists():
+            raise services.DomainError('recommendation_required', '请先推荐这本书，再写推荐理由', 409)
         books.set_reason(work, request.anonymous_client, data['reason'])
         return {'work': books.serialize([work], request.anonymous_client)[0]}
     return write(request, f'public.reason.{work_id}', data, operation)

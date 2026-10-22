@@ -1,5 +1,7 @@
 {% extends 'booklist/base.html' %}
 {% block title %}{% if archive %}往期活动{% else %}推荐活动{% endif %} · 共享书单{% endblock %}
+{% block header_class %} public-header{% endblock %}
+{% block site_location %}<span class="header-current"><span aria-hidden="true">/</span> 推荐活动</span>{% endblock %}
 {% block content %}
 <section class="public-shelf">
 <div class="section-heading activity-index-heading"><h1>{% if archive %}往期活动{% else %}推荐活动{% endif %}</h1>{% if archive %}<a class="primary activity-current-link" href="/activities/">返回当前活动 <span aria-hidden="true">→</span></a>{% else %}<a class="reason-link" href="/activities/history/">回顾往期活动</a>{% endif %}</div>

@@ -3,6 +3,10 @@ import {startReasonLikes} from '../static/reason-likes.mjs';
 const events={}, sent=[], attrs={};
 const button={dataset:{reasonId:'21',work:'9',activity:'3',enabled:'true',writable:'true'},disabled:false,
  setAttribute:(name,value)=>{attrs[name]=value;}};
+button.children=[];button.ownerDocument={createElement:()=>({dataset:{},textContent:''})};
+button.querySelector=s=>button.children.find(c=>s==='[data-reason-label]'?'reasonLabel' in c.dataset:'reasonCount' in c.dataset);
+button.replaceChildren=(...children)=>{button.children=children;};
+Object.defineProperty(button,'textContent',{get:()=>button.children.map(c=>c.textContent).join('')});
 const doc={hidden:false,querySelector:s=>s==='#action-status'?status:null,
  querySelectorAll:s=>s==='[data-reason-like]'?[button]:[],
  addEventListener:(name,fn)=>{(events[name]??=[]).push(fn);},dispatchEvent:()=>{}};

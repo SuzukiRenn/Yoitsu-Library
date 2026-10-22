@@ -98,3 +98,89 @@ class ShelfSortTests(TestCase):
             PublicRecommendation.objects.create(work_id=pk, anonymous_client=person)
         Work.objects.filter(pk__in=self.works).update(public_added_at=timezone.now())
         self.assertEqual([r['id'] for r in books.listing(sort='recommendations')['results']], [a,b,c])
+
+
+    def test_public_rolling_period_uses_contribution_dates_not_work_dates(self):
+        from unittest.mock import patch
+        now = timezone.now()
+        a, b, c = self.works
+        # Lifetime A wins recommendations and B wins likes. Move all old actions outside 30 days.
+        PublicRecommendation.objects.update(created_at=now-timedelta(days=40))
+        PublicLike.objects.update(created_at=now-timedelta(days=40))
+        # B has two weekly recommendations; A one monthly recommendation; C one weekly recommendation.
+        for pk, days in [(a, 15), (b, 2), (c, 3)]:
+            PublicRecommendation.objects.filter(work_id=pk).update(created_at=now-timedelta(days=days))
+        PublicLike.objects.filter(work_id=a, cancelled_at__isnull=True).update(created_at=now-timedelta(days=2))
+        PublicLike.objects.filter(work_id=b, cancelled_at__isnull=True).update(created_at=now-timedelta(days=15))
+        # Future and cancelled actions must not inflate the rolling rank.
+        PublicLike.objects.filter(cancelled_at__isnull=False).update(created_at=now-timedelta(days=1))
+        person=services.issue_anonymous()[1]
+        future=PublicLike.objects.create(work_id=c,anonymous_client=person)
+        PublicLike.objects.filter(pk=future.pk).update(created_at=now+timedelta(seconds=1))
+        with patch('booklist.public_booklist.timezone.now', return_value=now):
+            week=books.listing(period='week')
+            self.assertEqual([r['id'] for r in week['results']], [b,c])
+            self.assertEqual(week['total'], 2)
+            self.assertEqual(books.listing(period='week',page_size=1,page=2)['results'][0]['id'],c)
+            self.assertEqual([r['id'] for r in books.listing(sort='likes',period='week')['results']], [a])
+            self.assertEqual([r['id'] for r in books.listing(sort='likes',period='month')['results']], [b,a])
+            # Displayed counts remain cumulative and the old all-time behaviour remains available.
+            self.assertEqual(week['results'][0]['recommendation_count'],2)
+            self.assertEqual(books.listing()['total'],3)
+            self.assertEqual(books.listing(sort='newest',period='week')['period'],'week')
+
+    def test_period_boundary_and_moderated_rows(self):
+        from unittest.mock import patch
+        now=timezone.now();a,b,c=self.works
+        PublicRecommendation.objects.update(created_at=now-timedelta(days=40))
+        for pk, age in [(a,timedelta(days=7)), (b,timedelta(days=7,microseconds=1)), (c,timedelta(days=1))]:
+            PublicRecommendation.objects.filter(work_id=pk).update(created_at=now-age)
+        PublicRecommendation.objects.filter(work_id=c).update(invalidated_at=now)
+        with patch('booklist.public_booklist.timezone.now',return_value=now):
+            self.assertEqual([r['id'] for r in books.listing(period='week')['results']],[a])
+
+    def test_public_period_contract_links_and_activity_is_unchanged(self):
+        for path in ['/', '/api/v1/public/works/']:
+            for query in ['period=invalid','period=week&period=month']:
+                self.assertEqual(self.client.get(path+'?'+query).status_code,400)
+            self.assertEqual(self.client.get(path+'?period=week').status_code,200)
+        page=self.client.get('/',{'period':'month','sort':'likes','tag':self.tag.pk})
+        self.assertEqual(page.context['period'],'month')
+        for option in page.context['period_options']:
+            query=parse_qs(urlsplit(option['url']).query)
+            self.assertEqual(query['sort'],['likes']);self.assertNotIn('page',query)
+            self.assertEqual(query['tag'],[str(self.tag.pk)])
+        for option in page.context['sort_options']:
+            query=parse_qs(urlsplit(option['url']).query)
+            self.assertEqual(query['period'],['month'])
+        for path in [f'/activities/{self.activity.pk}/',f'/api/v1/activities/{self.activity.pk}/']:
+            self.assertEqual(self.client.get(path+'?period=week').status_code,400)
+        self.assertNotContains(self.client.get(f'/activities/{self.activity.pk}/'),'近一个月')
+
+    def test_newest_period_filters_enrollment_dates_before_pagination(self):
+        from unittest.mock import patch
+        now=timezone.now();a,b,c=self.works
+        # Old enrolled work has fresh recommendations; newest must still exclude it.
+        Work.objects.filter(pk=a).update(public_added_at=now-timedelta(days=31))
+        Work.objects.filter(pk=b).update(public_added_at=now-timedelta(days=10))
+        Work.objects.filter(pk=c).update(public_added_at=now-timedelta(days=7))
+        PublicRecommendation.objects.update(created_at=now-timedelta(days=40))
+        PublicLike.objects.update(created_at=now-timedelta(days=40))
+        with patch('booklist.public_booklist.timezone.now',return_value=now):
+            self.assertEqual([r['id'] for r in books.listing(sort='newest',period='week')['results']],[c])
+            month=books.listing(sort='newest',period='month',page_size=1)
+            self.assertEqual(month['total'],2)
+            self.assertEqual(month['results'][0]['id'],c)
+            self.assertEqual(books.listing(sort='newest',period='month',page_size=1,page=2)['results'][0]['id'],b)
+            self.assertEqual(books.listing(sort='recommendations',period='week')['total'],0)
+            Work.objects.filter(pk=c).update(public_added_at=now-timedelta(days=7,microseconds=1))
+            self.assertEqual(books.listing(sort='newest',period='week')['total'],0)
+            Work.objects.filter(pk=c).update(public_added_at=now+timedelta(seconds=1))
+            self.assertEqual(books.listing(sort='newest',period='week')['total'],0)
+        page=self.client.get('/',{'sort':'newest','period':'month','q':'排序','tag':self.tag.pk})
+        self.assertContains(page,'class="shelf-period"')
+        self.assertNotContains(page,'class="shelf-period" hidden')
+        for option in page.context['sort_options']:
+            params=parse_qs(urlsplit(option['url']).query)
+            self.assertEqual(params['period'],['month'])
+            self.assertEqual(params['q'],['排序'])

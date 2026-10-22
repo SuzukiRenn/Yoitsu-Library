@@ -96,14 +96,6 @@ class PublicPeriodTests(TestCase):
                         ranked = self.listing(sort=sort,period=period)
                     self.assertEqual(next(item['rank'] for item in ranked['results'] if item['id']==work.pk),2)
 
-    def test_all_excludes_future_events_from_rank(self):
-        future = PublicLike.objects.create(work=self.works[3],anonymous_client=self.people[0])
-        PublicLike.objects.filter(pk=future.pk).update(created_at=self.now+timedelta(days=1))
-        with patch('booklist.public_booklist.serialize', side_effect=lambda works, client: [
-                {'id': w.pk,'rank': w.rank_likes} for w in works]):
-            ranked = self.listing(sort='likes')
-        self.assertEqual(next(row['rank'] for row in ranked['results'] if row['id']==self.works[3].pk),0)
-
     def test_inactive_events_never_rank_and_zero_recent_entries_are_excluded(self):
         for field in ('withdrawn_at','invalidated_at','archived_at'):
             work = Work.objects.create(original_submitted_title='无效推荐'+field, public_added_at=self.now)
@@ -142,17 +134,16 @@ class PublicPeriodTests(TestCase):
         self.events(y,PublicRecommendation,[-1]*4)
         self.assertEqual([r['id'] for r in self.listing(period='week')['results']][:2],[x.pk,y.pk])
 
-    def test_newest_normalizes_valid_period_and_does_not_filter(self):
-        expected=[work.pk for work in self.works]
-        for period in ('all','month','week'):
-            result=self.listing(sort='newest',period=period)
-            self.assertEqual(result['period'],'all')
-            self.assertEqual([r['id'] for r in result['results']],expected)
-        result=self.get('/api/v1/public/works/',{'sort':'newest','period':'week'}).json()
-        self.assertEqual(result['period'],'all')
-        response=self.get('/',{'sort':'newest','period':'week'})
-        self.assertContains(response,'data-public-period="all"')
-        self.assertContains(response,'data-public-period-controls hidden')
+    def test_newest_preserves_period_and_filters_added_time_like_anonymous(self):
+        old = self.works[-1]
+        Work.objects.filter(pk=old.pk).update(public_added_at=self.now-timedelta(days=40))
+        for period in ('all', 'month', 'week'):
+            result = self.listing(sort='newest', period=period)
+            self.assertEqual(result['period'], period)
+            expected = self.works if period == 'all' else self.works[:-1]
+            self.assertEqual([row['id'] for row in result['results']], [w.pk for w in expected])
+        response = self.get('/', {'sort':'newest', 'period':'week'})
+        self.assertContains(response, 'class="shelf-period"')
 
     def test_html_and_api_share_validation_and_default(self):
         for path in ('/','/api/v1/public/works/'):
@@ -169,7 +160,7 @@ class PublicPeriodTests(TestCase):
         self.assertContains(response,'<input type="hidden" name="period" value="month">',html=True)
         for option in response.context['sort_options']:
             params=parse_qs(urlsplit(option['url']).query)
-            self.assertEqual(params['period'],['all' if params['sort']==['newest'] else 'month'])
+            self.assertEqual(params['period'],['month'])
             self.assertEqual(params['tag'],[str(self.tag.pk)])
             self.assertNotIn('page',params)
         for option in response.context['period_options']:

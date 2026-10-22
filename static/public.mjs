@@ -1,9 +1,10 @@
-import {installShelfSort} from './shelf-sort.mjs?v=20261021-period2';
-import {startReasonLikes} from './reason-likes.mjs?v=20261021-nickname1';
-import {startLiveInteractions} from './live-interactions.mjs?v=20261021-nickname1';
-import {createShelfRefresh} from './live-shelf.mjs?v=20261021-period2';
+import {installShelfSort} from './shelf-sort.mjs?v=20261022-identity-sync';
+import {startReasonLikes} from './reason-likes.mjs?v=20261022-identity-sync';
+import {startLiveInteractions} from './live-interactions.mjs?v=20261022-identity-sync';
+import {createShelfRefresh} from './live-shelf.mjs?v=20261022-identity-sync';
 import './navigation-motion.mjs?v=20261020-1';
-import './work-motion.mjs?v=20261020-1';
+import './work-motion.mjs?v=20261021-5';
+import './back-to-top.mjs?v=20261021-24';
 const status = document.querySelector('#action-status');
 const shelfRefresh=createShelfRefresh();
 startLiveInteractions({refresh:shelfRefresh});

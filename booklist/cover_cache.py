@@ -54,7 +54,10 @@ def cache_info(name):
         if metadata.stat().st_size > 4096:
             return None
         info = json.loads(metadata.read_text(encoding='utf-8'))
-        if filename(info['source_url']) != name or image.stat().st_size != info['bytes'] or not 0 < info['bytes'] <= MAX_BYTES:
+        expected = filename(info['source_url'])
+        if info.get('versioned') is True:
+            expected = version_name(info['source_url'], info['sha256'])
+        if expected != name or image.stat().st_size != info['bytes'] or not 0 < info['bytes'] <= MAX_BYTES:
             return None
         if not re.fullmatch(r'[0-9a-f]{64}', info['sha256']):
             return None
@@ -64,8 +67,19 @@ def cache_info(name):
 
 
 def local_url(value):
+    if isinstance(value, str) and value.startswith('/media/covers/'):
+        name = value[len('/media/covers/'):]
+        return value if NAME.fullmatch(name) and cache_info(name) else None
     name = filename(value)
     return '/media/covers/'+name if name and cache_info(name) else None
+
+
+def version_name(value, digest):
+    url = source_url(value)
+    if url is None or not isinstance(digest, str) or not re.fullmatch('[0-9a-f]{64}', digest):
+        return None
+    extension = 'png' if url.endswith('.png') else 'jpg'
+    return hashlib.sha256((url+'\n'+digest).encode()).hexdigest()+'.'+extension
 
 
 def validate_image(raw, extension, media_type):
@@ -143,6 +157,35 @@ def store(value, raw, media_type):
     atomic_file(root/name, raw)
     atomic_file(root/(name+'.json'), json.dumps(info, ensure_ascii=True).encode())
     return info
+
+
+def store_version(value, raw, media_type):
+    """Preserve the original URL cache for legacy activity snapshots; add immutable revisions."""
+    original = filename(value)
+    if original is None: raise ValueError('cover_origin_not_allowed')
+    dimensions = validate_image(raw, original.rsplit('.', 1)[1], media_type)
+    digest = hashlib.sha256(raw).hexdigest()
+    name = version_name(value, digest)
+    root = cache_root(); root.mkdir(parents=True, exist_ok=True)
+    if root.is_symlink() or (root/name).is_symlink(): raise ValueError('linked_cache_not_allowed')
+    base_info = cache_info(original)
+    if base_info is None:
+        # Never overwrite a known old cover when source bytes change at the same URL.
+        if (root/original).exists() or (root/(original+'.json')).exists():
+            raise ValueError('existing_cover_requires_review')
+        store(value, raw, media_type)
+    elif hashlib.sha256((root/original).read_bytes()).hexdigest() != base_info['sha256']:
+        raise ValueError('existing_cover_hash_mismatch')
+    info = {'source_url': source_url(value), 'bytes': len(raw), 'sha256': digest,
+            **dimensions, 'versioned': True}
+    if cache_info(name) is None:
+        if (root/name).exists() or (root/(name+'.json')).exists():
+            raise ValueError('existing_cover_requires_review')
+        atomic_file(root/name, raw)
+        atomic_file(root/(name+'.json'), json.dumps(info, ensure_ascii=True).encode())
+    elif hashlib.sha256((root/name).read_bytes()).hexdigest() != digest:
+        raise ValueError('existing_cover_hash_mismatch')
+    return {**info, 'name': name}
 
 
 def serve(request, name):

@@ -259,6 +259,8 @@ class AccountTests(TestCase):
         work = response.json()['work']
         path = f'/api/v1/catalog/works/{work["id"]}/metadata/'
         self.assertEqual(self.post(bob, path, {'description': '篡改', 'tags': [], 'revision': 1}).status_code, 403)
+        self.assertEqual(self.post(bob, f'/api/v1/public/works/{work["id"]}/reason/', {'reason': '乙理由'}).status_code, 409)
+        self.assertEqual(self.post(bob, f'/api/v1/public/works/{work["id"]}/recommend/', {'enabled': True}).status_code, 200)
         self.assertEqual(self.post(bob, f'/api/v1/public/works/{work["id"]}/reason/', {'reason': '乙理由'}).status_code, 200)
         self.assertTrue(books.reasons().filter(work_id=work['id'], anonymous_client=self.readers['alice'].principal, reason='甲理由').exists())
         self.assertEqual(self.post(bob, '/api/v1/account/profile/', {'display_name': '伪造', 'account_id': self.readers['alice'].pk}).status_code, 400)
@@ -398,6 +400,51 @@ class AccountTests(TestCase):
         self.assertEqual(response.url, f'/works/{self.work.pk}/')
         Work.objects.filter(pk=self.work.pk).update(hidden_at=timezone.now())
         self.assertEqual(self.browser('alice').get(path).status_code, 404)
+
+
+    def test_synced_reason_gate_requires_own_recommendation_in_html_and_api(self):
+        self.recommend('alice')
+        bob = self.browser('bob')
+        edit = f'/recommend/?work={self.work.pk}&edit=1'
+        api = f'/api/v1/public/works/{self.work.pk}/reason/'
+        self.assertEqual(bob.get(edit).status_code, 409)
+        self.assertNotContains(bob.get('/'), f'href="{edit.replace("&", "&amp;")}"')
+        self.assertEqual(self.post(bob, api, {'reason':'我的理由'}).status_code, 409)
+        self.recommend('bob')
+        self.assertEqual(bob.get(edit).status_code, 200)
+        self.assertEqual(self.post(bob, api, {'reason':'我的理由'}).status_code, 200)
+        self.relation('bob', 'recommend', False)
+        self.assertEqual(bob.get(edit).status_code, 409)
+        self.assertEqual(self.post(bob, api, {'reason':'修改理由'}).status_code, 409)
+
+    def test_synced_feedback_is_private_and_follows_account_across_sessions(self):
+        from booklist.models import Feedback
+        guest = self.browser()
+        response = guest.get('/feedback/?from=/')
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith('/account/login/'))
+        payload = {'category':'metadata', 'message':'同步版反馈合成测试', 'page_url':'/'}
+        self.assertEqual(self.post(guest, '/api/v1/feedback/', payload).status_code, 401)
+        alice = self.browser('alice')
+        self.assertEqual(self.post(alice, '/api/v1/feedback/', payload).status_code, 200)
+        self.assertEqual(Feedback.objects.get().anonymous_client_id, self.readers['alice'].principal_id)
+        # A genuinely separate session must see the same history.
+        token, session = accounts.session(self.readers['alice'])
+        other_device = self.browser()
+        other_device.cookies[settings.ACCOUNT_COOKIE] = token
+        self.assertContains(other_device.get('/feedback/'), payload['message'])
+        self.assertNotContains(self.browser('bob').get('/feedback/'), payload['message'])
+        self.assertNotContains(alice.get('/feedback/'), '当前匿名身份')
+        Account.objects.filter(pk=self.readers['alice'].pk).update(is_active=False)
+        self.assertEqual(self.post(alice, '/api/v1/feedback/', payload).status_code, 401)
+
+    def test_synced_shared_shell_and_mobile_assets_keep_account_navigation(self):
+        response = self.browser('alice').get('/')
+        for fragment in ('logo.png', 'feedback.css', 'first-visit.mjs', '公共书单', 'shelf-recommend',
+                         'account-nav', '消息', '青禾', '反馈', 'shelf-controls'):
+            self.assertContains(response, fragment)
+        self.assertNotContains(response, 'public-period.css')
+        self.assertNotContains(response, '@alice')
 
 
 @override_settings(REQUIRE_ACCOUNT=True)
