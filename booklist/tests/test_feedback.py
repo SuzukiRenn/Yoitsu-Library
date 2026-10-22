@@ -1,6 +1,8 @@
 import json
 from django.conf import settings
 from django.test import Client, TestCase
+from django.utils import timezone
+from unittest.mock import patch
 from booklist import services
 from booklist.models import Feedback, Work, PublicRecommendation, PublicLike, AdminAuditLog
 
@@ -108,8 +110,13 @@ class FeedbackTests(TestCase):
         pending = Feedback.objects.create(anonymous_client=self.person, category='other', message='待核查内容')
         response = self.admin.get('/manage/?section=feedback')
         self.assertEqual(response.context['rows'][0].pk, pending.pk)
-        for number in range(20):
-            self.assertEqual(self.post(self.browser, key=f'feedback-limit-{number:04d}').status_code, 200)
-        self.assertEqual(self.post(self.browser, key='feedback-limit-blocked').status_code, 429)
-        self.assertEqual(Feedback.objects.count(), 22)
+        # Keep this batch in one fixed hourly bucket, even across a real hour boundary.
+        with patch('booklist.services.time.time', return_value=timezone.now().timestamp()) as clock:
+            for number in range(20):
+                self.assertEqual(self.post(self.browser, key=f'feedback-limit-{number:04d}').status_code, 200)
+            self.assertEqual(self.post(self.browser, key='feedback-limit-blocked').status_code, 429)
+            self.assertEqual(Feedback.objects.count(), 22)
+            clock.return_value += 3600
+            self.assertEqual(self.post(self.browser, key='feedback-limit-next-hour').status_code, 200)
+        self.assertEqual(Feedback.objects.count(), 23)
         self.assertNotContains(self.browser.get('/feedback/'), closed.message)
