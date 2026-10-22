@@ -20,7 +20,9 @@ def main():
     result = run(args.credentials, dry_run=args.dry_run)
     # This report contains public book metadata and safe error codes only.
     print(json.dumps(result, ensure_ascii=True), flush=True)
-    return 1 if result['status'] == 'needs_attention' else 0
+    if result['status'] == 'needs_attention':
+        return 1
+    return 2 if args.dry_run and result['status'] == 'network_wait' else 0
 
 
 if __name__ == '__main__':

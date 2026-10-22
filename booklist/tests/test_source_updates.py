@@ -1,4 +1,5 @@
-from datetime import date
+from datetime import date, datetime, timezone
+import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
@@ -6,12 +7,21 @@ from unittest.mock import patch
 from django.test import SimpleTestCase, TestCase, override_settings
 from lxml import html
 
-from integrations.wenku8.session import SourceStop
+from integrations.wenku8.session import SourceStop, TransientNetworkError
+from integrations.wenku8.retry_policy import next_check, reviewed_initial_network_stop
 from integrations.wenku8.updates import discover, listing_page
 from booklist.source_updates import commit, prepare_snapshot, run
 from booklist.tests.test_cover_cache import png, URL
 from booklist import cover_cache
 from booklist.models import Work, PublicRecommendation, PublicLike
+
+
+class FrozenDateTime(datetime):
+    current = datetime(2026, 10, 22, 2, tzinfo=timezone.utc)
+
+    @classmethod
+    def now(cls, tz=None):
+        return cls.current.astimezone(tz) if tz is not None else cls.current.replace(tzinfo=None)
 
 
 def page(rows, pages=(1,)):
@@ -24,6 +34,42 @@ def page(rows, pages=(1,)):
 
 
 class ListingTests(SimpleTestCase):
+    def test_next_check_uses_next_calendar_day_in_china(self):
+        self.assertEqual(next_check(datetime(2026, 10, 22, 2, tzinfo=timezone.utc)), '2026-10-23T04:00:00+08:00')
+        self.assertEqual(next_check(datetime(2026, 10, 31, 18, tzinfo=timezone.utc)), '2026-11-02T04:00:00+08:00')
+
+    def test_reviewed_recovery_accepts_only_the_diagnosed_initial_transient_stop(self):
+        attempt = {'url': 'https://www.wenku8.net/modules/article/toplist.php?sort=lastupdate&page=2',
+                   'status': 200, 'result': 'transport_failed', 'error_class': 'TimeoutError'}
+        state = {'status': 'needs_attention', 'reason': 'source_transport_failed_after_bounded_retries',
+                 'requests': [dict(attempt) for _ in range(3)]}
+        self.assertTrue(reviewed_initial_network_stop(state))
+        for changed in ({'items': [{'status': 'imported'}]}, {'reason': 'source_access_restricted'},
+                        {'requests': [{**attempt, 'status': 403}]*3},
+                        {'requests': [{**attempt, 'error_class': 'SSLCertVerificationError'}]*3}):
+            self.assertFalse(reviewed_initial_network_stop({**state, **changed}))
+
+    def test_transient_failure_waits_until_next_day_without_losing_discovery_boundary(self):
+        with TemporaryDirectory() as directory, override_settings(DATA_DIR=Path(directory)), patch('booklist.source_updates.datetime', FrozenDateTime):
+            FrozenDateTime.current = datetime(2026, 10, 22, 2, tzinfo=timezone.utc)
+            with patch('booklist.source_updates.Client') as client, patch('booklist.source_updates.discover', side_effect=TransientNetworkError('source_transport_failed_after_bounded_retries')):
+                client.return_value.requests = []
+                result = run(Path(directory)/'credentials')
+                self.assertEqual(result['status'], 'network_wait')
+                self.assertEqual(result['next_attempt_at'], '2026-10-23T04:00:00+08:00')
+            checkpoint = Path(directory)/'source_updates/daily.json'
+            state = json.loads(checkpoint.read_text())
+            self.assertEqual(state['initial_cutoff'], '2026-10-20')
+            with patch('booklist.source_updates.Client') as client:
+                self.assertEqual(run(Path(directory)/'credentials')['status'], 'network_wait')
+                client.assert_not_called()
+            FrozenDateTime.current = datetime(2026, 10, 22, 20, 1, tzinfo=timezone.utc)
+            with patch('booklist.source_updates.Client') as client, patch('booklist.source_updates.discover', return_value=[]) as scan:
+                client.return_value.requests = []
+                self.assertEqual(run(Path(directory)/'credentials')['status'], 'completed')
+                self.assertEqual(scan.call_args.args[1], date(2026, 10, 20))
+            self.assertEqual(len(list((Path(directory)/'source_updates').glob('network-wait-*.json'))), 1)
+
     def test_duplicate_image_title_detail_links_become_one_dated_item(self):
         rows, pages = listing_page(page([(1, '作品甲', '2026-10-22'), (2, '作品乙', '2026-10-21')], (1, 2)), date(2026, 10, 22))
         self.assertEqual([row['title'] for row in rows], ['作品甲', '作品乙'])
@@ -120,3 +166,29 @@ class ImportTests(TestCase):
             snapshot['document_diagnostics']['complete'] = False
             with self.assertRaisesRegex(SourceStop, 'detail_incomplete'):
                 prepare_snapshot(b'fixture', row)
+
+    def test_network_interruption_keeps_committed_work_and_recheck_is_idempotent(self):
+        rows = [{'book_id': n, 'source_url': 'https://www.wenku8.net/book/%s.htm' % n,
+                 'date': '2026-10-22', 'title': '作品%s' % n} for n in (4151, 4152)]
+        def prepared(raw, row):
+            snapshot = self.snapshot()
+            snapshot.update(book_id=row['book_id'], source_url=row['source_url'])
+            snapshot['fields']['title']['value'] = row['title']
+            return snapshot, snapshot['fields'], []
+        with TemporaryDirectory() as directory, override_settings(DATA_DIR=Path(directory)), patch('booklist.source_updates.datetime', FrozenDateTime), patch('booklist.source_updates.prepare_snapshot', side_effect=prepared):
+            FrozenDateTime.current = datetime(2026, 10, 22, 2, tzinfo=timezone.utc)
+            with patch('booklist.source_updates.Client') as client, patch('booklist.source_updates.discover', return_value=rows):
+                client.return_value.requests = []
+                client.return_value.request.side_effect = [({'media_type': 'text/html'}, b'fixture'), TransientNetworkError('source_transport_failed_after_bounded_retries')]
+                self.assertEqual(run(Path(directory)/'credentials')['status'], 'network_wait')
+            self.assertEqual(Work.objects.count(), 1)
+            checkpoint = json.loads((Path(directory)/'source_updates/daily.json').read_text())
+            self.assertEqual([item['status'] for item in checkpoint['items']], ['imported', 'pending'])
+            FrozenDateTime.current = datetime(2026, 10, 22, 20, 1, tzinfo=timezone.utc)
+            with patch('booklist.source_updates.Client') as client, patch('booklist.source_updates.discover', return_value=rows):
+                client.return_value.requests = []
+                client.return_value.request.return_value = ({'media_type': 'text/html'}, b'fixture')
+                self.assertEqual(run(Path(directory)/'credentials')['status'], 'completed')
+            self.assertEqual(Work.objects.count(), 2)
+            self.assertEqual(PublicRecommendation.objects.count(), 0)
+            self.assertEqual(PublicLike.objects.count(), 0)

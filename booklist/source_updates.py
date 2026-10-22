@@ -1,5 +1,5 @@
 """Bounded, single-process source refresh; never runs inside a web request."""
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 import json
 from pathlib import Path
 import re
@@ -10,7 +10,8 @@ from django.conf import settings
 from django.db import transaction
 
 from integrations.wenku8.offline import extract, SnapshotError
-from integrations.wenku8.session import Client, SourceStop
+from integrations.wenku8.session import Client, SourceStop, TransientNetworkError
+from integrations.wenku8.retry_policy import CHINA, deferred, transient
 from integrations.wenku8.updates import discover
 from scripts import probe_wenku8 as transport
 from scripts.cache_wenku8_covers import fetch as cover_fetch, robots_policy
@@ -68,6 +69,8 @@ class Images:
         code = record.get('status')
         if code in {401, 403, 429} or isinstance(code, int) and 300 <= code < 400:
             raise SourceStop('image_source_restriction')
+        if raw is None and transient(record):
+            raise TransientNetworkError('image_transport_failed_after_bounded_retries')
         return record, raw
 
     def get(self, value):
@@ -98,6 +101,16 @@ def run(credentials, *, dry_run=False):
         state = json.loads(checkpoint.read_text(encoding='utf-8')) if checkpoint.is_file() else {'version': 1, 'status': 'idle'}
         if state['status'] == 'needs_attention':
             return {'status': 'needs_attention', 'reason': state.get('reason'), 'action': 'operator_review_required'}
+        today = datetime.now(CHINA).date()
+        if state['status'] == 'network_wait':
+            if datetime.now(timezone.utc) < datetime.fromisoformat(state['next_attempt_at']):
+                return {key: state[key] for key in ('status', 'reason', 'next_attempt_at')}
+            # Re-read the listing on the new day rather than trusting yesterday's
+            # dates. Committed works remain; imports are idempotent. The failure
+            # archive preserves each previous round's progress and transport evidence.
+            state['status'] = 'idle'
+        if not state.get('last_success_at'):
+            state.setdefault('initial_cutoff', (today-timedelta(days=2)).isoformat())
         started = time.monotonic()
         client = None
         def save():
@@ -108,13 +121,13 @@ def run(credentials, *, dry_run=False):
             client = Client(directory, credentials, request_limit=700, seconds_limit=3600)
             client.robots()
             if state['status'] not in {'running', 'discovered'}:
-                today = datetime.now(timezone(timedelta(hours=8))).date()
                 prior = state.get('last_success_at')
-                cutoff = (datetime.fromisoformat(prior).astimezone(timezone(timedelta(hours=8))).date()-timedelta(days=1)
-                          if prior else today-timedelta(days=2))
+                cutoff = (datetime.fromisoformat(prior).astimezone(CHINA).date()-timedelta(days=1)
+                          if prior else date.fromisoformat(state['initial_cutoff']))
                 rows = discover(client, cutoff, today)
                 state = {'version': 1, 'status': 'discovered', 'started_at': stamp(),
                          'last_success_at': prior, 'cutoff': cutoff.isoformat(),
+                         'initial_cutoff': state.get('initial_cutoff', cutoff.isoformat()),
                          'items': [{**row, 'status': 'pending'} for row in rows]}
                 if dry_run:
                     report = {**state, 'status': 'dry_run', 'requests': client.requests}
@@ -135,17 +148,14 @@ def run(credentials, *, dry_run=False):
                     if raw is None or record.get('media_type') != 'text/html':
                         raise ValueError('source_detail_fetch_failed')
                     snapshot, fields, _ = prepare_snapshot(raw, item)
+                    item['title'] = fields['title']['value']
                     cover = images.get(fields['cover_url']['value']) if fields['cover_url']['state'] == 'value' else None
                     item.update(commit(snapshot, cover), status='imported', finished_at=stamp())
-                except SourceStop as error:
-                    # Format drift is isolated to an item. Access, robots and
-                    # runtime budget stops halt all further remote requests.
-                    if str(error) not in {'source_detail_incomplete', 'source_detail_listing_date_mismatch',
-                                         'source_cover_metadata_requires_review'}:
-                        raise
-                    item.update(status='failed', reason=safe_reason(error), finished_at=stamp())
+                except TransientNetworkError:
+                    raise
                 except (SnapshotError, ValueError) as error:
                     item.update(status='failed', reason=safe_reason(error), finished_at=stamp())
+                    raise
                 save()
             failed = [item for item in state['items'] if item['status'] == 'failed']
             if failed:
@@ -153,11 +163,18 @@ def run(credentials, *, dry_run=False):
                 # items cannot disappear merely because the date window moves.
                 atomic_json(directory/('failures-'+state['started_at'].replace(':', '-')+'.json'), {'items': failed})
             state['status'] = 'completed_with_errors' if failed else 'completed'
-            state['last_success_at'] = stamp()
+            # A resumed run must not advance the coverage watermark past the
+            # list it actually discovered, even if completion is days later.
+            state['last_success_at'] = state['started_at']
             state['completed_at'] = stamp()
             save()
             atomic_json(directory/('run-'+state['started_at'].replace(':', '-')+'.json'), state)
             return {key: state[key] for key in ('status', 'last_success_at', 'items')}
+        except TransientNetworkError as error:
+            state = deferred(state, safe_reason(error))
+            save()
+            atomic_json(directory/('network-wait-'+state['stopped_at'].replace(':', '-')+'.json'), state)
+            return {key: state[key] for key in ('status', 'reason', 'next_attempt_at')}
         except Exception as error:
             state.update(status='needs_attention', reason=safe_reason(error), stopped_at=stamp())
             save()

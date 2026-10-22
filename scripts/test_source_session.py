@@ -4,10 +4,25 @@ import unittest
 import tempfile
 import warnings
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from integrations.wenku8.session import Client, LOGIN, allowed_url, login_form, SourceStop
+from integrations.wenku8.session import Client, LOGIN, allowed_url, login_form, SourceStop, TransientNetworkError
 
 
 class SessionTests(unittest.TestCase):
+    def test_only_recognized_transient_transport_errors_can_defer_to_next_day(self):
+        for cause, expected, count in [('TimeoutError', TransientNetworkError, 3),
+                                       ('SSLCertVerificationError', SourceStop, 1)]:
+            with tempfile.TemporaryDirectory() as temporary:
+                calls = []
+                def fetch(*args):
+                    calls.append(args[0])
+                    return {'result': 'transport_failed', 'status': None, 'cause_class': cause}, None
+                client = Client(Path(temporary)/'state', Path(temporary)/'credentials', sleeper=lambda _: None, fetch=fetch)
+                with self.assertRaises(expected) as error:
+                    client.request('https://www.wenku8.net/robots.txt')
+                self.assertEqual(len(calls), count)
+                if cause == 'SSLCertVerificationError':
+                    self.assertNotIsInstance(error.exception, TransientNetworkError)
+
     def test_requests_are_confined_to_metadata_routes_over_https(self):
         for value in ['http://www.wenku8.net/login.php', 'https://example.com/login.php',
                       'https://www.wenku8.net/novel/1/1/1.htm',

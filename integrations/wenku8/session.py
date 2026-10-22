@@ -13,6 +13,7 @@ from urllib.request import HTTPCookieProcessor, Request, build_opener
 
 from lxml import html
 from scripts import probe_wenku8 as transport
+from integrations.wenku8.retry_policy import transient
 
 BASE = transport.BASE
 LOGIN = BASE+'/login.php'
@@ -20,6 +21,10 @@ LISTING = BASE+'/modules/article/toplist.php?sort=lastupdate'
 
 
 class SourceStop(ValueError):
+    pass
+
+
+class TransientNetworkError(SourceStop):
     pass
 
 
@@ -134,11 +139,9 @@ class Client:
                 raise SourceStop('source_access_restricted')
             if raw is not None or record.get('result') != 'transport_failed':
                 return record, raw
-            cause = record.get('cause_class', record.get('error_class'))
-            if cause not in {'TimeoutError', 'ConnectionResetError', 'ConnectionAbortedError',
-                    'ConnectionRefusedError', 'SSLEOFError', 'RemoteDisconnected', 'gaierror', 'IncompleteRead'}:
-                break
-        raise SourceStop('source_transport_failed_after_bounded_retries')
+            if not transient(record):
+                raise SourceStop('source_transport_requires_attention')
+        raise TransientNetworkError('source_transport_failed_after_bounded_retries')
 
     def robots(self):
         record, raw = self.request(BASE+'/robots.txt')
