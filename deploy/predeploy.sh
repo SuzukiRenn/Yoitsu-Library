@@ -79,7 +79,8 @@ else:
 PY
 install -d -m 0700 "$config/backups"
 install -m 0600 "$config/predeploy.env" "$config/backups/$release-$(date -u +%Y%m%dT%H%M%S)-$$.env"
-compose=(docker compose -p shared-booklist-predeploy --env-file "$config/predeploy.env" -f deploy/compose.yaml)
+compose_base=(docker compose -p shared-booklist-predeploy --env-file "$config/predeploy.env" -f deploy/compose.yaml)
+compose=("${compose_base[@]}")
 services=(app scheduler backup)
 if [[ -f "$config/ssh-access/active" ]]; then
   python3 deploy/ssh_access.py prepare "$release"
@@ -87,16 +88,18 @@ if [[ -f "$config/ssh-access/active" ]]; then
   services+=(proxy)
 fi
 "${compose[@]}" config --quiet
-"${compose[@]}" run -T --rm --no-deps app python scripts/check_production.py </dev/null
+# One-off tools must not inherit the running app's fixed edge IP from the
+# proxy overlay. They need only the data mount and private base configuration.
+"${compose_base[@]}" run -T --rm --no-deps app python scripts/check_production.py </dev/null
 echo 'PHASE stop_writes_and_back_up'
 trap 'code=$?; "${compose[@]}" stop "${services[@]}" || true; echo "Deployment failed; services stopped and data retained."; exit "$code"' ERR
 "${compose[@]}" stop "${services[@]}"
 if [[ -f "$state/data/booklist.sqlite3" ]]; then
-  "${compose[@]}" run -T --rm --no-deps backup python scripts/sqlite_backup.py --source /var/lib/shared-booklist/booklist.sqlite3 --output-dir /backups --verify-restore </dev/null
+  "${compose_base[@]}" run -T --rm --no-deps backup python scripts/sqlite_backup.py --source /var/lib/shared-booklist/booklist.sqlite3 --output-dir /backups --verify-restore </dev/null
 fi
 echo 'PHASE migrate'
 # Failure after writes stop leaves the application stopped. No blind rollback across schemas.
-"${compose[@]}" run -T --rm --no-deps app python manage.py migrate --noinput </dev/null
+"${compose_base[@]}" run -T --rm --no-deps app python manage.py migrate --noinput </dev/null
 echo 'PHASE start_and_verify'
 if ! "${compose[@]}" up -d --no-build --wait --wait-timeout 120 "${services[@]}"; then
   "${compose[@]}" stop "${services[@]}"
@@ -107,7 +110,7 @@ fi
 if [[ -f "$config/ssh-access/active" ]]; then
   python3 deploy/ssh_access.py verify "$release"
 fi
-"${compose[@]}" run -T --rm --no-deps backup python scripts/sqlite_backup.py --source /var/lib/shared-booklist/booklist.sqlite3 --output-dir /backups --verify-restore </dev/null
+"${compose_base[@]}" run -T --rm --no-deps backup python scripts/sqlite_backup.py --source /var/lib/shared-booklist/booklist.sqlite3 --output-dir /backups --verify-restore </dev/null
 "${compose[@]}" exec -T app python -c "import json,sqlite3,platform;print(json.dumps({'python':platform.python_version(),'sqlite':sqlite3.sqlite_version,'ports_published':False,'mode':'private_predeploy'}))" </dev/null
 ln -s "$checkout" "$root/current.$$.new"
 mv -Tf "$root/current.$$.new" "$root/current"
