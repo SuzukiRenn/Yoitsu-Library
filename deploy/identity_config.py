@@ -26,9 +26,10 @@ def configuration(release):
               'networks': ['private'], 'mem_limit': '128m', 'cpus': 0.25,
               'logging': {'driver': 'json-file', 'options': {'max-size': '5m', 'max-file': '2'}}}
     app = {**common, 'mem_limit': '256m', 'cpus': 0.75,
-           'networks': {'private': {}, 'edge': {}},
+           'networks': {'private': {}, 'edge': {'ipv4_address': '172.30.30.3'}},
            'healthcheck': {'test': ['CMD', 'python', 'scripts/predeploy_health.py'],
                            'interval': '15s', 'timeout': '10s', 'retries': 4, 'start_period': '15s'}}
+    tools = {**common, 'mem_limit': '256m', 'restart': 'no', 'profiles': ['tools']}
     scheduler = {**common, 'command': ['python', 'scripts/production_tasks.py', 'scheduler'],
                  'depends_on': {'app': {'condition': 'service_healthy'}}}
     backup = {**common, 'command': ['python', 'scripts/production_tasks.py', 'backup'],
@@ -41,7 +42,7 @@ def configuration(release):
                  volumes=[posix(CONFIG / ('nginx-' + release + '.conf')) + ':/etc/nginx/nginx.conf:ro',
                           TLS + ':/etc/nginx/tls:ro', posix(STATE / 'static' / release) + ':/srv/static:ro'],
                  depends_on={'app': {'condition': 'service_healthy'}})
-    compose = {'name': PROJECT, 'services': {'app': app, 'scheduler': scheduler, 'backup': backup, 'proxy': proxy},
+    compose = {'name': PROJECT, 'services': {'app': app, 'scheduler': scheduler, 'backup': backup, 'proxy': proxy, 'tools': tools},
                'networks': {'private': {'internal': True},
                             'edge': {'internal': True, 'ipam': {'config': [{'subnet': SUBNET}]}}, 'front': {}}}
     nginx = nginx_config(DOMAIN, True).replace('proxy_set_header Host ' + DOMAIN + ';', 'proxy_set_header Host $http_host;')

@@ -110,6 +110,43 @@ def load(database, catalog):
             'accounts_and_interactions_empty': True}
 
 
+def verify(database, catalog, covers=None):
+    payload = json.loads(Path(catalog).read_text(encoding='utf-8'))
+    if payload.get('format') != 1 or set(payload.get('tables', {})) != set(TABLES):
+        raise ValueError('Catalog table whitelist mismatch')
+    with closing(read_only(database)) as db:
+        db.row_factory = sqlite3.Row
+        db.execute('BEGIN')
+        for table in TABLES:
+            rows = [dict(row) for row in db.execute('SELECT * FROM ' + table + ' ORDER BY id')]
+            if rows != payload['tables'][table]:
+                raise ValueError('Existing catalog differs: ' + table)
+        for table in EMPTY:
+            if db.execute('SELECT 1 FROM ' + table + ' LIMIT 1').fetchone():
+                raise ValueError('Existing identity data requires review: ' + table)
+        if [tuple(row) for row in db.execute('PRAGMA integrity_check')] != [('ok',)]:
+            raise ValueError('Existing identity integrity failed')
+        if db.execute('PRAGMA foreign_key_check').fetchall():
+            raise ValueError('Existing identity foreign keys failed')
+    count = 0
+    if covers:
+        root = Path(database).parent / 'covers'
+        with tarfile.open(covers) as stream:
+            for member in stream:
+                if not member.isfile() or not COVER.fullmatch(member.name):
+                    raise ValueError('Unsafe cover archive member')
+                target = root / member.name
+                if target.is_symlink() or not target.is_file() or target.stat().st_size != member.size:
+                    raise ValueError('Existing cover differs')
+                with stream.extractfile(member) as expected, target.open('rb') as actual:
+                    if hashlib.file_digest(expected, 'sha256').digest() != hashlib.file_digest(actual, 'sha256').digest():
+                        raise ValueError('Existing cover content differs')
+                if not member.name.endswith('.json'):
+                    count += 1
+    return {'catalog_matches': True, 'accounts_and_interactions_empty': True,
+            'works': len(payload['tables']['booklist_work']), 'covers_verified': count}
+
+
 def install_covers(archive, target):
     target = Path(target)
     target.mkdir(parents=True, exist_ok=False)
@@ -126,8 +163,14 @@ if __name__ == '__main__':
     sub = parser.add_subparsers(dest='mode', required=True)
     out = sub.add_parser('export'); out.add_argument('--source', required=True); out.add_argument('--output', required=True)
     inp = sub.add_parser('load'); inp.add_argument('--database', required=True); inp.add_argument('--catalog', required=True); inp.add_argument('--covers')
+    check = sub.add_parser('verify'); check.add_argument('--database', required=True); check.add_argument('--catalog', required=True); check.add_argument('--covers')
     args = parser.parse_args()
-    result = export(args.source, args.output) if args.mode == 'export' else load(args.database, args.catalog)
+    if args.mode == 'export':
+        result = export(args.source, args.output)
+    elif args.mode == 'load':
+        result = load(args.database, args.catalog)
+    else:
+        result = verify(args.database, args.catalog, args.covers)
     if args.mode == 'load' and args.covers:
         install_covers(args.covers, Path(args.database).parent / 'covers')
     print(json.dumps(result, ensure_ascii=False))

@@ -7,7 +7,7 @@ import sqlite3
 import tempfile
 import unittest
 from deploy.identity_config import configuration, PROJECT
-from scripts.identity_catalog import export, load, TABLES, EMPTY
+from scripts.identity_catalog import export, load, verify, TABLES, EMPTY
 
 
 class IdentityDeploymentTests(unittest.TestCase):
@@ -17,8 +17,10 @@ class IdentityDeploymentTests(unittest.TestCase):
         self.assertEqual(config['services']['proxy']['ports'], ['127.0.0.1:8444:8443'])
         self.assertIn('proxy_set_header Host $http_host;', nginx)
         self.assertNotIn('ports', config['services']['app'])
-        self.assertEqual(config['services']['app']['networks']['edge'], {},
-                         'One-off tools must not inherit the running app static IP')
+        self.assertEqual(config['services']['app']['networks']['edge']['ipv4_address'], '172.30.30.3')
+        self.assertEqual(config['services']['tools']['networks'], ['private'],
+                         'Management tools must not compete for app/proxy edge addresses')
+        self.assertEqual(config['services']['tools']['profiles'], ['tools'])
         self.assertTrue(config['networks']['private']['internal'])
         self.assertTrue(config['networks']['edge']['internal'])
         for name, service in config['services'].items():
@@ -94,3 +96,18 @@ class IdentityDeploymentTests(unittest.TestCase):
             catalog.write_text(json.dumps(original))
             with self.assertRaisesRegex(ValueError, 'whitelist'):
                 load(target, catalog)
+
+    def test_first_deploy_resume_checks_every_catalog_row_and_never_overwrites(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder); source, target = self.make_databases(root)
+            export(source, root / 'packet')
+            catalog = root / 'packet/catalog.json'
+            load(target, catalog)
+            self.assertTrue(verify(target, catalog)['catalog_matches'])
+            with closing(sqlite3.connect(target)) as db:
+                db.execute("UPDATE booklist_work SET title='Changed after import'")
+                db.commit()
+            with self.assertRaisesRegex(ValueError, 'Existing catalog differs'):
+                verify(target, catalog)
+            with closing(sqlite3.connect(target)) as db:
+                self.assertEqual(db.execute('SELECT title FROM booklist_work').fetchone()[0], 'Changed after import')

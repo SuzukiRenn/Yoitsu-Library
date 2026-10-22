@@ -148,7 +148,7 @@ def main():
             path.chmod(0o755 if path.is_dir() else 0o644)
         command = ['docker', 'compose', '-p', PROJECT, '-f', str(definition)]
         run(*command, 'config', '--quiet')
-        tool = command + ['run', '-T', '--rm', '--no-deps', 'app']
+        tool = command + ['run', '-T', '--rm', '--no-deps', 'tools']
         run(*tool, 'python', 'scripts/check_production.py')
         proxy_image = compose['services']['proxy']['image']
         run('docker', 'run', '--rm', '--network', 'none', '--read-only', '--user', '10001:10001',
@@ -168,7 +168,8 @@ def main():
                 receipt = run(*command, 'run', '-T', '--rm', '--no-deps', '-v',
                     str(Path(args.catalog).resolve()) + ':/tmp/identity-catalog.json:ro',
                     '-v', str(Path(args.covers).resolve()) + ':/tmp/identity-covers.tar:ro',
-                    'app', 'python', 'scripts/identity_catalog.py', 'load',
+                    'tools', 'python', 'scripts/identity_catalog.py',
+                    'verify' if (STATE / 'initial-catalog.json').exists() else 'load',
                     '--database', '/var/lib/shared-booklist-identity/booklist.sqlite3',
                     '--catalog', '/tmp/identity-catalog.json', '--covers', '/tmp/identity-covers.tar',
                     capture=True)
