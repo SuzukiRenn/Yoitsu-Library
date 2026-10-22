@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {webcrypto} from 'node:crypto';
 import {createPublicApi} from '../static/public-api.mjs';
+if (!globalThis.crypto) globalThis.crypto = webcrypto;
 
 const response = (body, status = 200) => ({ok: status < 400, status, json: async () => body});
 const requests = [];

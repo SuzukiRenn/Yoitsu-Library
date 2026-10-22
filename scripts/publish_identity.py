@@ -1,5 +1,6 @@
 """Prepare or deploy an identity release. SSH owns all interactive authentication."""
 import argparse
+import codecs
 import hashlib
 import json
 from pathlib import Path
@@ -62,12 +63,19 @@ def main():
                '-o', 'ServerAliveCountMax=3', '-T', 'root@' + args.server_host, remote]
     # Authentication prompts belong to the user's SSH console; no password is read here.
     with (folder / 'packet.tar').open('rb') as packet, (folder / 'deploy.log').open('w', encoding='utf-8') as log:
-        process = subprocess.Popen(command, stdin=packet, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='replace')
+        process = subprocess.Popen(command, stdin=packet, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         server_receipt = None
-        for line in process.stdout:
-            print(line, end='', flush=True); log.write(line); log.flush()
-            if line.startswith('IDENTITY_DEPLOY_SUCCESS '):
-                server_receipt = json.loads(line.split(' ', 1)[1])
+        decoder = codecs.getincrementaldecoder('utf-8')(errors='replace')
+        pending = ''
+        while chunk := process.stdout.read1(4096):
+            text = decoder.decode(chunk)
+            # SSH password prompts and unittest progress may not end in a newline.
+            print(text, end='', flush=True); log.write(text); log.flush()
+            pending += text
+            while '\n' in pending:
+                line, pending = pending.split('\n', 1)
+                if line.startswith('IDENTITY_DEPLOY_SUCCESS '):
+                    server_receipt = json.loads(line.split(' ', 1)[1])
         code = process.wait()
     if code:
         raise SystemExit('Deployment stopped. Inspect ' + str(folder / 'deploy.log') + '; do not restore old data blindly.')
