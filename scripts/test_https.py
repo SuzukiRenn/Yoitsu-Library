@@ -37,6 +37,7 @@ class PreparationTests(unittest.TestCase):
         self.assertIn('proxy_set_header X-Forwarded-For $remote_addr;', files['nginx.https.conf'])
         self.assertNotIn('$proxy_add_x_forwarded_for', files['nginx.https.conf'])
         self.assertIn('text/javascript js mjs;', files['nginx.https.conf'])
+        self.assertIn('image/png png;', files['nginx.https.conf'])
         self.assertFalse(json.loads(files['manifest.json'])['server_modified'])
 
 

@@ -1,6 +1,9 @@
 {% extends 'booklist/base.html' %}
+{% block feedback_footer %}{% endblock %}
+{% block header_class %} public-header{% endblock %}
+{% block site_location %}<h1 class="header-current"><span aria-hidden="true">/</span> 公共书单</h1>{% endblock %}
 {% block content %}
-<section class="public-shelf" data-live-shelf><div class="section-heading"><h1>公共书单</h1><div><a class="primary" href="/recommend/">推荐</a></div></div>
+<section class="public-shelf" data-live-shelf>
 {% include 'booklist/shelf_controls.html' %}<p class="sr-only" data-shelf-status role="status"></p>
 <div class="book-grid" data-shelf-grid>{% for work in results %}<article class="public-card" data-shelf-work="{{ work.id }}"><div class="public-card-main"><a class="card-open" href="/works/{{ work.id }}/" tabindex="-1" aria-label="{{ work.title }}"></a><div class="public-book"><a class="book-cover" href="/works/{{ work.id }}/" aria-label="{{ work.title }}">{% include 'booklist/cover_image.html' %}</a><div class="book-info"><a class="book-title" href="/works/{{ work.id }}/">{{ work.title }}</a>{% if work.author %}<p class="book-author">{{ work.author }}</p>{% endif %}<div class="tags">{% for tag in work.tags %}<span class="tag">{{ tag.name }}</span>{% endfor %}</div></div></div>
 {% include 'booklist/actions.html' %}</div>

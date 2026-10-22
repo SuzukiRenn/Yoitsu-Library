@@ -412,3 +412,21 @@ class ImportAttempt(models.Model):
     error_code = models.CharField(max_length=100, default='')
     warnings = models.JSONField(default=list)
     snapshot = models.JSONField(default=dict)
+
+
+class Feedback(Timestamped):
+    anonymous_client = models.ForeignKey(AnonymousClient, on_delete=P)
+    category = models.CharField(max_length=20, choices=[('metadata', '资料错误'), ('content', '不当内容'), ('votes', '疑似刷票'), ('other', '其他问题')])
+    message = models.TextField()
+    page_url = models.CharField(max_length=1000, default='')
+    status = models.CharField(max_length=20, default='pending', choices=[('pending', '待处理'), ('resolved', '已处理'), ('dismissed', '暂不处理')])
+    reply = models.CharField(max_length=500, default='')
+    handled_by = models.ForeignKey(Admin, null=True, on_delete=P)
+    revision = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(category__in=['metadata', 'content', 'votes', 'other']), name='feedback_category'),
+            models.CheckConstraint(condition=Q(status__in=['pending', 'resolved', 'dismissed']), name='feedback_status'),
+            models.CheckConstraint(condition=~Q(message='') & Q(message__length__lte=1000), name='feedback_message_limit'),
+        ]

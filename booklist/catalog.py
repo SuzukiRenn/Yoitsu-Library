@@ -129,10 +129,10 @@ def terms():
     return result
 
 
-def search(query, limit=10):
+def search(query, limit=10, offset=0):
     query = normalize(query, 'title', required=True)
     key = search_key(query)
-    if not key or type(limit) is not int or not 1 <= limit <= 20:
+    if not key or type(limit) is not int or not 1 <= limit <= 20 or type(offset) is not int or not 0 <= offset <= MAX_TERMS:
         raise ValidationError('查询或候选数量无效')
     candidates = terms()
     exact = [(work, (0 if kind == 'title' else 1, -1.0, work), 'exact_'+kind)
@@ -166,10 +166,15 @@ def search(query, limit=10):
     for work, rank, kind in matches:
         if work not in chosen or rank < chosen[work][0]:
             chosen[work] = (rank, kind)
-    ordered = sorted(chosen, key=lambda work: chosen[work][0])[:limit]
+    visible_ids = set(visible_works().filter(pk__in=chosen).values_list('pk', flat=True))
+    ranked = [pk for pk in sorted(chosen, key=lambda work: chosen[work][0]) if pk in visible_ids]
+    total = len(ranked)
+    ordered = ranked[offset:offset+limit]
     current = {work.pk: work for work in visible_works().filter(pk__in=ordered)}
     rows = serialize_works([current[pk] for pk in ordered if pk in current])
     for row in rows:
         row['match_kind'] = chosen[row['id']][1]
-    return {'query': query, 'results': rows, 'strategy': strategy if rows else 'none',
+    next_offset = offset + limit if offset + limit < total else None
+    return {'query': query, 'results': rows, 'strategy': strategy if total else 'none',
+            'total': total, 'offset': offset, 'next_offset': next_offset, 'has_more': next_offset is not None,
             'requires_confirmation': True, 'ai_used': False}

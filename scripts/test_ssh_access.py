@@ -11,6 +11,7 @@ class ConfigurationTests(unittest.TestCase):
   self.assertTrue(any(not config['networks'][name].get('internal',False) for name in config['services']['proxy']['networks']))
   self.assertIn('proxy_set_header Host $http_host;',nginx)
   self.assertIn('image/svg+xml svg;',nginx)
+  self.assertIn('image/png png;',nginx)
   icon_location=nginx.split('location = /static/favicon.svg {',1)[1].split('}',1)[0]
   self.assertIn('default_type image/svg+xml;',icon_location)
   self.assertIn('etag off;',icon_location)

@@ -1,0 +1,12 @@
+{% extends 'booklist/admin/base.html' %}{% block content %}
+<a href="/manage/?section=feedback">← 问题反馈</a><h1>反馈 #{{ feedback.id }}</h1>
+<p>{{ feedback.get_category_display }} · {{ feedback.get_status_display }} · {{ feedback.created_at|date:'Y-m-d H:i' }}</p>
+<blockquote>{{ feedback.message }}</blockquote>
+{% if feedback.page_url %}<p><a href="{{ feedback.page_url }}">查看相关页面</a></p>{% endif %}
+{% if reported_work %}<p><a href="/manage/works/{{ reported_work.id }}/">管理《{{ reported_work.display_title }}》的推荐、点赞与理由</a></p>{% endif %}
+<p>先核查，再通过作品管理处理。保存反馈状态不会自动撤销推荐或点赞。</p>
+<form data-api="/api/v1/admin/feedback/{{ feedback.id }}/">
+<input type="hidden" name="revision" data-integer value="{{ feedback.revision }}">
+<label>处理状态<select name="status"><option value="pending"{% if feedback.status == 'pending' %} selected{% endif %}>待处理</option><option value="resolved"{% if feedback.status == 'resolved' %} selected{% endif %}>已处理</option><option value="dismissed"{% if feedback.status == 'dismissed' %} selected{% endif %}>暂不处理</option></select></label>
+<label>处理说明（提交者可见）<input name="reply" required maxlength="500" value="{{ feedback.reply }}"></label><button>保存处理结果</button><p role="status"></p></form>
+{% endblock %}

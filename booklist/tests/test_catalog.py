@@ -158,6 +158,45 @@ class CatalogTests(TestCase):
         with patch.object(catalog, 'MAX_TERMS', 2):
             self.assertEqual(self.search('没有结果').status_code, 503)
 
+    def test_candidate_pages_count_deduplicate_and_reach_all_matches(self):
+        ids = [self.work(f'妹妹故事{number:02d}').pk for number in range(23)]
+        WorkAlias.objects.create(work_id=ids[0], alias='妹妹别名', normalized_alias='妹妹别名')
+        self.work('妹妹隐藏', hidden_at=timezone.now())
+        for endpoint in ('/api/v1/catalog/search/', '/api/v1/recommend/candidates/'):
+            found = []
+            offset = 0
+            while offset is not None:
+                response = self.client.get(endpoint, {'q': '妹妹', 'offset': offset})
+                self.assertEqual(response.status_code, 200)
+                payload = response.json()
+                self.assertEqual(payload['total'], 23)
+                self.assertLessEqual(len(payload['results']), 10)
+                self.assertEqual(payload['has_more'], payload['next_offset'] is not None)
+                found.extend(row['id'] for row in payload['results'])
+                offset = payload['next_offset']
+            self.assertEqual(found, ids)
+            self.assertEqual(len(set(found)), 23)
+            last = self.client.get(endpoint, {'q': '妹妹', 'offset': 30}).json()
+            self.assertEqual(last['results'], [])
+            self.assertEqual(last['total'], 23)
+            self.assertIsNone(last['next_offset'])
+
+    def test_candidate_offsets_are_validated_on_both_endpoints(self):
+        for endpoint in ('/api/v1/catalog/search/', '/api/v1/recommend/candidates/'):
+            for value in ('-1', '01', '1.0', 'x', '20001', '9'*100):
+                self.assertEqual(self.client.get(endpoint, {'q': '妹妹', 'offset': value}).status_code, 400)
+            self.assertEqual(self.client.get(endpoint+'?q=妹妹&offset=0&offset=10').status_code, 400)
+
+    def test_exact_and_empty_candidate_totals(self):
+        for number in range(12):
+            self.work('相同书名')
+        payload = self.search('相同书名').json()
+        self.assertEqual(payload['total'], 12)
+        self.assertEqual(payload['next_offset'], 10)
+        self.assertEqual(self.search('相同书名', offset=10).json()['strategy'], 'exact')
+        empty = self.search('完全不存在的关键字').json()
+        self.assertEqual((empty['total'], empty['has_more'], empty['next_offset']), (0, False, None))
+
     def test_rate_limit_is_shared_by_html_and_api_search(self):
         self.work()
         with patch('booklist.services.time.time', return_value=120):

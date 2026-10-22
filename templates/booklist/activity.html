@@ -1,9 +1,11 @@
 {% extends 'booklist/base.html' %}{% block title %}{{ activity.title }} · 推荐活动{% endblock %}
+{% block feedback_footer %}{% endblock %}
+{% block header_class %} public-header{% endblock %}
+{% block site_location %}<span class="header-current"><span aria-hidden="true">/</span> 推荐活动</span>{% endblock %}
 {% block content %}<section class="public-shelf" data-live-shelf>
 <div class="section-heading activity-heading">
 <a class="back-link activity-history-link" href="/activities/history/">回顾往期活动</a>
 <div class="activity-heading-info"><div class="activity-title"><h1>{{ activity.title }}</h1><span class="activity-status">{{ activity.status_label }}{% if activity.corrected %} · 已修正{% endif %}</span></div>{% if activity.theme %}<p class="activity-theme">{{ activity.theme }}</p>{% endif %}<p class="section-note activity-dates"><time>{{ activity.start_label }}</time> — <time>{{ activity.end_label }}</time></p></div>
-{% if activity.writable %}<div class="activity-heading-actions"><a class="primary" href="/activities/{{ activity.id }}/recommend/">推荐到活动</a></div>{% endif %}
 </div>
 {% if can_export_summary %}<p><a href="/manage/activities/{{ activity.id }}/summary/">生成总结图片 · 管理员</a></p>{% endif %}
 {% include 'booklist/shelf_controls.html' %}<p class="sr-only" data-shelf-status role="status"></p><div class="book-grid" data-shelf-grid>{% for work in results %}<article class="public-card" data-shelf-work="{{ work.id }}"><div class="public-card-main"><a class="card-open" href="/works/{{ work.id }}/?activity={{ activity.id }}" tabindex="-1" aria-label="{{ work.title }}"></a><div class="public-book"><a class="book-cover" href="/works/{{ work.id }}/?activity={{ activity.id }}" aria-label="{{ work.title }}">{% include 'booklist/cover_image.html' %}</a><div class="book-info"><h2><a class="book-title" href="/works/{{ work.id }}/?activity={{ activity.id }}">{{ work.title }}</a></h2>{% if work.author %}<p class="book-author">{{ work.author }}</p>{% endif %}</div></div>

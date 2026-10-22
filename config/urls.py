@@ -1,8 +1,13 @@
 from booklist import reason_likes, activity_export
+from booklist import feedback
 from django.urls import path
 from booklist import views, catalog_views, public_views, activity_views, recommend_views, admin_views, metadata_views, cover_cache, live_stats
 
 urlpatterns = [
+    path('feedback/', feedback.home),
+    path('api/v1/feedback/', feedback.submit),
+    path('manage/feedback/<int:feedback_id>/', feedback.detail),
+    path('api/v1/admin/feedback/<int:feedback_id>/', feedback.handle),
     path('manage/activities/<int:activity_id>/summary/', activity_export.preview),
     path('api/v1/admin/activities/<int:activity_id>/summary/', activity_export.data),
     path('media/covers/<str:name>', cover_cache.serve),

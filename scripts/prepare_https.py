@@ -73,7 +73,7 @@ http {
     }}
     location /static/ {{
       alias /srv/static/;
-      types {{ text/css css; text/javascript js mjs; image/svg+xml svg; }}
+      types {{ text/css css; text/javascript js mjs; image/svg+xml svg; image/png png; }}
       autoindex off;
       add_header X-Content-Type-Options nosniff always;
     }}

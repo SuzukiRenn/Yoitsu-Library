@@ -1,4 +1,4 @@
-<div class="shelf-controls">
+<div class="shelf-controls public-shelf-controls">
 {% include 'booklist/shelf_filters.html' %}
-<div class="shelf-list-toolbar">{% include 'booklist/shelf_sort.html' %}</div>
+<div class="shelf-list-toolbar">{% include 'booklist/shelf_sort.html' %}{% if activity %}{% if activity.writable %}<a class="primary shelf-recommend" href="/activities/{{ activity.id }}/recommend/" title="推荐到本期活动" aria-label="推荐到本期活动">推荐</a>{% endif %}{% else %}<a class="primary shelf-recommend" href="/recommend/">推荐</a>{% endif %}</div>
 </div>

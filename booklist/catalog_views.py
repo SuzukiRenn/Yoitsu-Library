@@ -23,12 +23,19 @@ def page(request, template, context):
 
 @endpoint('GET')
 def search(request, data):
-    parameters(request, ('q', 'limit'))
+    parameters(request, ('q', 'limit', 'offset'))
     read_limit(request, search=True)
     raw = request.GET.get('limit', '10')
     if not raw.isascii() or not raw.isdecimal() or str(int(raw)) != raw:
         raise ValidationError('候选数量无效')
-    return JsonResponse(catalog.search(request.GET.get('q', ''), int(raw)))
+    return JsonResponse(catalog.search(request.GET.get('q', ''), int(raw), search_offset(request)))
+
+
+def search_offset(request):
+    raw = request.GET.get('offset', '0')
+    if len(raw) > 6 or not raw.isascii() or not raw.isdecimal() or str(int(raw)) != raw:
+        raise ValidationError('候选位置无效')
+    return int(raw)
 
 
 @endpoint('GET')

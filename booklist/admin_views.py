@@ -2,7 +2,7 @@ from functools import wraps
 from urllib.parse import urlencode
 from django.http import JsonResponse
 from django.shortcuts import redirect
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Case, When, Value, IntegerField
 from . import activities, moderation, merging, catalog, public_booklist
 from .models import Work, Recommendation, Activity, ActivityTransition, AdminAuditLog, PublicRecommendation, PublicLike, Vote, WorkMergeOperation, SourceIdentityReview
 from .views import endpoint
@@ -41,6 +41,12 @@ def index(request, data):
         if query:
             rows = rows.filter(Q(original_submitted_title__icontains=query) | Q(title_override__icontains=query) | Q(wenku8_title__icontains=query))
         rows = rows.order_by('-public_added_at', '-id')
+    elif section == 'feedback':
+        from .models import Feedback
+        rows = Feedback.objects.annotate(pending_order=Case(When(status='pending', then=Value(0)), default=Value(1), output_field=IntegerField())).order_by('pending_order', '-id')
+        if query:
+            rows = rows.filter(Q(message__icontains=query) | Q(reply__icontains=query))
+        context['pending_feedback_count'] = Feedback.objects.filter(status='pending').count()
     elif section == 'activities': rows = Activity.objects.order_by('-start_at','-id')
     elif section == 'audit': rows = AdminAuditLog.objects.select_related('admin').order_by('-id')
     elif section == 'merges': rows = WorkMergeOperation.objects.select_related('primary_work','merged_work').order_by('-id')

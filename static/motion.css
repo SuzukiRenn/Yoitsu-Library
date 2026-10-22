@@ -64,26 +64,26 @@
 :where(nav a, .scope-label a, .source-link, .book-title) { display: inline-block; }
 summary { cursor: pointer; }
 :is(a[href], button, input, select, textarea, summary):focus-visible {
-  outline: 2px solid #496c48;
+  outline: 2px solid #555555;
   outline-offset: 3px;
 }
 
 @media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
   .public-card:hover, .book-card:hover, .period:hover {
     transform: translateY(-2px);
-    border-color: #9cad92;
-    box-shadow: 0 5px 15px #243c3210;
+    border-color: #a5a5a5;
+    box-shadow: 0 5px 15px #22222210;
   }
-  .candidate:not(:disabled):not([aria-disabled="true"]):hover { border-color: #7b946d; }
+  .candidate:not(:disabled):not([aria-disabled="true"]):hover { border-color: #888888; }
   :is(button, input[type="submit"], input[type="button"], input[type="reset"], a.primary, .back-link, .return-button, .reason-link):not(:disabled):not([aria-disabled="true"]):hover:not(:active) {
     transform: translateY(-1px);
-    box-shadow: 0 3px 7px #243c321a;
+    box-shadow: 0 3px 7px #2222221a;
   }
   :is(nav a, .brand, .scope-label a, .source-link, .book-title, summary):hover:not(:active) {
     transform: translateY(-1px);
   }
-  .tag-filter label:hover { box-shadow: 0 2px 6px #243c321a; }
-  input:is([type="checkbox"], [type="radio"]):not(:disabled):hover { box-shadow: 0 0 0 3px #496c481f; }
+  .tag-filter label:hover { box-shadow: 0 2px 6px #2222221a; }
+  input:is([type="checkbox"], [type="radio"]):not(:disabled):hover { box-shadow: 0 0 0 3px #5555551f; }
 }
 
 @media (prefers-reduced-motion: reduce) {
