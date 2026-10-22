@@ -51,6 +51,26 @@ def cover_url(value, *, cached=True):
         return None
 
 
+def versioned_cover(work):
+    from . import cover_cache
+    if work.cover_url_overridden:
+        return None
+    pointer = work.source_metadata.get('cover_cache_version')
+    if not isinstance(pointer, dict) or pointer.get('source_url') != cover_cache.source_url(work.wenku8_cover_url):
+        return None
+    name = pointer.get('name')
+    if not isinstance(name, str) or not cover_cache.NAME.fullmatch(name): return None
+    info = cover_cache.cache_info(name)
+    if not info or info.get('versioned') is not True or info['source_url'] != pointer['source_url']:
+        return None
+    return '/media/covers/'+name
+
+
+def snapshot_cover(work):
+    return versioned_cover(work) or cover_url(
+        work.cover_url_override if work.cover_url_overridden else work.wenku8_cover_url, cached=False) or ''
+
+
 def serialize_works(works, detail=False):
     ids = [work.pk for work in works]
     public_ids = set(public_works().filter(pk__in=ids).values_list('pk', flat=True))
@@ -73,7 +93,7 @@ def serialize_works(works, detail=False):
             author = manual.author or author
         row = {'id': work.pk, 'title': work.display_title,
                'author': author,
-               'cover_url': cover_url(work.cover_url_override if work.cover_url_overridden else work.wenku8_cover_url),
+               'cover_url': versioned_cover(work) or cover_url(work.cover_url_override if work.cover_url_overridden else work.wenku8_cover_url),
                'is_public': work.pk in public_ids,
                'source_book_id': work.wenku8_book_id,
                'tags': sorted(tags[work.pk].values(), key=lambda tag: (tag['name'], tag['id']))}

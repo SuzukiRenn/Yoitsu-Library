@@ -114,7 +114,7 @@ def submit(activity_id, client, data):
         snap = ActivityWork.objects.create(activity=activity, work=work, snapshot_title=normalize(work.display_title, 'title', required=True),
             snapshot_author=normalize(metadata['author'], 'title'),
             snapshot_description=metadata['description'], snapshot_tags=metadata['tags'],
-            snapshot_cover_url=catalog.cover_url(work.cover_url_override if work.cover_url_overridden else work.wenku8_cover_url, cached=False) or '')
+            snapshot_cover_url=catalog.snapshot_cover(work))
     row = recs(activity_id).filter(work=work, anonymous_client=client).first()
     if row:
         edit_reason(row, reason)

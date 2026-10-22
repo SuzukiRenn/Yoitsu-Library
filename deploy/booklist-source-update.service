@@ -1,0 +1,12 @@
+[Unit]
+Description=Shared Booklist daily Wenku8 metadata and cover update
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/bin/flock -w 30 /opt/shared-booklist/deploy.lock /usr/bin/python3 /etc/shared-booklist/source-updater/run_source_update.py
+TimeoutStartSec=4500
+TimeoutStopSec=45

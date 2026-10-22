@@ -79,16 +79,22 @@ def create():
                 if path.suffix.lower() in {'.jpg', '.jpeg', '.png'}: cover_count += 1
             # ACME symlinks are flattened into portable regular files within that tree only.
             for relative in ['predeploy.env', 'ssh-access/nginx.conf', 'ssh-access/compose.json',
-                             'ssh-access/tls', 'acme-dns-production', 'renewal']:
+                             'ssh-access/tls', 'acme-dns-production', 'renewal', 'source-updater']:
                 path = CONFIG/relative
                 if not path.exists():
-                    if relative == 'renewal': continue  # First snapshot can precede renewal setup.
+                    if relative in {'renewal', 'source-updater'}: continue  # Optional before feature setup.
                     raise RuntimeError('required_configuration_missing')
                 paths = sorted(path.rglob('*')) if path.is_dir() else [path]
                 for item in paths:
                     if item.is_dir(): continue
                     if item.name.endswith('.lock'): continue
                     add(item, 'config/'+item.relative_to(CONFIG).as_posix(), path if path.is_dir() else CONFIG)
+            # Preserve public diagnostic/checkpoint JSON, but never export a live
+            # login cookie jar. A restore can authenticate with the private account.
+            updates = DATA/'source_updates'
+            if updates.is_dir():
+                for item in sorted(updates.glob('*.json')):
+                    add(item, 'data/source_updates/'+item.name, updates)
             code = staging/'release.tar'
             subprocess.run(['git', '-C', str(release), 'archive', '--format=tar', '-o', str(code), revision], check=True)
             add(code, 'release/source.tar')
