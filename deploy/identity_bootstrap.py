@@ -42,7 +42,12 @@ def main():
             seen.add(member.name)
             with stream.extractfile(member) as source, (incoming / member.name).open('xb') as output:
                 output.write(source.read())
-            (incoming / member.name).chmod(0o600)
+            target = incoming / member.name
+            if member.name in {'catalog.json', 'covers.tar'}:
+                # The importer is UID/GID 10001 with all capabilities dropped.
+                os.chown(target, 0, 10001); target.chmod(0o640)
+            else:
+                target.chmod(0o600)
     if seen != expected:
         raise RuntimeError('Incomplete release packet')
     manifest = json.loads((incoming / 'manifest.json').read_text())

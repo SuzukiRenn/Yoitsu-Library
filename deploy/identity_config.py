@@ -26,7 +26,7 @@ def configuration(release):
               'networks': ['private'], 'mem_limit': '128m', 'cpus': 0.25,
               'logging': {'driver': 'json-file', 'options': {'max-size': '5m', 'max-file': '2'}}}
     app = {**common, 'mem_limit': '256m', 'cpus': 0.75,
-           'networks': {'private': {}, 'edge': {'ipv4_address': '172.30.30.3'}},
+           'networks': {'private': {}, 'edge': {}},
            'healthcheck': {'test': ['CMD', 'python', 'scripts/predeploy_health.py'],
                            'interval': '15s', 'timeout': '10s', 'retries': 4, 'start_period': '15s'}}
     scheduler = {**common, 'command': ['python', 'scripts/production_tasks.py', 'scheduler'],

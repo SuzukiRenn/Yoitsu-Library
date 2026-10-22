@@ -17,6 +17,8 @@ class IdentityDeploymentTests(unittest.TestCase):
         self.assertEqual(config['services']['proxy']['ports'], ['127.0.0.1:8444:8443'])
         self.assertIn('proxy_set_header Host $http_host;', nginx)
         self.assertNotIn('ports', config['services']['app'])
+        self.assertEqual(config['services']['app']['networks']['edge'], {},
+                         'One-off tools must not inherit the running app static IP')
         self.assertTrue(config['networks']['private']['internal'])
         self.assertTrue(config['networks']['edge']['internal'])
         for name, service in config['services'].items():

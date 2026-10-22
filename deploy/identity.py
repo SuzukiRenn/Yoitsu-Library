@@ -168,7 +168,7 @@ def main():
                 receipt = run(*command, 'run', '-T', '--rm', '--no-deps', '-v',
                     str(Path(args.catalog).resolve()) + ':/tmp/identity-catalog.json:ro',
                     '-v', str(Path(args.covers).resolve()) + ':/tmp/identity-covers.tar:ro',
-                    '--user', '0:0', 'app', 'python', 'scripts/identity_catalog.py', 'load',
+                    'app', 'python', 'scripts/identity_catalog.py', 'load',
                     '--database', '/var/lib/shared-booklist-identity/booklist.sqlite3',
                     '--catalog', '/tmp/identity-catalog.json', '--covers', '/tmp/identity-covers.tar',
                     capture=True)
