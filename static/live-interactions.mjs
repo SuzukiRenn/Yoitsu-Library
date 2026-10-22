@@ -59,7 +59,7 @@ export function updateInteraction(container, work) {
   if (note) {note.textContent = message; note.hidden = !message;}
   const actions = container.querySelector('.action-buttons');
   let edit = actions?.querySelector('a.reason-link');
-  const showEdit = writable && !emptyPublic && (!activity || work.recommended || emptyActivity);
+  const showEdit = writable && !emptyPublic && (work.recommended || Boolean(emptyActivity));
   if (!edit && showEdit && actions) {
     edit = document.createElement('a'); edit.className = 'reason-link'; actions.append(edit);
   }

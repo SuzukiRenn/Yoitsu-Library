@@ -3,6 +3,6 @@
 <div class="action-buttons">
 {% include 'booklist/recommend_button.html' with combined_counts=True %}
 {% include 'booklist/like_button.html' %}
-<a class="reason-link" href="/recommend/?work={{ work.id }}&amp;edit=1">{% if work.own_reason %}编辑理由{% else %}写理由{% endif %}</a>
+{% if work.recommended %}<a class="reason-link" href="/recommend/?work={{ work.id }}&amp;edit=1">{% if work.own_reason %}编辑理由{% else %}写理由{% endif %}</a>{% endif %}
 </div>
 </div>

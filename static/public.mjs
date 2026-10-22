@@ -1,6 +1,6 @@
 import {installShelfSort} from './shelf-sort.mjs?v=20261021-20';
-import {startReasonLikes} from './reason-likes.mjs?v=20261021-11';
-import {startLiveInteractions} from './live-interactions.mjs?v=20261021-11';
+import {startReasonLikes} from './reason-likes.mjs?v=20261022-reason-gate';
+import {startLiveInteractions} from './live-interactions.mjs?v=20261022-reason-gate';
 import {createShelfRefresh} from './live-shelf.mjs?v=20261021-28';
 import './navigation-motion.mjs?v=20261020-1';
 import './work-motion.mjs?v=20261021-5';

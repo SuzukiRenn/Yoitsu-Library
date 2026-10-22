@@ -19,3 +19,18 @@ for(const value of [0,9,10,99,100,1000000000]){
  assert.deepEqual(counts.map(c=>c.textContent),[value>99?'99+':String(value),value>99?'99+':String(value)]);
 }
 console.log('Compact counts reserve 99+; 9/10/99/100/large counts and selection stay stable.');
+
+// A live recommendation or withdrawal must update reason access without reload.
+const originalDocument = globalThis.document;
+globalThis.document = {createElement: () => ({className: '', hidden: false})};
+let reasonLink;
+const actions = {querySelector: () => reasonLink, append: link => {reasonLink = link;}};
+const reasonContainer = {dataset: {work: '17'}, querySelectorAll: () => [], closest: () => null,
+  querySelector: selector => selector === '.action-buttons' ? actions : selector === '[data-live-note]' ? note : null};
+for (const recommended of [false, true, false, true]) {
+  updateInteraction(reasonContainer, {recommended, recommendation_count: 2, like_count: 1, own_reason: ''});
+  assert.equal(Boolean(reasonLink && !reasonLink.hidden), recommended);
+  if (recommended) assert.equal(reasonLink.href, '/recommend/?work=17&edit=1');
+}
+globalThis.document = originalDocument;
+console.log('Public reason entry follows the current user recommendation, including withdrawal and re-recommendation.');

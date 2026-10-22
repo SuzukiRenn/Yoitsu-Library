@@ -74,8 +74,8 @@ def relation(request, data, work_id, kind):
 def reason(request, data, work_id):
     def operation():
         work = books.require_work(work_id)
-        if not books.recommendations().filter(work=work).exists():
-            raise services.DomainError('not_in_public', '请先重新推荐这本书', 409)
+        if not books.recommendations().filter(work=work, anonymous_client=request.anonymous_client).exists():
+            raise services.DomainError('recommendation_required', '请先推荐这本书，再写推荐理由', 409)
         books.set_reason(work, request.anonymous_client, data['reason'])
         return {'work': books.serialize([work], request.anonymous_client)[0]}
     return write(request, f'public.reason.{work_id}', data, operation)

@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="{% static 'first-visit.css' %}?v=20261022-3">
 <script type="module" src="{% static 'first-visit.mjs' %}?v=20261022-3"></script>
 <link rel="stylesheet" href="{% static 'motion.css' %}?v=20261022-charcoal-1">
-<script type="module" src="{% static 'public.mjs' %}?v=20261021-28"></script>
+<script type="module" src="{% static 'public.mjs' %}?v=20261022-reason-gate"></script>
 {% block scripts %}{% endblock %}</head>
 <body><a class="skip-link" href="#main">跳到内容</a>
 <header class="site-header{% block header_class %}{% endblock %}{% if has_admin_access %} has-admin-tools{% endif %}"><div class="header-location"><a class="brand" href="/"><img src="{% static 'logo.png' %}?v=20261022-charcoal-1" width="28" height="28" alt="" aria-hidden="true">共享书单</a>{% block site_location %}{% endblock %}</div><nav class="main-nav" aria-label="主导航"><a href="/"{% if not navigation_activities %} aria-current="true"{% endif %}>公共书单</a><a href="/activities/"{% if navigation_activities %} aria-current="true"{% endif %}>推荐活动</a></nav>{% if has_admin_access %}<a class="admin-return" href="/manage/">返回管理后台</a>{% endif %}</header>

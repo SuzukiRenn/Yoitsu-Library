@@ -34,6 +34,9 @@ def recommend(request, data, activity_id=None):
             work['own_reason'] = own.reason if own else ''
     elif work:
         work.update(books.serialize([books.require_work(work_id, public=editing)], request.anonymous_client)[0])
+        if editing and not work['recommended']:
+            from .services import DomainError
+            raise DomainError('recommendation_required', '请先推荐这本书，再写推荐理由', 409)
     if work:
         if activity_id:
             work['recommendation_count'] = activities.recs(activity_id).filter(work_id=work_id).count()
