@@ -4,8 +4,9 @@ import secrets
 import unicodedata
 from datetime import timedelta
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.contrib.auth.hashers import make_password, check_password
-from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.password_validation import validate_password, get_password_validators
 from django.db import transaction
 from django.utils import timezone
 from .models import Account, AccountSession, AnonymousClient
@@ -15,7 +16,7 @@ from .services import DomainError, token_hash
 def username(value):
     value = value.strip().lower()
     if not re.fullmatch(r'[a-z0-9_]{3,32}', value):
-        raise DomainError('invalid_username', '登录名须为 3–32 位小写字母、数字或下划线')
+        raise DomainError('invalid_username', '账号须为 3–32 位小写字母、数字或下划线')
     return value
 
 
@@ -29,7 +30,22 @@ def display_name(value):
 def password(value):
     if len(value) > 1024:
         raise DomainError('invalid_password', '密码过长')
-    validate_password(value)
+    try:
+        validate_password(value, password_validators=get_password_validators(settings.ACCOUNT_PASSWORD_VALIDATORS))
+    except ValidationError as exc:
+        messages = []
+        for issue in exc.error_list:
+            if issue.code == 'password_too_short':
+                message = f"密码至少需要 {issue.params['min_length']} 位"
+            elif issue.code == 'password_too_common':
+                message = '密码过于常见，请换一个'
+            elif issue.code == 'password_entirely_numeric':
+                message = '密码不能全部为数字'
+            else:
+                message = '密码不符合要求，请换一个'
+            if message not in messages:
+                messages.append(message)
+        raise DomainError('invalid_password', '；'.join(messages)) from None
 
 
 def session(account):
@@ -46,7 +62,7 @@ def register(name, label, secret):
     encoded = make_password(secret)
     with transaction.atomic():
         if Account.objects.filter(username=name).exists():
-            raise DomainError('username_exists', '登录名已被使用', 409)
+            raise DomainError('username_exists', '账号已被使用', 409)
         now = timezone.now()
         principal = AnonymousClient.objects.create(token_hash=token_hash(secrets.token_urlsafe(32)),
             last_seen_at=now, expires_at=now + timedelta(days=36500))
@@ -56,18 +72,18 @@ def register(name, label, secret):
 
 def login(name, secret):
     if len(name) > 100 or len(secret) > 1024:
-        raise DomainError('invalid_credentials', '登录名或密码错误', 401)
+        raise DomainError('invalid_credentials', '账号或密码错误', 401)
     candidate = Account.objects.filter(username=name.strip().lower()).first()
     if candidate is None:
         make_password(secret)
-        raise DomainError('invalid_credentials', '登录名或密码错误', 401)
+        raise DomainError('invalid_credentials', '账号或密码错误', 401)
     if not check_password(secret, candidate.password_hash) or not candidate.is_active:
-        raise DomainError('invalid_credentials', '登录名或密码错误', 401)
+        raise DomainError('invalid_credentials', '账号或密码错误', 401)
     with transaction.atomic():
         current = Account.objects.get(pk=candidate.pk)
         if (not current.is_active or current.password_hash != candidate.password_hash
                 or current.session_version != candidate.session_version):
-            raise DomainError('invalid_credentials', '登录名或密码错误', 401)
+            raise DomainError('invalid_credentials', '账号或密码错误', 401)
         return session(current)
 
 

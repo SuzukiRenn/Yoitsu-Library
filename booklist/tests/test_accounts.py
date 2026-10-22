@@ -85,7 +85,7 @@ class AccountTests(TestCase):
         client = self.browser('bob')
         self.assertEqual(self.post(client, '/api/v1/account/profile/', {'display_name': '青禾'}).status_code, 200)
         self.assertEqual(Account.objects.get(username='bob').display_name, '青禾')
-        profile = client.get('/account/')
+        profile = client.get('/account/settings/')
         self.assertContains(profile, '保存昵称')
         self.assertContains(profile, '<strong>bob</strong>', html=True)
         self.assertNotContains(client.get('/'), '@bob')
@@ -251,6 +251,62 @@ class AccountTests(TestCase):
         self.assertContains(page, '赞了你推荐的')
         self.assertContains(page, '小满')
         self.assertNotContains(page, '@carol')
+
+    def assert_notification_read_preserves_interactions(self, read_all):
+        from booklist.models import Vote, Recommendation, ActivityWork
+        self.recommend('alice', activity=True)
+        self.recommend('bob', activity=True)
+        self.relation('bob', 'like')
+        self.relation('alice', 'like', activity=True)
+        self.relation('carol', 'like', activity=True)
+        models = (PublicLike, Vote, PublicRecommendation, Recommendation,
+                  ActivityWork, WorkLikeEvent, ReasonLike)
+        def rows():
+            return {model.__name__: list(model.objects.order_by('pk').values()) for model in models}
+        before = rows()
+        def check_views():
+            for name in ('alice', 'bob'):
+                browser = self.browser(name)
+                for activity, count, liked in ((False, 1, name == 'bob'),
+                                               (True, 2, name == 'alice')):
+                    prefix = f'/api/v1/activities/{self.activity.pk}' if activity else '/api/v1/public'
+                    stat = browser.get(f'{prefix}/stats/?ids={self.work.pk}').json()['results'][0]
+                    listing = browser.get(f'{prefix}/works/' if not activity else f'{prefix}/').json()['results'][0]
+                    url = f'/works/{self.work.pk}/' + (f'?activity={self.activity.pk}' if activity else '')
+                    detail = browser.get(url)
+                    self.assertEqual(detail.status_code, 200)
+                    for row in (stat, listing, detail.context['interaction']):
+                        self.assertEqual((row['recommendation_count'], row['like_count'], row['liked']),
+                                         (2, count, liked))
+                    self.assertContains(detail, f'data-activity="{self.activity.pk}"' if activity else
+                                        f'data-work="{self.work.pk}"')
+        check_views()
+        alice = self.browser('alice')
+        own = Notification.objects.filter(recipient=self.readers['alice'])
+        other_before = list(Notification.objects.exclude(recipient=self.readers['alice']).order_by('pk').values())
+        self.assertEqual(own.filter(read_at__isnull=True).count(), 2)
+        note = own.filter(event__scope_key=f'activity:{self.activity.pk}').get()
+        target = f'/notifications/{note.pk}/work/'
+        self.assertEqual(alice.get(target).url, f'/works/{self.work.pk}/?activity={self.activity.pk}')
+        path = '/api/v1/notifications/read-all/' if read_all else '/api/v1/notifications/read/'
+        payload = {} if read_all else {'ids': [note.pk]}
+        result = self.post(alice, path, payload)
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.json()['changed'], 2 if read_all else 1)
+        self.assertEqual(self.post(alice, path, payload).json()['changed'], 0)
+        self.assertEqual(rows(), before, 'Reading messages must not mutate interaction rows or dedup ledgers')
+        self.assertEqual(list(Notification.objects.exclude(recipient=self.readers['alice']).order_by('pk').values()), other_before)
+        self.assertEqual(alice.get('/api/v1/notifications/unread/').json()['unread_count'], 0 if read_all else 1)
+        self.assertContains(alice.get('/notifications/'), '赞了你推荐的')
+        self.assertEqual(alice.get(target).url, f'/works/{self.work.pk}/?activity={self.activity.pk}')
+        check_views()
+        self.assertEqual(rows(), before)
+
+    def test_single_notification_read_preserves_database_api_html_and_scope(self):
+        self.assert_notification_read_preserves_interactions(read_all=False)
+
+    def test_all_notifications_read_preserves_database_api_html_and_scope(self):
+        self.assert_notification_read_preserves_interactions(read_all=True)
 
     def test_no_cross_account_reason_or_metadata_edits_or_identity_spoofing(self):
         alice, bob = self.browser('alice'), self.browser('bob')
@@ -445,6 +501,112 @@ class AccountTests(TestCase):
             self.assertContains(response, fragment)
         self.assertNotContains(response, 'public-period.css')
         self.assertNotContains(response, '@alice')
+
+
+    def test_personal_home_is_private_and_settings_are_a_separate_entry(self):
+        for url in ('/account/', '/account/settings/'):
+            response = self.browser().get(url)
+            self.assertEqual(response.status_code, 302)
+            self.assertTrue(response.url.startswith('/account/login/'))
+        home = self.browser('alice').get('/account/')
+        for text in ('个人主页','我的推荐','最近点赞','修改信息','/account/settings/'):
+            self.assertContains(home,text)
+        self.assertNotContains(home,'data-account-form')
+        self.assertNotContains(home,'<strong>alice</strong>',html=True)
+        settings_page = self.browser('alice').get('/account/settings/')
+        self.assertContains(settings_page,'保存昵称')
+        self.assertContains(settings_page,'返回个人主页')
+        self.assertContains(settings_page,'<strong>alice</strong>',html=True)
+        self.assertContains(home,'data-account-menu')
+        self.assertContains(home,'个人菜单：青禾')
+
+    def test_personal_home_deduplicates_scopes_and_preserves_activity_snapshot(self):
+        self.recommend('alice', activity=True)
+        self.relation('alice','like')
+        self.relation('alice','like',activity=True)
+        client = self.browser('alice')
+        rec = client.get('/account/').context
+        self.assertEqual(rec['recommended_total'],1)
+        self.assertEqual(rec['liked_total'],1)
+        self.assertEqual(len(rec['contributions']),1)
+        liked = client.get('/account/?tab=likes').context['contributions'][0]
+        self.assertEqual(liked['url'],f'/works/{self.work.pk}/?activity={self.activity.pk}')
+        self.work.wenku8_title='当前书名修改'
+        self.work.save(update_fields=['wenku8_title','updated_at'])
+        frozen = client.get('/account/?tab=likes').context['contributions'][0]
+        self.assertEqual(frozen['work']['title'],'合成测试作品')
+        self.assertEqual(frozen['scope'],self.activity.title)
+
+    def test_personal_home_never_claims_legacy_or_other_people_or_hidden_records(self):
+        from booklist.models import Recommendation
+        self.recommend('bob')
+        _, legacy = services.issue_anonymous()
+        PublicRecommendation.objects.create(work=self.work,anonymous_client=legacy)
+        client = self.browser('alice')
+        self.assertEqual(client.get('/account/').context['total'],0)
+        self.recommend('alice')
+        self.relation('alice','like')
+        self.assertEqual(client.get('/account/').context['total'],1)
+        self.relation('alice','like',False)
+        self.assertEqual(client.get('/account/?tab=likes').context['total'],0)
+        self.relation('alice','recommend',False)
+        self.assertEqual(client.get('/account/').context['total'],0)
+        self.recommend('alice',activity=True)
+        Recommendation.objects.filter(anonymous_client=self.readers['alice'].principal,scope='activity').update(invalidated_at=timezone.now())
+        PublicRecommendation.objects.filter(anonymous_client=self.readers['alice'].principal).update(invalidated_at=timezone.now())
+        self.assertEqual(client.get('/account/').context['total'],0)
+        self.relation('alice','like')
+        Work.objects.filter(pk=self.work.pk).update(hidden_at=timezone.now())
+        self.assertEqual(client.get('/account/?tab=likes').context['total'],0)
+
+    def test_personal_home_orders_and_paginates_before_serialization(self):
+        now=timezone.now()
+        for index in range(14):
+            work=Work.objects.create(original_submitted_title=f'本人作品{index:02d}',public_added_at=now)
+            rec=PublicRecommendation.objects.create(work=work,anonymous_client=self.readers['alice'].principal)
+            PublicRecommendation.objects.filter(pk=rec.pk).update(created_at=now-timedelta(minutes=index))
+        client=self.browser('alice')
+        first=client.get('/account/').context
+        second=client.get('/account/?page=2').context
+        self.assertEqual((first['total'],len(first['contributions']),len(second['contributions'])),(14,12,2))
+        self.assertEqual(first['contributions'][0]['work']['title'],'本人作品00')
+        self.assertEqual(second['contributions'][0]['work']['title'],'本人作品12')
+        self.assertEqual(client.get('/account/?tab=bad').status_code,400)
+        self.assertEqual(client.get('/account/?page=0').status_code,400)
+        self.assertEqual(client.get('/account/?tab=likes&page=99').url,'/account/?tab=likes&page=1')
+
+
+    def test_reader_password_nine_character_boundary_and_admin_policy_unchanged(self):
+        from django.core.exceptions import ValidationError
+        secret = 'K7!qR2@vZ'
+        visitor = self.browser()
+        payload = {'username':'ninechars', 'display_name':'九位账号', 'password':secret[:-1]}
+        self.assertEqual(self.post(visitor,'/api/v1/account/register/',payload).status_code,400)
+        for invalid in ('123456789','password1'):
+            with self.assertRaises(services.DomainError):accounts.password(invalid)
+        self.assertEqual(self.post(visitor,'/api/v1/account/register/',{**payload,'password':secret}).status_code,200)
+        response=self.post(visitor,'/api/v1/account/password/',{'current_password':secret,'new_password':'M8$pT4#c'})
+        self.assertEqual(response.status_code,400)
+        response=self.post(visitor,'/api/v1/account/password/',{'current_password':secret,'new_password':'M8$pT4#cW'})
+        self.assertEqual(response.status_code,200)
+        self.assertEqual(visitor.get('/api/v1/account/me/').status_code,401)
+        with self.assertRaises(ValidationError):services.create_admin(self.admin,'nineadmin',secret)
+        self.assertContains(self.browser().get('/account/register/'),'minlength="9"')
+        self.assertContains(self.browser('alice').get('/account/settings/'),'minlength="9"')
+
+
+    def test_registration_explains_password_failure_without_echoing_secret(self):
+        visitor=self.browser()
+        for secret, expected in [('K7!qR2@v','密码至少需要 9 位'),
+                                 ('123456789','密码不能全部为数字'),
+                                 ('password1','密码过于常见，请换一个')]:
+            response=self.post(visitor,'/api/v1/account/register/',
+                {'username':'rulecheck','display_name':'规则测试','password':secret})
+            self.assertEqual(response.status_code,400)
+            self.assertEqual(response.json()['error']['code'],'invalid_password')
+            self.assertIn(expected,response.json()['error']['message'])
+            self.assertNotIn(secret,response.content.decode())
+        self.assertFalse(Account.objects.filter(username='rulecheck').exists())
 
 
 @override_settings(REQUIRE_ACCOUNT=True)

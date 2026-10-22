@@ -80,10 +80,16 @@ def password(request, data):
 
 @endpoint('GET')
 def screen(request, data, mode='login'):
-    parameters(request, ('next',))
-    if mode in ('profile', 'notifications') and not request.account:
+    parameters(request, ('tab', 'page') if mode == 'profile' else ('next',))
+    if mode in ('profile', 'settings', 'notifications') and not request.account:
         return redirect('/account/login/?next=' + request.path)
     context = {'mode': mode}
+    if mode == 'profile':
+        from .account_home import context as home_context
+        context.update(home_context(request))
+        if context['page'] > context['paging']['count']:
+            return redirect(request.path + context['paging']['last_url'])
+        return page(request, 'booklist/account_home.html', context)
     if mode == 'notifications':
         context['notifications'] = inbox_query(request).select_related('event__actor').order_by('-id')[:50]
     return page(request, 'booklist/account.html', context)

@@ -1,4 +1,4 @@
-import {renderRecommenders} from './account.mjs?v=20261022-identity-sync';
+import {renderRecommenders} from './account.mjs?v=20261022-account-home';
 import {renderReasonPreview} from './reason-ui.mjs?v=20261022-identity-sync';
 import {createPublicApi} from './public-api.mjs?v=20261022-identity-sync';
 

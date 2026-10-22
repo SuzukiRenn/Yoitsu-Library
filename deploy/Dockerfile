@@ -34,5 +34,5 @@ COPY --from=runtime /app /app
 WORKDIR /app
 RUN groupadd --gid 10001 booklist && useradd --uid 10001 --gid 10001 --no-create-home --shell /usr/sbin/nologin booklist
 USER 10001:10001
-ENV BOOKLIST_ENV=test BOOKLIST_DATA_DIR=/tmp/verification
+ENV BOOKLIST_ENV=test BOOKLIST_DATA_DIR=/tmp/verification BOOKLIST_LEGACY_TESTS=1
 CMD ["python", "manage.py", "test", "booklist.tests", "--noinput"]

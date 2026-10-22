@@ -9,6 +9,7 @@ urlpatterns = [
     path('account/login/', account_views.screen),
     path('account/register/', account_views.screen, {'mode': 'register'}),
     path('account/', account_views.screen, {'mode': 'profile'}),
+    path('account/settings/', account_views.screen, {'mode': 'settings'}),
     path('notifications/', account_views.screen, {'mode': 'notifications'}),
     path('notifications/<int:notification_id>/work/', account_views.notification_target),
     path('api/v1/account/register/', account_views.register),

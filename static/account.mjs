@@ -34,7 +34,22 @@ export function renderRecommenders(container, work) {
     details.append(summary,ul);slot.append(details);
   }
 }
+export function installAccountMenu(doc=document, win=window) {
+  const menus=[...doc.querySelectorAll('[data-account-menu]')];
+  for(const menu of menus) {
+    menu.addEventListener('pointerenter',()=>{if(win.matchMedia('(hover: hover)').matches)menu.open=true;});
+    menu.addEventListener('pointerleave',()=>{if(win.matchMedia('(hover: hover)').matches && !menu.contains(doc.activeElement))menu.open=false;});
+    menu.addEventListener('focusout',()=>win.setTimeout(()=>{if(!menu.contains(doc.activeElement))menu.open=false;},0));
+  }
+  doc.addEventListener('click',event=>{for(const menu of menus)if(!menu.contains(event.target))menu.open=false;});
+  doc.addEventListener('keydown',event=>{
+    if(event.key!=='Escape')return;
+    for(const menu of menus)if(menu.open){menu.open=false;menu.querySelector('summary').focus();event.preventDefault();}
+  });
+}
+
 if (typeof document !== 'undefined') {
+  installAccountMenu();
   const unread = document.querySelector('[data-unread-count]');
   let unreadTimer, unreadStopped=false, unreadDelay=30000;
   const refreshUnread = async () => {
@@ -98,9 +113,10 @@ if (typeof document !== 'undefined') {
         const li=document.createElement('li');li.className=`notification${item.read ? '' : ' unread'}`;
         const p=document.createElement('p');p.textContent=`${item.actor.display_name} 赞了你推荐的《${item.work_title}》`;
         const note=document.createElement('p');note.className='section-note';note.textContent=`${item.activity_title || '公共书单'} · ${new Date(item.created_at).toLocaleString()}`;
-        const a=document.createElement('a');a.textContent='查看作品';a.href=item.url;
-        li.append(p,note,a);
-        if(!item.read){const b=document.createElement('button');b.type='button';b.dataset.read=String(item.id);b.textContent='标为已读';li.append(b);}
+        const actions=document.createElement('div');actions.className='notification-actions';
+        const a=document.createElement('a');a.className='primary notification-action';a.textContent='查看作品';a.href=item.url;
+        actions.append(a);li.append(p,note,actions);
+        if(!item.read){const b=document.createElement('button');b.type='button';b.dataset.read=String(item.id);b.className='reason-link notification-action';b.textContent='标为已读';actions.append(b);}
         document.querySelector('[data-notifications]').append(li);
       }
       more.hidden=page*50>=data.total;

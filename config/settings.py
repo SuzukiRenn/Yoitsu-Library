@@ -51,6 +51,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_PASSWORD_VALIDATORS = [{'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 12}},
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'}]
+# Reader passwords have their own minimum; administrator policy remains 12.
+ACCOUNT_PASSWORD_VALIDATORS = [{**rule, 'OPTIONS': {**rule.get('OPTIONS', {}), 'min_length': 9}}
+    if rule['NAME'] == 'django.contrib.auth.password_validation.MinimumLengthValidator' else rule.copy()
+    for rule in AUTH_PASSWORD_VALIDATORS]
 STATIC_URL = '/static/'
 # Some Windows MIME registries label .mjs as text/plain; modules must be JS.
 mimetypes.add_type('text/javascript', '.mjs')

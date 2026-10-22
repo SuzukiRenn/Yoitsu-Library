@@ -1,0 +1,9 @@
+{% extends 'booklist/base.html' %}
+{% block title %}个人主页 · 共享书单{% endblock %}
+{% block feedback_footer %}{% endblock %}
+{% block content %}<section class="account-home">
+<div class="section-heading"><div><h1>{{ current_account.display_name }}</h1><p class="section-note">个人主页</p></div><div class="notification-actions"><a class="reason-link notification-action" href="/">← 返回书单</a><a class="primary notification-action" href="/account/settings/">修改信息</a></div></div>
+<nav class="account-tabs" aria-label="个人主页分类"><a href="?tab=recommendations"{% if tab == 'recommendations' %} aria-current="page"{% endif %}>我的推荐 <span>{{ recommended_total }}</span></a><a href="?tab=likes"{% if tab == 'likes' %} aria-current="page"{% endif %}>最近点赞 <span>{{ liked_total }}</span></a></nav>
+<div class="account-work-list">{% for item in contributions %}<article class="account-work"><a class="book-cover" href="{{ item.url }}" aria-label="{{ item.work.title }}">{% include 'booklist/cover_image.html' with work=item.work %}</a><div class="account-work-info"><a class="book-title" href="{{ item.url }}">{{ item.work.title }}</a>{% if item.work.author %}<p class="book-author">{{ item.work.author }}</p>{% endif %}<p class="section-note">{{ item.scope }} · {{ item.at|date:'Y-m-d H:i' }}</p></div><a class="reason-link" href="{{ item.url }}">查看作品</a></article>{% empty %}<div class="empty-state"><h2>{% if tab == 'likes' %}暂无点赞{% else %}暂无推荐{% endif %}</h2><a class="reason-link" href="/">去看看书单</a></div>{% endfor %}</div>
+{% include 'booklist/list_pagination.html' %}
+</section>{% endblock %}

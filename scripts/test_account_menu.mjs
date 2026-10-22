@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {installAccountMenu} from '../static/account.mjs';
+const menuEvents={},docEvents={};let focused=false,hover=true;
+const target={},summary={focus(){focused=true;}};
+const menu={open:false,addEventListener:(name,fn)=>menuEvents[name]=fn,contains:e=>e===target,querySelector:()=>summary};
+const doc={activeElement:null,querySelectorAll:()=>[menu],addEventListener:(name,fn)=>docEvents[name]=fn};
+const win={matchMedia:()=>({matches:hover}),setTimeout:fn=>fn()};
+installAccountMenu(doc,win);
+menuEvents.pointerenter();assert.equal(menu.open,true);
+menuEvents.pointerleave();assert.equal(menu.open,false);
+hover=false;menuEvents.pointerenter();assert.equal(menu.open,false);
+menu.open=true;docEvents.click({target});assert.equal(menu.open,true);
+docEvents.click({target:{}});assert.equal(menu.open,false);
+menu.open=true;let prevented=false;docEvents.keydown({key:'Escape',preventDefault(){prevented=true;}});
+assert.equal(menu.open,false);assert.equal(focused,true);assert.equal(prevented,true);
+hover=true;menu.open=true;doc.activeElement=target;menuEvents.pointerleave();assert.equal(menu.open,true);
+doc.activeElement=null;menuEvents.focusout();assert.equal(menu.open,false);
+console.log('Account menu: hover, touch fallback, outside click, focus and Escape checks passed.');
