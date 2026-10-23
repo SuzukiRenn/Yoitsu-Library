@@ -49,6 +49,7 @@ class ListingTests(SimpleTestCase):
                         {'requests': [{**attempt, 'error_class': 'SSLCertVerificationError'}]*3}):
             self.assertFalse(reviewed_initial_network_stop({**state, **changed}))
 
+    @patch('integrations.wenku8.retry_policy.datetime', FrozenDateTime)
     def test_transient_failure_waits_until_next_day_without_losing_discovery_boundary(self):
         with TemporaryDirectory() as directory, override_settings(DATA_DIR=Path(directory)), patch('booklist.source_updates.datetime', FrozenDateTime):
             FrozenDateTime.current = datetime(2026, 10, 22, 2, tzinfo=timezone.utc)
@@ -167,6 +168,7 @@ class ImportTests(TestCase):
             with self.assertRaisesRegex(SourceStop, 'detail_incomplete'):
                 prepare_snapshot(b'fixture', row)
 
+    @patch('integrations.wenku8.retry_policy.datetime', FrozenDateTime)
     def test_network_interruption_keeps_committed_work_and_recheck_is_idempotent(self):
         rows = [{'book_id': n, 'source_url': 'https://www.wenku8.net/book/%s.htm' % n,
                  'date': '2026-10-22', 'title': '作品%s' % n} for n in (4151, 4152)]
