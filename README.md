@@ -4,7 +4,7 @@
 
 <h1 align="center">共享书单</h1>
 
-<p align="center"><strong>一起推荐，发现下一本想读的书。</strong></p>
+
 
 <p align="center">
   面向读书群与小说爱好者的共同荐书网站。<br>
