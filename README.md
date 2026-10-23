@@ -1,42 +1,48 @@
-# 共享书单
+<p align="center">
+  <img src="static/logo.png" width="88" height="88" alt="共享书单 Logo">
+</p>
 
-一个面向读书群和小说爱好者的共同荐书网站。把大家推荐的作品集中到一份书单里，通过推荐、点赞和推荐理由，找到下一本想读的小说；也可以围绕某个主题举办限时推荐活动。
+<h1 align="center">共享书单</h1>
 
-**阅读入口：** [本地运行](#本地运行) · [目录说明](#目录说明) · [采集与审核](#书目采集与审核) · [脚本索引](scripts/README.md) · [文档索引](项目文档/README.md)
+<p align="center"><strong>一起推荐，发现下一本想读的书。</strong></p>
 
-## 目录说明
+<p align="center">
+  面向读书群与小说爱好者的共同荐书网站。<br>
+  汇集推荐、分享理由，也围绕一个主题举办荐书活动。
+</p>
 
-| 路径 | 用途 | 适合什么时候查看 |
-| --- | --- | --- |
-| [booklist/](booklist/) | 书目、推荐、点赞、活动、管理后台等业务逻辑，包含数据模型、迁移和业务测试。 | 修改网站功能或数据规则。 |
-| [config/](config/) | Django运行配置、路由、代理及服务入口。 | 调整环境配置或请求入口。 |
-| [templates/booklist/](templates/booklist/) | 网站页面模板。 | 修改页面结构和文案。 |
-| [static/](static/) | 网站CSS、JavaScript及静态资源。 | 修改外观与交互。 |
-| [integrations/wenku8/](integrations/wenku8/) | 文库8元数据解析、校验和来源适配。 | 排查来源解析或导入问题。 |
-| [scripts/](scripts/README.md) | 采集、人工审核、备份、部署及验证工具。 | 按任务找到操作入口。 |
-| [deploy/](deploy/) | Docker、定时任务、证书和服务器运行配套文件。 | 查看部署结构；具体操作先看部署手册。 |
-| [requirements/](requirements/) | Python依赖及按环境固定的版本、校验值。 | 安装或更新依赖。 |
-| [tests/](tests/) | 来源解析样本及专项验证材料；业务测试还位于booklist中。 | 了解测试覆盖与样本。 |
-| [tools/wenku8-directory-extension/](tools/wenku8-directory-extension/README.md) | 文库8目录辅助浏览器扩展。 | 辅助取得目录信息。 |
-| [项目文档/](项目文档/README.md) | 当前使用规则、维护手册与历史设计验收记录。 | 查操作流程和产品决策。 |
-| [manage.py](manage.py) / [.env.example](.env.example) | Django命令入口 / 环境变量示例。 | 初始化和启动项目。 |
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.14-242424?style=flat-square&amp;labelColor=555555" alt="Python 3.14">
+  <img src="https://img.shields.io/badge/Django-5.2-242424?style=flat-square&amp;labelColor=555555" alt="Django 5.2">
+  <img src="https://img.shields.io/badge/SQLite-数据库-242424?style=flat-square&amp;labelColor=555555" alt="SQLite 数据库">
+  <img src="https://img.shields.io/badge/JavaScript-原生模块-242424?style=flat-square&amp;labelColor=555555" alt="原生 JavaScript 模块">
+</p>
 
-`.runtime/`、`backups/`等本机运行目录不随源码上传，数据库和采集结果不会因克隆仓库自动出现。GitHub文件列表右侧是最近一次提交说明；目录用途以此表及各目录README为准。
+<p align="center">
+  <a href="#可以做什么">功能一览</a> ·
+  <a href="#本地运行">本地运行</a> ·
+  <a href="#书目采集与审核">采集与审核</a> ·
+  <a href="#目录说明">目录说明</a> ·
+  <a href="项目文档/README.md">文档索引</a>
+</p>
+
+---
 
 ## 可以做什么
 
-| 功能 | 使用方式 |
-| --- | --- |
-| 公共书单 | 共同推荐作品、独立点赞，按标签筛选，按推荐数、点赞数或最新加入排序。 |
-| 推荐活动 | 参与管理员创建的主题活动，查看本期书目与独立统计，回顾往期活动。 |
-| 作品资料 | 查看封面、作者、简介和标签；推荐时搜索已有作品，也可提交尚未收录的作品。 |
-| 推荐理由 | 自愿填写理由、为他人的理由点赞；作品卡片展示获赞最多的一条摘要，详情页查看完整理由。 |
-| 页面交互 | 推荐、点赞和新增书目近实时更新；切换排序无需刷新整页，长理由可展开阅读。 |
-| 群内分享 | 管理员导出活动总结 PNG，也可打包下载多张图片。图片包含封面、书名、作者、推荐数、点赞数和理由数，理由正文留在网站查看。 |
+| 共同荐书 | 主题活动 | 选书参考 |
+| :--- | :--- | :--- |
+| **公共书单**<br>一起推荐和点赞，按标签、热度或时间发现作品。 | **限时推荐活动**<br>围绕主题收集书目，独立统计，回顾往期活动。 | **作品资料**<br>查看封面、作者、简介与标签，搜索已有作品或补充新书。 |
+| **推荐理由**<br>分享喜欢的原因，赞同他人的理由，展开阅读全文。 | **群内分享**<br>导出带封面的活动总结图片，支持打包下载。 | **轻量交互**<br>推荐与点赞近实时更新，兼容桌面和手机。 |
 
-界面同时适配桌面和手机。普通参与无需注册账号；管理员通过独立后台管理书单和活动。
+普通参与无需注册，管理员使用独立后台。推荐、作品点赞与理由赞同分别统计。
 
 ## 怎样参与
+
+**搜索作品 → 推荐或点赞 → 分享理由 → 参与活动**
+
+<details>
+<summary>查看参与方式与匿名身份规则</summary>
 
 1. 在公共书单或活动页面点击“推荐”，先搜索并选择已有作品。
 2. 没有匹配作品时，填写书名，并可补充作者、简介和标签。相似作品会要求确认，避免重复收录。
@@ -49,7 +55,14 @@
 
 个人推荐、点赞和编辑权限由浏览器 Cookie 识别。清除 Cookie、使用无痕窗口或更换设备后，不会自动继承原来的操作权限。
 
+</details>
+
 ## 管理员功能
+
+后台入口为 `/manage/`，负责书目、推荐活动、反馈与来源核查。
+
+<details>
+<summary>查看管理能力</summary>
 
 后台入口为 `/manage/`，包括作品库、公共书单管理、推荐活动、待核查作品、来源身份核对、合并记录和操作审计。
 
@@ -59,6 +72,8 @@
 - 生成带封面的活动总结图片；同一份导出中的卡片保持统一高度，理由数量不会拉长卡片。
 
 后台与前台有明确的往返入口。前台的“返回管理后台”和图片导出入口仅对已登录管理员显示。
+
+</details>
 
 ## 本地运行
 
@@ -85,12 +100,6 @@ $env:BOOKLIST_ENV='development'
 
 首次运行的书库为空。开发数据默认保存在 `.runtime/`，也可通过 `BOOKLIST_DATA_DIR` 指定独立目录。线上数据库、用户贡献和封面文件不随源码分发。
 
-## 部署与数据维护
-
-应用已完成服务器私有部署与验证，**目前尚未开放公众访问**。仓库中的部署工具提供 Docker Compose、活动调度、数据库备份和恢复校验；正式公开访问还需完成域名入口及对应部署配置。开发用 `runserver` 不用于生产。
-
-作品来源元数据支持校验、分批导入和断点恢复，封面支持本地缓存。项目用于整理书目与推荐，不提供小说正文下载。
-
 ## 书目采集与审核
 
 网站书库与来源暂存库分开维护，采集成功不代表已正式入库。
@@ -102,6 +111,31 @@ $env:BOOKLIST_ENV='development'
 | 本地审核页 | 查看实时进度、重复候选、新增候选及人工审核结果。 | `scripts/bili_review_server.py`，启动后默认访问 `http://127.0.0.1:8899/`。 |
 
 明确重复的条目自动排除重复入库；疑似重复交人工确认，无匹配的进入新增候选。人工判断优先。**只有最终确认新增的作品才入库并下载封面**，重复条目不进入正式库。审核页仅监听本机，暂存数据、审核结论和封面文件不提交GitHub。
+
+## 目录说明
+
+| 路径 | 用途 |
+| --- | --- |
+| [booklist/](booklist/) | 书目、推荐、点赞、活动、管理后台等业务逻辑，包含数据模型、迁移和业务测试。 |
+| [config/](config/) | Django运行配置、路由、代理及服务入口。 |
+| [templates/booklist/](templates/booklist/) | 网站页面模板。 |
+| [static/](static/) | 网站CSS、JavaScript及静态资源。 |
+| [integrations/wenku8/](integrations/wenku8/) | 文库8元数据解析、校验和来源适配。 |
+| [scripts/](scripts/README.md) | 采集、人工审核、备份、部署及验证工具。 |
+| [deploy/](deploy/) | Docker、定时任务、证书和服务器运行配套文件。 |
+| [requirements/](requirements/) | Python依赖及按环境固定的版本、校验值。 |
+| [tests/](tests/) | 来源解析样本及专项验证材料；业务测试还位于booklist中。 |
+| [tools/wenku8-directory-extension/](tools/wenku8-directory-extension/README.md) | 文库8目录辅助浏览器扩展。 |
+| [项目文档/](项目文档/README.md) | 当前使用规则、维护手册与历史设计验收记录。 |
+| [manage.py](manage.py) / [.env.example](.env.example) | Django命令入口 / 环境变量示例。 |
+
+`.runtime/`、`backups/`等本机运行目录不随源码上传。更多操作入口见[脚本索引](scripts/README.md)和[文档索引](项目文档/README.md)。
+
+## 部署与数据维护
+
+应用已完成服务器私有部署与验证，**目前尚未开放公众访问**。仓库中的部署工具提供 Docker Compose、活动调度、数据库备份和恢复校验；正式公开访问还需完成域名入口及对应部署配置。开发用 `runserver` 不用于生产。
+
+作品来源元数据支持校验、分批导入和断点恢复，封面支持本地缓存。项目用于整理书目与推荐，不提供小说正文下载。
 
 ## 常用维护文档
 
