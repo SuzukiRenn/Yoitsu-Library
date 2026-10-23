@@ -1,0 +1,1 @@
+{% if work.author %}<a class="work-author" href="{% if activity %}/activities/{{ activity.id }}/{% else %}/{% endif %}?q={{ work.author|urlencode }}" aria-label="搜索作者：{{ work.author }}">{{ work.author }}</a>{% else %}—{% endif %}

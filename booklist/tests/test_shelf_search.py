@@ -58,3 +58,44 @@ class ShelfSearchTests(TestCase):
         for path in ['/api/v1/public/works/',f'/api/v1/activities/{self.activity.pk}/']:
             response=self.client.get(path,{'q':'不存在'})
             self.assertEqual(response.status_code,200);self.assertEqual(response.json()['total'],0)
+
+    def test_work_tag_links_select_filter_and_allow_combining_or_clearing(self):
+        href = f'/?tag={self.tag.pk}'
+        for path in ['/', f'/works/{self.a.pk}/', '/catalog/?q=新书名']:
+            response = self.client.get(path)
+            self.assertContains(response, f'href="{href}" aria-label="按标签筛选：校园"')
+        selected = self.client.get(href)
+        self.assertEqual(selected.context['selected_tags'], [self.tag.pk])
+        self.assertEqual([w['id'] for w in selected.context['results']], [self.a.pk])
+        other = Tag.objects.create(name='冒险', normalized_name='冒险')
+        WorkTag.objects.create(work=self.a, tag=other, source_type='user', anonymous_client=self.person)
+        combined = self.client.get('/', {'tag': [self.tag.pk, other.pk]})
+        self.assertEqual(set(combined.context['selected_tags']), {self.tag.pk, other.pk})
+        self.assertEqual(combined.context['total'], 1)
+        self.assertEqual(self.client.get('/').context['total'], 2)
+
+    def test_activity_tag_links_and_detail_use_snapshot_tags(self):
+        WorkTag.objects.filter(work=self.a).delete()
+        href = f'/activities/{self.activity.pk}/?tag={self.tag.pk}'
+        for path in [f'/activities/{self.activity.pk}/', f'/works/{self.a.pk}/?activity={self.activity.pk}']:
+            self.assertContains(self.client.get(path), f'href="{href}" aria-label="按标签筛选：校园"')
+        response = self.client.get(href)
+        self.assertEqual(response.context['selected_tags'], [self.tag.pk])
+        self.assertEqual([w['id'] for w in response.context['results']], [self.a.pk])
+        self.assertEqual(response.context['results'][0]['tags'], [{'id': self.tag.pk, 'name': '校园'}])
+
+    def test_author_link_runs_search_and_preserves_full_query(self):
+        from urllib.parse import quote
+        author = 'Alice & 青禾 + /?'
+        self.a.author_override = author
+        self.a.save(update_fields=['author_override'])
+        url = '/?q=' + quote(author, safe='/')
+        for path in ['/', f'/works/{self.a.pk}/', '/catalog/?q=新书名']:
+            self.assertContains(self.client.get(path), f'href="{url}"')
+        response = self.client.get(url)
+        self.assertEqual(response.context['query'], author)
+        self.assertEqual([w['id'] for w in response.context['results']], [self.a.pk])
+        self.assertContains(response, 'value="Alice &amp; 青禾 + /?"')
+        activity_url = f'/activities/{self.activity.pk}/?q=' + quote('快照作者')
+        self.assertContains(self.client.get(f'/activities/{self.activity.pk}/'), f'href="{activity_url}"')
+        self.assertEqual(self.client.get(activity_url).context['query'], '快照作者')

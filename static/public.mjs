@@ -1,10 +1,10 @@
-import {installShelfSort} from './shelf-sort.mjs?v=20261021-20';
+import {installShelfSort} from './shelf-sort.mjs?v=20261023-clear-search-1';
 import {startReasonLikes} from './reason-likes.mjs?v=20261022-reason-gate';
 import {startLiveInteractions} from './live-interactions.mjs?v=20261022-reason-gate';
-import {createShelfRefresh} from './live-shelf.mjs?v=20261021-28';
+import {createShelfRefresh} from './live-shelf.mjs?v=20261023-tag-links-1';
 import './navigation-motion.mjs?v=20261020-1';
 import './work-motion.mjs?v=20261021-5';
-import './back-to-top.mjs?v=20261021-24';
+import './back-to-top.mjs?v=20261023-header-tools-1';
 const status = document.querySelector('#action-status');
 const shelfRefresh=createShelfRefresh();
 startLiveInteractions({refresh:shelfRefresh});

@@ -3,7 +3,7 @@
 {% block feedback_footer %}{% endblock %}
 {% block scripts %}<script type="module" src="{% static 'feedback.mjs' %}?v=1"></script>{% endblock %}
 {% block content %}<section class="feedback-page">
-<h1>问题反馈</h1><p>资料有误、推荐理由不合适，或发现疑似刷票，都可以告诉管理员。无需注册。</p>
+<h1>问题反馈</h1><p>资料有误、推荐理由不合适，或发现疑似刷票，都可以告诉管理员。</p>
 <form id="feedback-form">
 <label for="feedback-category">问题类型</label><select id="feedback-category" name="category">{% for value,label in categories %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select>
 <label for="feedback-message">具体情况</label><textarea id="feedback-message" name="message" rows="5" maxlength="1000" required placeholder="请写明作品名、相关理由或你发现的问题（最多 1000 字）"></textarea>

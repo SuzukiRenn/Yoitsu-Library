@@ -5,16 +5,17 @@
 <link rel="preconnect" href="https://img.wenku8.com">
 <link rel="dns-prefetch" href="//img.wenku8.com">
 <script src="{% static 'motion-boot.js' %}?v=20261021-5"></script>
-<link rel="stylesheet" href="{% static 'catalog.css' %}?v=20261022-charcoal-1">
+<link rel="stylesheet" href="{% static 'catalog.css' %}?v=20261023-clear-search-1">
 <link rel="stylesheet" href="{% static 'feedback.css' %}?v=20261022-6">
 <link rel="stylesheet" href="{% static 'first-visit.css' %}?v=20261022-3">
 <script type="module" src="{% static 'first-visit.mjs' %}?v=20261022-3"></script>
-<link rel="stylesheet" href="{% static 'motion.css' %}?v=20261022-charcoal-1">
-<script type="module" src="{% static 'public.mjs' %}?v=20261022-reason-gate"></script>
+<link rel="stylesheet" href="{% static 'motion.css' %}?v=20261023-author-links-1">
+<script type="module" src="{% static 'public.mjs' %}?v=20261023-clear-search-1"></script>
 {% block scripts %}{% endblock %}</head>
 <body><a class="skip-link" href="#main">跳到内容</a>
 <header class="site-header{% block header_class %}{% endblock %}{% if has_admin_access %} has-admin-tools{% endif %}"><div class="header-location"><a class="brand" href="/"><img src="{% static 'logo.png' %}?v=20261022-charcoal-1" width="28" height="28" alt="" aria-hidden="true">共享书单</a>{% block site_location %}{% endblock %}</div><nav class="main-nav" aria-label="主导航"><a href="/"{% if not navigation_activities %} aria-current="true"{% endif %}>公共书单</a><a href="/activities/"{% if navigation_activities %} aria-current="true"{% endif %}>推荐活动</a></nav>{% if has_admin_access %}<a class="admin-return" href="/manage/">返回管理后台</a>{% endif %}</header>
 <main id="main">{% block content %}{% endblock %}</main>
+<a class="random-book recommend-control" data-random-book href="/random-book/" aria-label="随机推荐" aria-describedby="random-book-tooltip"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h3c4 0 8 10 12 10h3M18 14l3 3-3 3M3 17h3c1.5 0 3-1.5 4.5-3.5M13.5 10.5C15 8.5 16.5 7 18 7h3M18 4l3 3-3 3"/></svg><span class="control-tooltip" id="random-book-tooltip" role="tooltip">随机推荐</span></a>
 <button type="button" class="back-to-top" data-back-to-top aria-label="回到顶部" title="回到顶部" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5h14M12 20V9m-5 5 5-5 5 5"/></svg></button>
 <p id="action-status" class="action-status" role="status"></p>
 {% include 'booklist/legal_footer.html' %}

@@ -51,7 +51,15 @@ def sha(raw): return hashlib.sha256(raw).hexdigest()
 def atomic_json(path, value):
     temporary = path.with_suffix(path.suffix+'.tmp')
     temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding='utf-8')
-    os.replace(temporary, path)
+    for delay in (.05,.1,.2,.4,.8,1.6,None):
+        try:
+            os.replace(temporary,path)
+            break
+        except PermissionError:
+            # Windows readers can briefly prevent replacement of an open file.
+            # Keep the previous valid checkpoint until an atomic swap succeeds.
+            if delay is None:raise
+            time.sleep(delay)
 
 def connect(out):
     db = sqlite3.connect(out/'queue.sqlite3', timeout=20)
@@ -282,7 +290,8 @@ class Worker:
             else:self.checkpoint(status='needs_attention',reason='directory_partial_listing_restricted',stopped_at=stamp())
         except KeyboardInterrupt:self.checkpoint(status='interrupted',reason='keyboard_interrupt')
         except Exception as error:
-            self.checkpoint(status='needs_attention',reason=str(error) if isinstance(error,Pause) else type(error).__name__,stopped_at=stamp())
+            diagnostic={k:v for k,v in {'error_errno':getattr(error,'errno',None),'error_winerror':getattr(error,'winerror',None),'error_file':Path(error.filename).name if getattr(error,'filename',None) else None}.items() if v is not None}
+            self.checkpoint(status='needs_attention',reason=str(error) if isinstance(error,Pause) else type(error).__name__,stopped_at=stamp(),**diagnostic)
             print(json.dumps({'status':'needs_attention','reason':self.state['reason']}),flush=True)
         finally:self.db.close()
 

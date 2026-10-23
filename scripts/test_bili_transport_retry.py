@@ -46,6 +46,25 @@ class RetryTests(unittest.TestCase):
         self.assertEqual(result[1],b'complete')
         self.assertFalse(c.transient_transport({'status':403,'result':'transport_failed','error_class':'IncompleteRead'}))
 
+    def test_checkpoint_retries_temporary_file_lock(self):
+        with tempfile.TemporaryDirectory() as folder:
+            p=Path(folder)/'state.json';p.write_text('{"old":true}')
+            replace=c.os.replace
+            with patch.object(c.os,'replace',side_effect=[PermissionError(13,'locked'),None]) as swap,patch.object(c.time,'sleep'):
+                c.atomic_json(p,{'new':True})
+                self.assertEqual(swap.call_count,2)
+                self.assertEqual(p.read_text(),'{"old":true}')
+            replace(p.with_suffix('.json.tmp'),p)
+            self.assertIn('"new": true',p.read_text())
+
+    def test_checkpoint_permanent_lock_remains_bounded(self):
+        with tempfile.TemporaryDirectory() as folder:
+            p=Path(folder)/'state.json';p.write_text('{"old":true}')
+            with patch.object(c.os,'replace',side_effect=PermissionError(13,'locked')) as swap,patch.object(c.time,'sleep'):
+                with self.assertRaises(PermissionError):c.atomic_json(p,{'new':True})
+                self.assertEqual(swap.call_count,7)
+                self.assertEqual(p.read_text(),'{"old":true}')
+
     def test_http_and_certificate_errors_never_retry(self):
         for record in [{'status':s,'result':'http_status_stop'} for s in (401,403,404,429,500)]+[{'status':None,'result':'transport_failed','cause_class':'SSLCertVerificationError'}]:
             with self.subTest(record=record):

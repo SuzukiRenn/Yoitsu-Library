@@ -60,6 +60,7 @@ export function initializeTagFilters(scope=document){
   form.addEventListener('change',update);
   form.querySelector('[data-clear-tag-selection]').addEventListener('click',()=>{
    labels.forEach(label=>{label.querySelector('input').checked=false;});update();
+   form.requestSubmit();
   });
   win.addEventListener('pagehide',clearMotion);
   reduced.addEventListener('change',()=>{if(reduced.matches)clearMotion();});

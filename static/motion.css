@@ -47,7 +47,7 @@
     transform: translateY(1px) scale(.98);
     box-shadow: none;
   }
-  :is(nav a, .brand, .scope-label a, .source-link, .book-title, summary):active {
+  :is(nav a, .brand, .scope-label a, .source-link, .book-title, a.book-cover, .work-tag, .work-author, summary):active {
     transform: translateY(1px);
   }
   input:is([type="checkbox"], [type="radio"]):not(:disabled):active {
@@ -61,7 +61,7 @@
 }
 
 /* Inline text links need a box for movement; existing card/button layouts take precedence. */
-:where(nav a, .scope-label a, .source-link, .book-title) { display: inline-block; }
+:where(nav a, .scope-label a, .source-link, .book-title, .work-tag, .work-author) { display: inline-block; }
 summary { cursor: pointer; }
 :is(a[href], button, input, select, textarea, summary):focus-visible {
   outline: 2px solid #555555;
@@ -79,7 +79,7 @@ summary { cursor: pointer; }
     transform: translateY(-1px);
     box-shadow: 0 3px 7px #2222221a;
   }
-  :is(nav a, .brand, .scope-label a, .source-link, .book-title, summary):hover:not(:active) {
+  :is(nav a, .brand, .scope-label a, .source-link, .book-title, a.book-cover, .work-tag, .work-author, summary):hover:not(:active) {
     transform: translateY(-1px);
   }
   .tag-filter label:hover { box-shadow: 0 2px 6px #2222221a; }

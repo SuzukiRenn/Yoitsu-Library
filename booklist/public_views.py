@@ -31,6 +31,17 @@ def home(request, data):
 
 
 @endpoint('GET')
+def random_book(request, data):
+    parameters(request, ())
+    read_limit(request)
+    work_id = books.public_works().order_by('?').values_list('pk', flat=True).first()
+    response = redirect(f'/works/{work_id}/') if work_id is not None else page(
+        request, 'booklist/random_empty.html', {})
+    response['Cache-Control'] = 'no-store'
+    return response
+
+
+@endpoint('GET')
 def listing(request, data):
     read_limit(request)
     return JsonResponse(list_data(request))

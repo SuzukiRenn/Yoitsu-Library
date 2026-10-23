@@ -1,0 +1,1 @@
+{% for tag in work.tags %}<a class="tag work-tag" href="{% if activity %}/activities/{{ activity.id }}/{% else %}/{% endif %}?tag={{ tag.id }}" aria-label="按标签筛选：{{ tag.name }}">{{ tag.name }}</a>{% endfor %}

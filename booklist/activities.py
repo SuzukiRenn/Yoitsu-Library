@@ -90,6 +90,7 @@ def listing(activity_id, client=None, page=1, page_size=20, *, work_id=None, sor
     for snap in ordered[offset:offset+size]:
         visible = recommendations.filter(activity_work=snap, text_hidden_at__isnull=True).exclude(reason='').order_by('created_at', 'id')
         result.append({'id': snap.work_id, 'title': snap.snapshot_title, 'author': snap.snapshot_author,
+            'tags': [{'id': tag_id, 'name': name} for tag_id, name in snapshot_tags(snap).items()],
             'cover_url': catalog.cover_url(snap.snapshot_cover_url), 'recommendation_count': rc.get(snap.pk, 0),
             'like_count': lc.get(snap.pk, 0), 'recommended': snap.work_id in own, 'liked': snap.work_id in own_likes,
             'own_reason': own[snap.work_id].reason if snap.work_id in own else '',

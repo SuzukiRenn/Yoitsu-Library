@@ -1,7 +1,7 @@
 import {createPublicApi} from './public-api.mjs';
 import {createSearchController} from './catalog-search.mjs?v=20261022-1';
 import {normalize} from './text.mjs';
-import {createCandidatePreview} from './candidate-preview.mjs';
+import {createCandidatePreview} from './candidate-preview.mjs?v=20261023-author-links-1';
 import {readMetadata} from './manual-metadata.mjs?v=20261020-5';
 
 const form = document.querySelector('#recommend-form');

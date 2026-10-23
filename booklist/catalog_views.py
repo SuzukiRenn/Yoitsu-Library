@@ -74,9 +74,9 @@ def work_page(request, data, work_id):
         activities.advance_due()
         result = activities.listing(activity_id, request.anonymous_client, page_size=1, work_id=work_id)
         interaction = result['results'][0] if result['results'] else None
-        # Historical title/author/cover stay tied to the activity snapshot; introduction is current metadata.
+        # Activity tags match the snapshot used by its shelf filter; introduction is current metadata.
         if interaction:
-            work.update({key: interaction[key] for key in ('title', 'author', 'cover_url')})
+            work.update({key: interaction[key] for key in ('title', 'author', 'cover_url', 'tags')})
         else:
             from .models import ActivityWork
             snapshot = ActivityWork.objects.filter(activity_id=activity_id, work_id=work_id,
