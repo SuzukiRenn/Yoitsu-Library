@@ -9,6 +9,7 @@ if (form) {
   const preview = createCandidatePreview();
   const write = createPublicApi();
   const query = document.querySelector('#recommend-query'), reason = document.querySelector('#recommend-reason');
+  const spoilers = document.querySelector('#recommend-spoilers');
   const candidates = document.querySelector('#candidates'), status = document.querySelector('#recommend-status');
   const searchStatus = document.querySelector('#candidate-status'), selectedStatus = document.querySelector('#selected-work');
   const changeWork = document.querySelector('#change-work');
@@ -91,7 +92,7 @@ if (form) {
           if (busy) return;
           search.cancel(); searchStatus.textContent=candidateSummary;
           for (const item of candidates.querySelectorAll('button')) item.setAttribute('aria-pressed','false');
-          selected=work; query.value=work.title; reason.value=work.own_reason || ''; count();
+          selected=work; query.value=work.title; reason.value=work.own_reason || ''; spoilers.checked=Boolean(work.own_contains_spoilers); count();
           manualNew=false;
           manualState(false);
           const manualChoice=candidates.querySelector('[data-manual-new]');
@@ -145,7 +146,7 @@ if (form) {
     manualNew=false;
     manualState(false);
     preview.hide();
-    if (selected && reason.value === selected.own_reason) { reason.value=''; count(); }
+    if (selected && reason.value === selected.own_reason) { reason.value=''; spoilers.checked=false; count(); }
     clearTimeout(timer); search.cancel(); selected=null; searchState='idle'; candidates.replaceChildren(); selectedStatus.textContent='';
     candidateSummary='';
     searchStatus.textContent=''; status.textContent=''; label();
@@ -155,7 +156,7 @@ if (form) {
   if (!editing) {
     changeWork.addEventListener('click',()=>{
       if (busy) return;
-      if (selected && reason.value === selected.own_reason) { reason.value=''; count(); }
+      if (selected && reason.value === selected.own_reason) { reason.value=''; spoilers.checked=false; count(); }
       preview.hide(); selected=null; manualNew=false;
       hideSelectedCard();
       manualState(false); candidateList(true);
@@ -190,6 +191,7 @@ if (form) {
         }
       }
       const payload=editing ? {reason:text} : {work_id:selected?.id ?? null,title,reason:text,confirmed_unmatched:manualNew};
+      payload.contains_spoilers=Boolean(text) && spoilers.checked;
       if (!editing && !selected) {
         try { payload.metadata = readMetadata(form); }
         catch (error) { status.textContent = error.message || '简介最多 2000 字'; return; }

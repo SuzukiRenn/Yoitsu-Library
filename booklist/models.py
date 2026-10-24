@@ -227,6 +227,7 @@ class ScopedContribution(Timestamped):
 
 class Recommendation(ScopedContribution):
     reason = models.TextField(default='')
+    contains_spoilers = models.BooleanField(default=False)
     withdrawn_at = models.DateTimeField(null=True)
     text_hidden_at = models.DateTimeField(null=True)
     invalidated_at = models.DateTimeField(null=True)
@@ -290,6 +291,7 @@ class PendingActivitySubmission(Timestamped):
     anonymous_client = models.ForeignKey(AnonymousClient, on_delete=P)
     reason = models.TextField(default='')
     copy_public_reason = models.BooleanField(default=False)
+    contains_spoilers = models.BooleanField(default=False)
 
     class Meta:
         constraints = [models.CheckConstraint(condition=Q(reason__length__lte=200), name='pending_activity_reason_limit')]

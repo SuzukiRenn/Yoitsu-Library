@@ -94,6 +94,7 @@ def listing(activity_id, client=None, page=1, page_size=20, *, work_id=None, sor
             'cover_url': catalog.cover_url(snap.snapshot_cover_url), 'recommendation_count': rc.get(snap.pk, 0),
             'like_count': lc.get(snap.pk, 0), 'recommended': snap.work_id in own, 'liked': snap.work_id in own_likes,
             'own_reason': own[snap.work_id].reason if snap.work_id in own else '',
+            'own_contains_spoilers': own[snap.work_id].contains_spoilers if snap.work_id in own else False,
             'reason_count': visible.count(), 'reasons': entries(visible, client, limit=2, writable=writable(activity)),
             'top_reason': next(iter(entries(visible, client, limit=1, popular=True, writable=writable(activity))), None)})
     return {'activity': summary(activity), 'results': result, 'total': len(ordered), 'page': int(page), 'page_size': size, 'sort': sort, 'query':q,'selected_tags':tags,
@@ -106,7 +107,7 @@ def submit(activity_id, client, data):
     work = books.resolve_submission(data, client)
     if work.review_status == 'pending':
         PendingActivitySubmission.objects.create(activity=activity, work=work, anonymous_client=client,
-            reason=reason, copy_public_reason=data['copy_public_reason'])
+            reason=reason, contains_spoilers=bool(reason) and data.get('contains_spoilers', False), copy_public_reason=data['copy_public_reason'])
         return {'status': 'pending'}
     books.enroll(work)
     snap = ActivityWork.objects.filter(activity=activity, work=work, archived_at__isnull=True, merged_into__isnull=True).first()
@@ -118,26 +119,27 @@ def submit(activity_id, client, data):
             snapshot_cover_url=catalog.snapshot_cover(work))
     row = recs(activity_id).filter(work=work, anonymous_client=client).first()
     if row:
-        edit_reason(row, reason)
+        edit_reason(row, reason, data.get('contains_spoilers'))
     else:
         history = Recommendation.objects.filter(scope='activity', activity=activity, work=work, anonymous_client=client)
         if history.filter(invalidated_at__isnull=False).exists():
             raise services.DomainError('moderated', '该记录已失效，需管理员处理', 409)
         hidden = history.filter(text_hidden_at__isnull=False).order_by('-id').first()
         Recommendation.objects.create(scope='activity', activity=activity, activity_work=snap, work=work,
-            anonymous_client=client, reason=reason, text_hidden_at=hidden.text_hidden_at if hidden else None)
+            anonymous_client=client, reason=reason, contains_spoilers=bool(reason) and data.get('contains_spoilers', False), text_hidden_at=hidden.text_hidden_at if hidden else None)
     books.set_relation(work, client, 'recommend', True, origin='activity')
     if data['copy_public_reason'] and reason and not books.reasons().filter(work=work, anonymous_client=client).exists():
-        books.set_reason(work, client, reason)
+        books.set_reason(work, client, reason, data.get('contains_spoilers'))
     return {'status': 'saved', 'activity_id': activity.pk, 'work_id': work.pk}
 
 
-def edit_reason(row, text):
+def edit_reason(row, text, contains_spoilers=None):
     # Preserve moderated original text through append-only audit before a user edit.
     if row.text_hidden_at and row.reason != text:
         services.audit(None, 'activity.reason.user_edit_hidden', row, before={'reason': row.reason}, after={'reason': text})
     row.reason = text
-    row.save(update_fields=['reason', 'updated_at'])
+    row.contains_spoilers = bool(text) and (row.contains_spoilers if contains_spoilers is None else contains_spoilers)
+    row.save(update_fields=['reason', 'contains_spoilers', 'updated_at'])
 
 
 @transaction.atomic
@@ -167,12 +169,12 @@ def recommend(activity_id, work_id, client, enabled):
                                       'confirmed_unmatched': False, 'copy_public_reason': False})
 
 
-def reason(activity_id, work_id, client, value):
+def reason(activity_id, work_id, client, value, contains_spoilers=None):
     require_open(activity_id); books.require_work(work_id)
     row = recs(activity_id).filter(work_id=work_id, anonymous_client=client).first()
     if row is None:
         raise services.DomainError('not_found', '活动推荐不存在', 404)
-    edit_reason(row, normalize(value, 'reason'))
+    edit_reason(row, normalize(value, 'reason'), contains_spoilers)
     return {'status': 'saved'}
 
 

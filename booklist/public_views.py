@@ -56,7 +56,7 @@ def write(request, scope, data, operation):
     return JsonResponse(services.idempotent(client, scope, request.headers.get('Idempotency-Key'), data, operation))
 
 
-@endpoint('POST', fields={'work_id': (int, type(None)), 'title': str, 'reason': str, 'confirmed_unmatched': bool}, optional_fields={'metadata': dict})
+@endpoint('POST', fields={'work_id': (int, type(None)), 'title': str, 'reason': str, 'confirmed_unmatched': bool}, optional_fields={'metadata': dict, 'contains_spoilers': bool})
 def submit(request, data):
     return write(request, 'public.submit', data, lambda: books.submit(request.anonymous_client, data))
 
@@ -81,13 +81,13 @@ def relation(request, data, work_id, kind):
     return write(request, f'public.{kind}.{work_id}', data, operation)
 
 
-@endpoint('POST', fields={'reason': str})
+@endpoint('POST', fields={'reason': str}, optional_fields={'contains_spoilers': bool})
 def reason(request, data, work_id):
     def operation():
         work = books.require_work(work_id)
         if not books.recommendations().filter(work=work, anonymous_client=request.anonymous_client).exists():
             raise services.DomainError('recommendation_required', '请先推荐这本书，再写推荐理由', 409)
-        books.set_reason(work, request.anonymous_client, data['reason'])
+        books.set_reason(work, request.anonymous_client, data['reason'], data.get('contains_spoilers'))
         return {'work': books.serialize([work], request.anonymous_client)[0]}
     return write(request, f'public.reason.{work_id}', data, operation)
 

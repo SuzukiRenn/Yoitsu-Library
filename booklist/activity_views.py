@@ -60,7 +60,7 @@ def detail_api(request, data, activity_id):
 FIELDS = {'work_id': (int, type(None)), 'title': str, 'reason': str, 'confirmed_unmatched': bool, 'copy_public_reason': bool}
 
 
-@endpoint('POST', fields=FIELDS, optional_fields={'metadata': dict})
+@endpoint('POST', fields=FIELDS, optional_fields={'metadata': dict, 'contains_spoilers': bool})
 def submit(request, data, activity_id):
     activities.advance_due()
     return write(request, f'activity.submit.{activity_id}', data, lambda: activities.submit(activity_id, request.anonymous_client, data))
@@ -88,10 +88,10 @@ def like(request, data, activity_id, work_id):
         request, activity_id, work_id, lambda: activities.like(activity_id, work_id, request.anonymous_client, data['enabled'])))
 
 
-@endpoint('POST', fields={'reason': str})
+@endpoint('POST', fields={'reason': str}, optional_fields={'contains_spoilers': bool})
 def reason(request, data, activity_id, work_id):
     activities.advance_due()
-    return write(request, f'activity.reason.{activity_id}.{work_id}', data, lambda: activities.reason(activity_id, work_id, request.anonymous_client, data['reason']))
+    return write(request, f'activity.reason.{activity_id}.{work_id}', data, lambda: activities.reason(activity_id, work_id, request.anonymous_client, data['reason'], data.get('contains_spoilers')))
 
 
 @endpoint('GET')

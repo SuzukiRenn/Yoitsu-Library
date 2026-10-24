@@ -85,13 +85,13 @@ def release_pending(work, actor, note, target_work=None):
         if not Recommendation.objects.filter(work=work, activity=period, anonymous_client=submission.anonymous_client,
                 archived_at__isnull=True, invalidated_at__isnull=True, withdrawn_at__isnull=True).exists():
             rec = Recommendation.objects.create(work=work, activity=period, activity_work=snap, scope='activity',
-                anonymous_client=submission.anonymous_client, reason=submission.reason)
+                anonymous_client=submission.anonymous_client, reason=submission.reason, contains_spoilers=submission.contains_spoilers)
             Recommendation.objects.filter(pk=rec.pk).update(created_at=submission.created_at, updated_at=submission.created_at)
             created[rec.pk] = 'pending:'+str(submission.pk)
         has_target_reason = target_work and books.reasons().filter(work=target_work, anonymous_client=submission.anonymous_client).exists()
         books.set_relation(work, submission.anonymous_client, 'recommend', True, origin='activity')
         if submission.copy_public_reason and submission.reason and not has_target_reason and not books.reasons().filter(work=work, anonymous_client=submission.anonymous_client).exists():
-            books.set_reason(work, submission.anonymous_client, submission.reason)
+            books.set_reason(work, submission.anonymous_client, submission.reason, submission.contains_spoilers)
         corrected(activity_id=period.pk)
         services.audit(actor, 'pending.activity.approve', submission, after={'work_id': work.pk}, reason=note)
     return created

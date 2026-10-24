@@ -19,7 +19,7 @@ def entries(query, client=None, *, limit=None, offset=0, popular=False, writable
     own = ReasonLike.objects.filter(recommendation_id=OuterRef('pk'), anonymous_client=client, cancelled_at__isnull=True) if client else None
     query = query.annotate(liked=Exists(own) if own is not None else Value(False, output_field=BooleanField()))
     query = query[offset:offset+limit] if limit is not None else query[offset:]
-    return [{**row, 'writable': writable} for row in query.values('id', 'reason', 'like_count', 'liked')]
+    return [{**row, 'writable': writable} for row in query.values('id', 'reason', 'contains_spoilers', 'like_count', 'liked')]
 
 
 @endpoint('POST', fields={'enabled': bool})

@@ -1,7 +1,7 @@
 import {installReasonFolds} from './reason-folds.mjs?v=20261020-1';
 import {createPublicApi} from './public-api.mjs';
-import {renderReasonButton, reasonRow} from './reason-ui.mjs?v=20261021-11';
-import {updateInteraction} from './live-interactions.mjs?v=20261022-reason-gate';
+import {renderReasonButton, reasonRow, updateReasonContent} from './reason-ui.mjs?v=20261024-inline-spoiler-4';
+import {updateInteraction} from './live-interactions.mjs?v=20261024-inline-spoiler-4';
 export function startReasonLikes({doc=document, win=window, fetcher=fetch, write=createPublicApi()}={}) {
   const status=doc.querySelector('#action-status');
   const section=doc.querySelector('[data-reasons-work]');
@@ -12,6 +12,8 @@ export function startReasonLikes({doc=document, win=window, fetcher=fetch, write
   const buttons=()=>[...doc.querySelectorAll('[data-reason-like]')];
   function update(item) {
     for (const button of buttons().filter(b=>b.dataset.reasonId===String(item.id))) renderReasonButton(button,item);
+    const row=list?.querySelector(`[data-reason-row="${item.id}"]`);
+    if(row){updateReasonContent(row,item);initializeFolds?.(list);}
   }
   function plan() {win.clearTimeout(timer);if(section&&!stopped&&!doc.hidden)timer=win.setTimeout(poll,delay);}
   async function poll() {

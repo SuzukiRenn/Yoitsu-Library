@@ -1,4 +1,4 @@
-import {renderReasonPreview} from './reason-ui.mjs?v=20261021-11';
+import {renderReasonPreview} from './reason-ui.mjs?v=20261024-inline-spoiler-4';
 import {createPublicApi} from './public-api.mjs';
 
 export function updateInteraction(container, work) {

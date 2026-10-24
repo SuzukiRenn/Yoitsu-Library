@@ -45,6 +45,7 @@ def serialize(works, client=None):
     own_recs = set(recs.filter(anonymous_client=client).values_list('work_id', flat=True)) if client else set()
     own_likes = set(votes.filter(anonymous_client=client).values_list('work_id', flat=True)) if client else set()
     own_reasons = dict(reasons().filter(work_id__in=ids, anonymous_client=client).values_list('work_id', 'reason')) if client else {}
+    own_spoilers = dict(reasons().filter(work_id__in=ids, anonymous_client=client).values_list('work_id', 'contains_spoilers')) if client else {}
     visible_reasons = reasons().filter(text_hidden_at__isnull=True)
     reason_counts = counts(visible_reasons.filter(work_id__in=ids))
     from .reason_likes import entries
@@ -52,7 +53,7 @@ def serialize(works, client=None):
     for row in result:
         pk = row['id']
         row.update(recommendation_count=rec_counts.get(pk, 0), like_count=like_counts.get(pk, 0),
-                   recommended=pk in own_recs, liked=pk in own_likes, own_reason=own_reasons.get(pk, ''),
+                   recommended=pk in own_recs, liked=pk in own_likes, own_reason=own_reasons.get(pk, ''), own_contains_spoilers=own_spoilers.get(pk, False),
                    reason_count=reason_counts.get(pk, 0),
                    reasons=entries(visible_reasons.filter(work_id=pk), client, limit=2),
                    top_reason=next(iter(entries(visible_reasons.filter(work_id=pk), client, limit=1, popular=True)), None))
@@ -103,9 +104,10 @@ def require_work(work_id, public=True):
     return work
 
 
-def set_reason(work, client, value):
+def set_reason(work, client, value, contains_spoilers=None):
     value = normalize(value, 'reason')
     row = reasons().filter(work=work, anonymous_client=client).first()
+    spoilers = bool(value) and (row.contains_spoilers if contains_spoilers is None and row else bool(contains_spoilers))
     if not value:
         if row:
             if row.text_hidden_at:
@@ -117,16 +119,17 @@ def set_reason(work, client, value):
         if row.text_hidden_at and row.reason != value:
             row.archived_at = timezone.now()
             row.save(update_fields=['archived_at', 'updated_at'])
-            Recommendation.objects.create(work=work, anonymous_client=client, scope='public', reason=value, text_hidden_at=row.text_hidden_at)
+            Recommendation.objects.create(work=work, anonymous_client=client, scope='public', reason=value, contains_spoilers=spoilers, text_hidden_at=row.text_hidden_at)
         else:
             row.reason = value
-            row.save(update_fields=['reason', 'updated_at'])
+            row.contains_spoilers = spoilers
+            row.save(update_fields=['reason', 'contains_spoilers', 'updated_at'])
     else:
         if Recommendation.objects.filter(work=work, anonymous_client=client, scope='public', invalidated_at__isnull=False).exists():
             raise services.DomainError('moderated', '该记录已失效，需管理员处理', 409)
         # A moderated history must not become visible simply through a new text row.
         hidden = Recommendation.objects.filter(work=work, anonymous_client=client, scope='public', text_hidden_at__isnull=False).order_by('-id').first()
-        Recommendation.objects.create(work=work, anonymous_client=client, scope='public', reason=value,
+        Recommendation.objects.create(work=work, anonymous_client=client, scope='public', reason=value, contains_spoilers=spoilers,
                                       text_hidden_at=hidden.text_hidden_at if hidden else None)
 
 
@@ -200,5 +203,5 @@ def submit(client, data):
     set_relation(work, client, 'recommend', True, origin='submit')
     # Empty optional input must not erase an existing reason during a repeat recommendation.
     if reason:
-        set_reason(work, client, reason)
+        set_reason(work, client, reason, data.get('contains_spoilers'))
     return {'status': 'pending'} if pending else {'status': 'saved', 'work': serialize([work], client)[0]}

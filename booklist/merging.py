@@ -200,7 +200,10 @@ def undo(actor, pk, note):
         raise services.DomainError('merge_modified', '合并后已有内容变更，不能直接撤销', 409)
     for change in changes:
         row = TABLES[change.table_name].objects.filter(pk=change.record_id).first()
-        if row is None or snapshot(row) != change.after_data:
+        stored_after = dict(change.after_data)
+        if row is not None and hasattr(row, 'contains_spoilers'):
+            stored_after.setdefault('contains_spoilers', False)
+        if row is None or snapshot(row) != stored_after:
             raise services.DomainError('merge_modified', '合并后已有内容变更，不能直接撤销', 409)
     # Clear conditional uniqueness and snapshot references before restoring originals.
     for change in changes:
@@ -223,7 +226,7 @@ def undo(actor, pk, note):
         model = TABLES[change.table_name]
         if not change.before_data:
             continue
-        values = {f.attname: f.to_python(change.before_data[f.attname]) for f in model._meta.concrete_fields if not f.primary_key}
+        values = {f.attname: f.to_python(change.before_data.get(f.attname, False) if f.attname == 'contains_spoilers' else change.before_data[f.attname]) for f in model._meta.concrete_fields if not f.primary_key}
         model.objects.filter(pk=change.record_id).update(**values)
     operation.status='undone'; operation.undone_at=timezone.now(); operation.save(update_fields=['status','undone_at'])
     moderation.corrected(work_id=operation.primary_work_id); moderation.corrected(work_id=operation.merged_work_id)
