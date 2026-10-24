@@ -22,7 +22,7 @@
 .feedback-page{max-width:720px;margin:32px auto 60px;overflow-wrap:anywhere}
 .feedback-page h1{font-size:24px}.feedback-page h2{font-size:19px}
 .feedback-page label{display:block;margin:20px 0 8px;font-size:14px}
-.feedback-page select,.feedback-page textarea{width:100%;min-height:44px;font:inherit;padding:10px 12px;color:var(--ink);background:#fffefa;border:1px solid var(--line);border-radius:6px}
+.feedback-page select,.feedback-page textarea{width:100%;min-height:44px;font:inherit;padding:10px 12px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px}
 .feedback-page textarea{resize:vertical}.feedback-page select{max-width:240px}
 .feedback-hint{font-size:13px;line-height:1.7;color:var(--muted)}
 .feedback-page article{padding:18px 0;border-bottom:1px solid var(--line)}

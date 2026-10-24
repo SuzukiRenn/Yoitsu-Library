@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {webcrypto} from 'node:crypto';
 import {createPublicApi} from '../static/public-api.mjs';
-import {startLiveInteractions} from '../static/live-interactions.mjs';
+import {startLiveInteractions,updateInteraction} from '../static/live-interactions.mjs';
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 const response = (body, status = 200) => ({ok: status < 400, status, json: async () => body});
 const events = {}, requests = [], status = {textContent: ''};
@@ -79,3 +79,23 @@ assert.equal(membershipChanged(['1','2'], ['3','1']), true);
 assert.equal(membershipChanged([], ['3']), true);
 assert.equal(membershipChanged(['3'], []), true);
 console.log('Empty shelves, dynamic card interactions and server-ordered live updates passed');
+
+// A nested book citation must never be mistaken for the card's reason-list link.
+for(const activity of ['', '7']){
+ const item={id:38,reason:'如果喜欢龙王的工作！的话也可以看这本',parts:[{text:'如果喜欢'},{text:'龙王的工作！',url:'/works/195/'},{text:'的话也可以看这本'}]};
+ const reference={textContent:'龙王的工作！',href:'/works/195/'};
+ const reasonLink={textContent:'查看理由（1）',href:`/works/947/${activity?'?activity='+activity:''}#reasons`};
+ const paragraph={textContent:item.reason,dataset:{referenceParts:JSON.stringify(item.parts)},querySelector:()=>null};
+ const preview={dataset:{previewReasonId:'38'},querySelector(selector){
+  if(selector==='p')return paragraph;
+  if(selector==='a')return reference;
+  if(selector===':scope > a.reason-link')return reasonLink;
+  return null;
+ }};
+ const card={dataset:{work:'947',activity},querySelector:()=>null,querySelectorAll:()=>[],closest:()=>({querySelector:()=>preview})};
+ for(let i=0;i<3;i++)updateInteraction(card,{available:true,writable:true,top_reason:item,reason_count:2});
+ assert.equal(reference.textContent,'龙王的工作！','Stats polling must preserve nested citation text');
+ assert.equal(reference.href,'/works/195/','Stats polling must preserve nested citation target');
+ assert.equal(reasonLink.textContent,'查看理由（2）','Only the direct reason-list link should receive counts');
+}
+console.log('Public and theme stats polling keep citation labels/targets separate from the reason-list link.');

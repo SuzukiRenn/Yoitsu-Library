@@ -21,7 +21,7 @@ function harness(liveSearch=false) {
   const event={button:0,defaultPrevented:false,target:{closest:()=>({href:'http://local/?tag=4&sort=likes',target:'',hasAttribute:()=>false})},preventDefault(){this.defaultPrevented=true;},...flags};
   const done=events.click(event);return {event,done};
  }
- return {controller,reply,requests,applied,pushed,notices,attrs,status,win,windowEvents,click,search,inputEvents,timers,flushInput:()=>{const item=[...timers].find(([,v])=>v.delay===300);assert.ok(item);timers.delete(item[0]);return item[1].fn();}};
+ return {controller,reply,requests,applied,pushed,notices,attrs,status,win,windowEvents,click,form,search,inputEvents,timers,flushInput:()=>{const item=[...timers].find(([,v])=>v.delay===300);assert.ok(item);timers.delete(item[0]);return item[1].fn();}};
 }
 let h=harness(),p=h.click();assert.equal(p.event.defaultPrevented,true);assert.equal(h.pushed.length,0);assert.equal(h.status.textContent,'正在排序…');
 h.reply(0);await p.done;assert.equal(h.applied.length,1);assert.deepEqual(h.applied[0].options,{preserveAnchor:false,animateReorder:true,syncFilters:true});
@@ -89,3 +89,13 @@ assert.equal(new URL(h.win.location.href).searchParams.get('q'),'我的');
 h=harness(true);h.search.value='我的';h.inputEvents.input({});h.windowEvents.pagehide();
 assert.equal([...h.timers.values()].filter(t=>t.delay===300).length,0);
 console.log('Live search debounces input, waits for IME, rejects stale responses, clears immediately and preserves tags without per-keystroke history entries.');
+
+for (const target of [tagTarget, authorTarget]) {
+ h=harness(true);h.form.querySelector=selector=>selector==='[name="tag_mode"]:checked'?{value:'any'}:null;
+ p=h.click({target});assert.equal(new URL(h.requests[0].url).searchParams.get('tag_mode'),'any');
+ h.reply(0);await p.done;assert.equal(new URL(h.win.location.href).searchParams.get('tag_mode'),'any');
+}
+const modeURL=filterURL({},'http://local/?page=9',class{constructor(){return [['tag','1'],['tag','2'],['tag_mode','any'],['q','Alice'],['liked','1']];}});
+assert.equal(new URL(modeURL).searchParams.get('tag_mode'),'any');assert.equal(new URL(modeURL).searchParams.get('liked'),'1');
+assert.equal(new URL(modeURL).searchParams.has('page'),false);
+console.log('Any-tag matching survives card tag/author navigation and combined form submission.');

@@ -1,0 +1,18 @@
+<button type="button" class="shelf-view-toggle appearance-toggle recommend-control" data-appearance-toggle aria-label="外观设置" aria-haspopup="dialog" aria-controls="appearance-settings" aria-expanded="false" aria-describedby="appearance-tooltip" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9.5 3-.6 2.4-1.6.9-2.4-.7-2.5 4.3 1.8 1.7v1.8l-1.8 1.7 2.5 4.3 2.4-.7 1.6.9.6 2.4h5l.6-2.4 1.6-.9 2.4.7 2.5-4.3-1.8-1.7v-1.8l1.8-1.7-2.5-4.3-2.4.7-1.6-.9-.6-2.4z"/><circle cx="12" cy="12.5" r="3"/></svg><span class="control-tooltip" id="appearance-tooltip" role="tooltip">外观设置</span></button>
+<dialog id="appearance-settings" class="appearance-dialog" aria-labelledby="appearance-title">
+ <div class="appearance-heading"><h2 id="appearance-title">外观设置</h2><button type="button" class="appearance-close" data-appearance-cancel aria-label="关闭外观设置"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+ <fieldset class="appearance-section"><legend>明暗模式</legend><div class="appearance-modes">
+  <label class="appearance-mode-option"><input type="radio" name="mode" value="system"><span>跟随系统</span></label>
+  <label class="appearance-mode-option"><input type="radio" name="mode" value="light"><span>明亮</span></label>
+  <label class="appearance-mode-option"><input type="radio" name="mode" value="dark"><span>深色</span></label>
+ </div></fieldset>
+ <fieldset class="appearance-section"><legend>主题色</legend><div class="appearance-colors">
+  <label class="appearance-color-option"><input type="radio" name="color" value="original" aria-label="原色"><span class="appearance-swatch" data-color="original" aria-hidden="true"></span></label>
+  <label class="appearance-color-option"><input type="radio" name="color" value="moss" aria-label="青苔"><span class="appearance-swatch" data-color="moss" aria-hidden="true"></span></label>
+  <label class="appearance-color-option"><input type="radio" name="color" value="blue" aria-label="雾蓝"><span class="appearance-swatch" data-color="blue" aria-hidden="true"></span></label>
+  <label class="appearance-color-option"><input type="radio" name="color" value="rose" aria-label="藕粉"><span class="appearance-swatch" data-color="rose" aria-hidden="true"></span></label>
+  <label class="appearance-color-option"><input type="radio" name="color" value="brown" aria-label="暖棕"><span class="appearance-swatch" data-color="brown" aria-hidden="true"></span></label>
+ </div></fieldset>
+ <p class="appearance-status" data-appearance-status role="status" aria-live="polite"></p>
+ <div class="appearance-actions"><button type="button" class="appearance-reset" data-appearance-reset>恢复默认</button><button type="button" data-appearance-cancel>取消</button><button type="button" class="primary" data-appearance-save>保存</button></div>
+</dialog>

@@ -50,7 +50,7 @@ class ListingTests(SimpleTestCase):
             self.assertFalse(reviewed_initial_network_stop({**state, **changed}))
 
     def test_transient_failure_waits_until_next_day_without_losing_discovery_boundary(self):
-        with TemporaryDirectory() as directory, override_settings(DATA_DIR=Path(directory)), patch('booklist.source_updates.datetime', FrozenDateTime):
+        with TemporaryDirectory() as directory, override_settings(DATA_DIR=Path(directory)), patch('booklist.source_updates.datetime', FrozenDateTime), patch('integrations.wenku8.retry_policy.datetime', FrozenDateTime):
             FrozenDateTime.current = datetime(2026, 10, 22, 2, tzinfo=timezone.utc)
             with patch('booklist.source_updates.Client') as client, patch('booklist.source_updates.discover', side_effect=TransientNetworkError('source_transport_failed_after_bounded_retries')):
                 client.return_value.requests = []
@@ -175,7 +175,7 @@ class ImportTests(TestCase):
             snapshot.update(book_id=row['book_id'], source_url=row['source_url'])
             snapshot['fields']['title']['value'] = row['title']
             return snapshot, snapshot['fields'], []
-        with TemporaryDirectory() as directory, override_settings(DATA_DIR=Path(directory)), patch('booklist.source_updates.datetime', FrozenDateTime), patch('booklist.source_updates.prepare_snapshot', side_effect=prepared):
+        with TemporaryDirectory() as directory, override_settings(DATA_DIR=Path(directory)), patch('booklist.source_updates.datetime', FrozenDateTime), patch('integrations.wenku8.retry_policy.datetime', FrozenDateTime), patch('booklist.source_updates.prepare_snapshot', side_effect=prepared):
             FrozenDateTime.current = datetime(2026, 10, 22, 2, tzinfo=timezone.utc)
             with patch('booklist.source_updates.Client') as client, patch('booklist.source_updates.discover', return_value=rows):
                 client.return_value.requests = []

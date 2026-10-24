@@ -1,7 +1,7 @@
 import {installReasonFolds} from './reason-folds.mjs?v=20261020-1';
 import {createPublicApi} from './public-api.mjs';
-import {renderReasonButton, reasonRow, updateReasonContent} from './reason-ui.mjs?v=20261024-inline-spoiler-4';
-import {updateInteraction} from './live-interactions.mjs?v=20261024-section-names-1';
+import {renderReasonButton, reasonRow, updateReasonContent} from './reason-ui.mjs?v=20261024-no-reason-number-1';
+import {updateInteraction} from './live-interactions.mjs?v=20261024-references-1';
 export function startReasonLikes({doc=document, win=window, fetcher=fetch, write=createPublicApi()}={}) {
   const status=doc.querySelector('#action-status');
   const section=doc.querySelector('[data-reasons-work]');
@@ -59,7 +59,7 @@ export function startReasonLikes({doc=document, win=window, fetcher=fetch, write
       const page=Number(more.dataset.page)+1;
       const response=await fetcher(`${prefix(section.dataset.activity)}/works/${section.dataset.reasonsWork}/reasons/?page=${page}&page_size=2`,{credentials:'same-origin',cache:'no-store'});
       const payload=await response.json();if(!response.ok)throw Error(payload.error?.message||'请求失败');
-      for(const item of payload.results)if(!list.querySelector(`[data-reason-row="${item.id}"]`))list.append(reasonRow(doc,item,list.children.length+1,section.dataset.reasonsWork,section.dataset.activity));
+      for(const item of payload.results)if(!list.querySelector(`[data-reason-row="${item.id}"]`))list.append(reasonRow(doc,item,section.dataset.reasonsWork,section.dataset.activity));
       initializeFolds?.(list);
       section.querySelector('[data-reason-total]').textContent=`${payload.total} 条`;
       more.dataset.page=String(page);more.hidden=page*2>=payload.total;

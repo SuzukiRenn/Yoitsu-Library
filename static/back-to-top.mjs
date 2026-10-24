@@ -1,6 +1,6 @@
 const button=document.querySelector('[data-back-to-top]');
 if(button){
-  const controls=[button,document.querySelector('[data-random-book]'),document.querySelector('[data-shelf-view-toggle]')].filter(Boolean);
+  const controls=[button,document.querySelector('[data-random-book]'),document.querySelector('[data-shelf-view-toggle]'),document.querySelector('[data-appearance-toggle]')].filter(Boolean);
   const header=document.querySelector('.site-header');
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
   let frame;
@@ -26,6 +26,7 @@ if(button){
 
   };
   const schedule=()=>{if(frame===undefined)frame=window.requestAnimationFrame(update);};
+  document.addEventListener('booklist:floating-controls',schedule);
   window.addEventListener('scroll',schedule,{passive:true});
   window.addEventListener('resize',schedule);
   window.addEventListener('pageshow',update);

@@ -1,3 +1,4 @@
+import {appendEditionBadge} from './edition-badge.mjs?v=20261024-editions-1';
 // Reuse candidate metadata; hovering never sends a lookup or a contribution.
 export function createCandidatePreview() {
   const panel = document.createElement('div');
@@ -49,7 +50,7 @@ export function createCandidatePreview() {
       image.addEventListener('error', () => image.replaceWith(placeholder()), {once: true}); cover.append(image);
     } else cover.append(placeholder());
     const info = document.createElement('div'); info.className = 'candidate-preview-info';
-    const title = document.createElement('strong'); title.textContent = work.title;
+    const title = document.createElement('strong'); title.textContent = work.title;appendEditionBadge(title,work);
     const author = document.createElement('p'); author.className = 'book-author';
     if (work.author) {
       const link = document.createElement('a'); link.className = 'work-author'; link.textContent = work.author;

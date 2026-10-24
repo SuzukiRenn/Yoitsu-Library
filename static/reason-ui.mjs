@@ -1,3 +1,4 @@
+import {renderReasonText} from './reason-reference-text.mjs?v=20261024-references-1';
 export function renderReasonButton(button, item) {
   button.dataset.reasonId = String(item.id);
   button.dataset.enabled = String(!item.liked);
@@ -22,7 +23,7 @@ export function reasonButton(doc, item, work, activity) {
 }
 // A spoiler placeholder is replaced in place only after the reader clicks it.
 export function reasonContent(doc, item, preview=false) {
-  const p=doc.createElement('p');p.className='reason-text';p.textContent=item.reason;
+  const p=doc.createElement('p');p.className='reason-text';renderReasonText(p,item);
   if(item.contains_spoilers) {
     const wrapper=doc.createElement('div');wrapper.className=preview?'spoiler-preview':'spoiler-reason';
     const control=doc.createElement('span');control.className='recommend-control spoiler-control';
@@ -46,7 +47,7 @@ export function renderReasonPreview(preview, item) {
   if(!item){current?.remove();return;}
   const text=current?.querySelector?.('p') || current;
   // Polls preserve explicit expansion only while identity, text and flag agree.
-  if(current && preview.dataset.previewReasonId===String(item.id) && text.textContent===item.reason && Boolean(preview.querySelector('.spoiler-preview'))===Boolean(item.contains_spoilers))return;
+  if(current && preview.dataset.previewReasonId===String(item.id) && text.textContent===item.reason && Boolean(preview.querySelector('.spoiler-preview'))===Boolean(item.contains_spoilers)){renderReasonText(text,item);return;}
   const next=reasonContent(preview.ownerDocument,item,true);
   if(current)current.replaceWith(next);else preview.prepend(next);
   preview.dataset.previewReasonId=String(item.id);
@@ -55,13 +56,12 @@ export function updateReasonContent(row,item) {
   const content=row.querySelector('.reason-content');
   const current=content.querySelector('.spoiler-reason') || content.querySelector('.reason-body');
   const text=current?.querySelector('.reason-text');
-  if(text?.textContent===item.reason && Boolean(content.querySelector('.spoiler-reason'))===Boolean(item.contains_spoilers))return;
+  if(text?.textContent===item.reason && Boolean(content.querySelector('.spoiler-reason'))===Boolean(item.contains_spoilers)){renderReasonText(text,item);return;}
   const next=reasonContent(row.ownerDocument,item);
   if(current)current.replaceWith(next);else content.prepend(next);
 }
-export function reasonRow(doc, item, number, work, activity) {
+export function reasonRow(doc, item, work, activity) {
   const row=doc.createElement('li');row.className='reason-card';row.dataset.reasonRow=String(item.id);
-  const badge=doc.createElement('span');badge.className='reason-number';badge.setAttribute('aria-hidden','true');badge.textContent=String(number);
   const content=doc.createElement('div');content.className='reason-content';
-  content.append(reasonContent(doc,item),reasonButton(doc,item,work,activity));row.append(badge,content);return row;
+  content.append(reasonContent(doc,item),reasonButton(doc,item,work,activity));row.append(content);return row;
 }

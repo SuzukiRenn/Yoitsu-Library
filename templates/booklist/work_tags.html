@@ -1,1 +1,1 @@
-{% for tag in work.tags %}<a class="tag work-tag" href="{% if activity %}/activities/{{ activity.id }}/{% else %}/{% endif %}?tag={{ tag.id }}" aria-label="按标签筛选：{{ tag.name }}">{{ tag.name }}</a>{% endfor %}
+{% for tag in work.tags %}<a class="tag work-tag" href="{% if activity %}/activities/{{ activity.id }}/{% else %}/{% endif %}?tag={{ tag.id }}{% if recommended_only %}&amp;recommended=1{% endif %}{% if liked_only %}&amp;liked=1{% endif %}" aria-label="按标签筛选：{{ tag.name }}">{{ tag.name }}</a>{% endfor %}

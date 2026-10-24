@@ -15,6 +15,16 @@ def tag_ids(values):
         raise ValidationError('标签无效')
     return sorted(set(map(int,values)))
 
+def tag_match_mode(value):
+    if value not in ('all', 'any'):
+        raise ValidationError('标签匹配方式无效')
+    return value
+
+
+def tag_mode_parameters(result):
+    return [('tag_mode', 'any')] if result.get('tag_mode') == 'any' else []
+
+
 def search_public(query,text):
     if not text:return query
     manual=Subquery(UserWorkMetadata.objects.filter(work_id=OuterRef('pk'),archived_at__isnull=True).values('author')[:1])
@@ -26,3 +36,17 @@ def search_public(query,text):
         default=source_author,output_field=TextField())
     aliases=WorkAlias.objects.filter(archived_at__isnull=True,alias__icontains=text).values('work_id')
     return query.alias(shelf_title=title,shelf_author=author).filter(Q(shelf_title__icontains=text)|Q(shelf_author__icontains=text)|Q(pk__in=aliases))
+
+
+def personal_filters(parameters):
+    result={}
+    for name in ('recommended','liked'):
+        value=parameters.get(name)
+        if value not in (None,'1'):
+            raise ValidationError('个人记录筛选无效')
+        result[name+'_only']=value=='1'
+    return result
+
+
+def personal_parameters(result):
+    return [(name,'1') for name in ('recommended','liked') if result.get(name+'_only')]

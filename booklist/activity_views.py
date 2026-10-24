@@ -10,6 +10,7 @@ from .views import endpoint
 from .protocol import pagination
 from .list_pagination import PAGE_SIZE, navigation
 from .shelf_sort import controls
+from .shelf_filters import personal_filters, personal_parameters, tag_mode_parameters
 
 
 def interaction_result(request, activity_id, work_id, operation):
@@ -33,17 +34,17 @@ def index(request, data, archive=False):
 
 
 def activity_result(request, activity_id, fixed_size=None):
-    if set(request.GET)-{'page','page_size','sort','q','tag'} or any(len(request.GET.getlist(key))!=1 for key in request.GET if key!='tag'):
+    if set(request.GET)-{'page','page_size','sort','q','tag','recommended','liked','tag_mode'} or any(len(request.GET.getlist(key))!=1 for key in request.GET if key!='tag'):
         raise ValidationError('查询参数无效')
     read_limit(request); activities.advance_due()
-    return activities.listing(activity_id, request.anonymous_client, request.GET.get('page', '1'), fixed_size if fixed_size is not None else request.GET.get('page_size', '20'), sort=request.GET.get('sort', 'recommendations'), q=request.GET.get('q',''), tags=request.GET.getlist('tag'))
+    return activities.listing(activity_id, request.anonymous_client, request.GET.get('page', '1'), fixed_size if fixed_size is not None else request.GET.get('page_size', '20'), sort=request.GET.get('sort', 'recommendations'), q=request.GET.get('q',''), tags=request.GET.getlist('tag'), tag_mode=request.GET.get('tag_mode','all'), **personal_filters(request.GET))
 
 
 @endpoint('GET')
 def detail(request, data, activity_id):
     result = activity_result(request, activity_id, PAGE_SIZE)
     result['can_export_summary'] = request.admin is not None
-    params=[('tag',tag) for tag in result['selected_tags']]+([('q',result['query'])] if result['query'] else [])
+    params=personal_parameters(result)+tag_mode_parameters(result)+[('tag',tag) for tag in result['selected_tags']]+([('q',result['query'])] if result['query'] else [])
     base = '?'+urlencode(params+[('page_size',result['page_size']),('sort',result['sort'])])+'&page='
     result['paging'] = navigation(result, lambda number: base+str(number))
     result['sort_options'] = controls(result)
@@ -60,7 +61,7 @@ def detail_api(request, data, activity_id):
 FIELDS = {'work_id': (int, type(None)), 'title': str, 'reason': str, 'confirmed_unmatched': bool, 'copy_public_reason': bool}
 
 
-@endpoint('POST', fields=FIELDS, optional_fields={'metadata': dict, 'contains_spoilers': bool})
+@endpoint('POST', fields=FIELDS, optional_fields={'metadata': dict, 'contains_spoilers': bool, 'references':list})
 def submit(request, data, activity_id):
     activities.advance_due()
     return write(request, f'activity.submit.{activity_id}', data, lambda: activities.submit(activity_id, request.anonymous_client, data))
@@ -88,10 +89,10 @@ def like(request, data, activity_id, work_id):
         request, activity_id, work_id, lambda: activities.like(activity_id, work_id, request.anonymous_client, data['enabled'])))
 
 
-@endpoint('POST', fields={'reason': str}, optional_fields={'contains_spoilers': bool})
+@endpoint('POST', fields={'reason': str}, optional_fields={'contains_spoilers': bool, 'references':list})
 def reason(request, data, activity_id, work_id):
     activities.advance_due()
-    return write(request, f'activity.reason.{activity_id}.{work_id}', data, lambda: activities.reason(activity_id, work_id, request.anonymous_client, data['reason'], data.get('contains_spoilers')))
+    return write(request, f'activity.reason.{activity_id}.{work_id}', data, lambda: activities.reason(activity_id, work_id, request.anonymous_client, data['reason'], data.get('contains_spoilers'), data.get('references')))
 
 
 @endpoint('GET')

@@ -1,4 +1,4 @@
 <article class="book-card"><a class="card-open" href="/works/{{ work.id }}/" tabindex="-1" aria-label="{{ work.title }}"></a>
 <span class="book-cover" aria-hidden="true">{% include 'booklist/cover_image.html' %}</span>
-<span class="book-info"><span class="book-status">{% if work.is_public %}已收录{% else %}未收录{% endif %}</span><a class="book-title" href="/works/{{ work.id }}/">{{ work.title }}</a><span class="book-author">{% include 'booklist/work_author.html' %}</span><span class="tags">{% include 'booklist/work_tags.html' %}</span></span>
+<span class="book-info"><span class="book-status">{% if work.is_public %}已收录{% else %}未收录{% endif %}</span><a class="book-title" href="/works/{{ work.id }}/">{{ work.title }}{% include 'booklist/web_badge.html' %}</a><span class="book-author">{% include 'booklist/work_author.html' %}</span><span class="tags">{% include 'booklist/work_tags.html' %}</span></span>
 </article>

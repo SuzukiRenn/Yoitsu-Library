@@ -1,4 +1,4 @@
-import {renderReasonPreview} from './reason-ui.mjs?v=20261024-inline-spoiler-4';
+import {renderReasonPreview} from './reason-ui.mjs?v=20261024-references-1';
 import {createPublicApi} from './public-api.mjs';
 
 export function updateInteraction(container, work) {
@@ -71,7 +71,8 @@ export function updateInteraction(container, work) {
   const preview = container.closest('.public-card')?.querySelector('.reason-preview');
   if (preview && available) {
     renderReasonPreview(preview, work.top_reason, container.dataset.work, activity);
-    let link = preview.querySelector('a');
+    // Citations inside the reason body are independent work links.
+    let link = preview.querySelector(':scope > a.reason-link');
     if (!work.reason_count) link?.remove();
     else {
       if (!link) {

@@ -38,9 +38,11 @@ export function installShelfReturn(doc=document,win=window) {
     if(!link || link.hasAttribute('download'))return;
     const destination=new URL(link.href,win.location.href);
     if(destination.origin!==win.location.origin)return;
-    if(shelf && link.closest('.public-card') && /^\/works\/[1-9]\d*\/$/.test(destination.pathname)) {
+    if(shelf && !link.matches('.reason-reference') && link.closest('.public-card') && /^\/works\/[1-9]\d*\/$/.test(destination.pathname)) {
       remember();
       destination.searchParams.set('from',key(new URL(win.location.href)));
+      // Each new shelf entry starts a fresh sequence, including opening in another tab.
+      destination.searchParams.delete('browse');
       link.href=destination.href;
     } else if(link.matches('[data-shelf-return]') && (!link.target || link.target==='_self') && event.button===0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
       save(PENDING,{url:key(destination),at:Date.now()});

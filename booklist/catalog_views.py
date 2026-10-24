@@ -56,7 +56,7 @@ def home(request, data):
 
 @endpoint('GET')
 def work_page(request, data, work_id):
-    parameters(request, ('activity', 'from'))
+    parameters(request, ('activity', 'from', 'browse'))
     read_limit(request)
     from . import public_booklist as books
     from . import user_metadata, activities
@@ -94,15 +94,19 @@ def work_page(request, data, work_id):
             if history and history.snapshot_description is not None:
                 work.update(description=history.snapshot_description, tags=history.snapshot_tags or [])
             can_edit_metadata = False
-        return page(request, 'booklist/work.html', {'work': work, 'interaction': interaction, 'activity': result['activity'], 'can_edit_metadata': can_edit_metadata, 'return_url': return_url})
+        from .work_sequence import context as sequence_context
+        sequence = sequence_context(request, work_id, return_url)
+        return page(request, 'booklist/work.html', {'work': work, 'interaction': interaction, 'activity': result['activity'], 'can_edit_metadata': can_edit_metadata, 'return_url': return_url, 'work_sequence': sequence})
     interaction = books.serialize([books.require_work(work_id)], request.anonymous_client)[0] if work['is_public'] else None
-    return page(request, 'booklist/work.html', {'work': work, 'interaction': interaction, 'can_edit_metadata': can_edit_metadata, 'return_url': return_url})
+    from .work_sequence import context as sequence_context
+    sequence = sequence_context(request, work_id, return_url)
+    return page(request, 'booklist/work.html', {'work': work, 'interaction': interaction, 'can_edit_metadata': can_edit_metadata, 'return_url': return_url, 'work_sequence': sequence})
 
 
 def shelf_return_url(value, activity=None):
     from urllib.parse import urlsplit, parse_qs
     from .protocol import pagination
-    from .shelf_filters import search_text, tag_ids
+    from .shelf_filters import search_text, tag_ids, tag_match_mode
     from .shelf_sort import validate, validate_period
     fallback = f'/activities/{activity}/' if activity and activity.isascii() and activity.isdecimal() and str(int(activity)) == activity and int(activity) > 0 else '/'
     try:
@@ -112,11 +116,14 @@ def shelf_return_url(value, activity=None):
         if parsed.scheme or parsed.netloc or parsed.fragment or parsed.path != fallback:
             return fallback
         params = parse_qs(parsed.query, keep_blank_values=True, max_num_fields=30)
-        allowed = {'page', 'page_size', 'sort', 'q', 'tag'} | ({'period'} if fallback == '/' else set())
+        allowed = {'page', 'page_size', 'sort', 'q', 'tag', 'recommended', 'liked', 'tag_mode'} | ({'period'} if fallback == '/' else set())
         if set(params) - allowed or any(len(values) != 1 for key, values in params.items() if key != 'tag'):
             return fallback
+        from .shelf_filters import personal_filters
+        personal_filters({name:values[0] for name,values in params.items()})
         pagination(params.get('page', ['1'])[0], params.get('page_size', ['20'])[0])
         search_text(params.get('q', [''])[0]); tag_ids(params.get('tag', []))
+        tag_match_mode(params.get('tag_mode', ['all'])[0])
         validate(params.get('sort', ['recommendations'])[0]); validate_period(params.get('period', ['all'])[0])
         return value
     except (ValueError, ValidationError):

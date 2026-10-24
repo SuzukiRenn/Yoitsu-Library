@@ -96,6 +96,8 @@ export function installShelfSort(refresh, {doc=document,win=window,fetcher=fetch
     event.preventDefault();
     if(link.hasAttribute('aria-current') && !controls.hasAttribute('aria-busy'))return;
     const filterLink=link.matches?.('.work-tag') || link.matches?.('.work-author');
+    if(filterLink){for(const name of ['recommended','liked']){const input=searchForm?.querySelector(`[name="${name}"]`);if(input?.checked)url.searchParams.set(name,'1');else url.searchParams.delete(name);}}
+    if(filterLink){const mode=searchForm?.querySelector('[name="tag_mode"]:checked')?.value;if(mode==='any')url.searchParams.set('tag_mode','any');else url.searchParams.delete('tag_mode');}
     if(filterLink){const panel=shelf.querySelector('[data-tag-dropdown]');if(panel)panel.open=false;}
     return navigate(url.href,true,filterLink?'正在筛选…':'正在排序…');
   });

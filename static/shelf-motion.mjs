@@ -18,20 +18,22 @@ export function createShelfMotion({doc=document,win=window}={}) {
     animation.finished.then(done,done);
   }
   function capture(grid){
+    if(win.CustomEvent)doc.dispatchEvent?.(new win.CustomEvent('booklist:shelf-reorder'));
     // Capture visual positions before cancelling an in-flight move.
     const before=new Map([...grid.querySelectorAll('[data-shelf-work]')].map(card=>
       [card.dataset.shelfWork,{card,rect:card.getBoundingClientRect()}]));
     clear();
     if(reduced.matches)return ()=>{};
     return ()=>{
-      const after=new Map([...grid.querySelectorAll('[data-shelf-work]')].map(card=>[card.dataset.shelfWork,card]));
+      // Batch layout reads before animate()/ghost insertion can invalidate style.
+      const after=new Map([...grid.querySelectorAll('[data-shelf-work]')].map(card=>[card.dataset.shelfWork,{card,rect:card.getBoundingClientRect()}]));
       for(const [id,{card,rect:from}] of before){
         const retained=after.get(id);
         if(retained){
-          const to=retained.getBoundingClientRect();
+          const to=retained.rect;
           if(!visible(from) && !visible(to))continue;
           const x=from.left-to.left,y=from.top-to.top;
-          if(x || y)play(retained,[{transform:`translate(${x}px,${y}px)`},{transform:'translate(0,0)'}],
+          if(x || y)play(retained.card,[{transform:`translate(${x}px,${y}px)`},{transform:'translate(0,0)'}],
             {duration:360,easing:'cubic-bezier(.2,.7,.3,1)'});
         }else if(visible(from) && doc.body){
           const ghost=card.cloneNode(true);
@@ -50,6 +52,7 @@ export function createShelfMotion({doc=document,win=window}={}) {
       }
     };
   }
+  doc.addEventListener?.('booklist:shelf-view-change',clear);
   win.addEventListener('pagehide',clear);
   reduced.addEventListener('change',()=>{if(reduced.matches)clear();});
   return {capture};

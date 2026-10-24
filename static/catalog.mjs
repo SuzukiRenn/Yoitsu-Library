@@ -1,3 +1,4 @@
+import {appendEditionBadge} from './edition-badge.mjs?v=20261024-editions-1';
 import {createSearchController} from './catalog-search.mjs';
 
 const form = document.querySelector('#search-form');
@@ -23,7 +24,7 @@ function render(payload) {
   for (const work of payload.results) {
     const card = element('article', 'book-card');
     const open = element('a', 'card-open'); open.href = `/works/${work.id}/`; open.tabIndex = -1; open.setAttribute('aria-label', work.title);
-    const title = element('a', 'book-title', work.title); title.href = open.href; card.append(open);
+    const title = element('a', 'book-title', work.title);appendEditionBadge(title,work); title.href = open.href; card.append(open);
     const cover = element('span', 'book-cover'); cover.setAttribute('aria-hidden', 'true');
     if (work.cover_url) {
       const image = document.createElement('img'); image.src = work.cover_url; image.alt = ''; image.loading = 'lazy'; image.referrerPolicy = 'no-referrer';

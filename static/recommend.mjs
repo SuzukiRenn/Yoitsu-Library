@@ -1,7 +1,9 @@
+import {createReasonReferenceEditor} from './reason-reference-editor.mjs?v=20261024-references-slash-1';
+import {appendEditionBadge} from './edition-badge.mjs?v=20261024-editions-1';
 import {createPublicApi} from './public-api.mjs';
 import {createSearchController} from './catalog-search.mjs?v=20261022-1';
 import {normalize} from './text.mjs';
-import {createCandidatePreview} from './candidate-preview.mjs?v=20261023-author-links-1';
+import {createCandidatePreview} from './candidate-preview.mjs?v=20261024-editions-1';
 import {readMetadata} from './manual-metadata.mjs?v=20261020-5';
 
 const form = document.querySelector('#recommend-form');
@@ -21,6 +23,7 @@ if (form) {
   function manualState(show) { if (manual) { manual.hidden = !show; manual.disabled = !show; } }
   const editing = form.dataset.editing === 'true', activity = form.dataset.activity;
   let selected = form.dataset.work ? {id: Number(form.dataset.work), in_scope: form.dataset.inScope === 'true', recommended: form.dataset.recommended === 'true', recommendation_count: Number(form.dataset.recommendationCount || 0), own_reason: reason.value} : null;
+  const referenceEditor=createReasonReferenceEditor(reason,{exclude:()=>selected?.id});
   let timer = null, composing = false, busy = false, searchState = selected || editing ? 'ready' : 'idle';
   let manualNew = false;
   let candidateQuery = query.value;
@@ -33,7 +36,7 @@ if (form) {
       image.addEventListener('error',()=>image.replaceWith(placeholder()),{once:true}); cover.append(image);
     } else cover.append(placeholder());
     const info=document.createElement('span'); info.className='candidate-info';
-    const title=document.createElement('strong'); title.textContent=work.title;
+    const title=document.createElement('strong'); title.textContent=work.title;appendEditionBadge(title,work);
     const author=document.createElement('span'); author.textContent=work.author;
     const state=document.createElement('span');
     state.className='candidate-recommendation-state';
@@ -92,7 +95,7 @@ if (form) {
           if (busy) return;
           search.cancel(); searchStatus.textContent=candidateSummary;
           for (const item of candidates.querySelectorAll('button')) item.setAttribute('aria-pressed','false');
-          selected=work; query.value=work.title; reason.value=work.own_reason || ''; spoilers.checked=Boolean(work.own_contains_spoilers); count();
+          selected=work; query.value=work.title; referenceEditor.setValue(work.own_reason || '',work.own_reason_references || []); spoilers.checked=Boolean(work.own_contains_spoilers); count();
           manualNew=false;
           manualState(false);
           const manualChoice=candidates.querySelector('[data-manual-new]');
@@ -101,7 +104,7 @@ if (form) {
           candidateList(false); changeWork.textContent='重新选择作品';
           selectedCard.replaceChildren(...candidateContent(work)); selectedCard.hidden=false;
           selectedStatus.textContent='已选择作品'; status.textContent=''; label();
-          reason.focus({preventScroll:true});
+          referenceEditor.focus();
         });
         preview.bind(button, work); candidates.append(button);
       }
@@ -146,7 +149,7 @@ if (form) {
     manualNew=false;
     manualState(false);
     preview.hide();
-    if (selected && reason.value === selected.own_reason) { reason.value=''; spoilers.checked=false; count(); }
+    if (selected && reason.value === selected.own_reason) { referenceEditor.setValue(''); spoilers.checked=false; count(); }
     clearTimeout(timer); search.cancel(); selected=null; searchState='idle'; candidates.replaceChildren(); selectedStatus.textContent='';
     candidateSummary='';
     searchStatus.textContent=''; status.textContent=''; label();
@@ -156,7 +159,7 @@ if (form) {
   if (!editing) {
     changeWork.addEventListener('click',()=>{
       if (busy) return;
-      if (selected && reason.value === selected.own_reason) { reason.value=''; spoilers.checked=false; count(); }
+      if (selected && reason.value === selected.own_reason) { referenceEditor.setValue(''); spoilers.checked=false; count(); }
       preview.hide(); selected=null; manualNew=false;
       hideSelectedCard();
       manualState(false); candidateList(true);
@@ -175,12 +178,12 @@ if (form) {
   if (selected) {candidateList(false); if (changeWork) changeWork.textContent='重新选择作品';}
   reason.addEventListener('input',count); count(); label();
   form.addEventListener('submit',async event=>{
-    event.preventDefault(); if (busy || composing) return;
+    event.preventDefault(); if (busy || composing || referenceEditor.composing) return;
     preview.hide();
-    let title,text;
-    try {title=normalize(query.value,'title',true); text=normalize(reason.value,'reason');}
+    let title,text,references;
+    try {title=normalize(query.value,'title',true); ({text,references}=referenceEditor.value());}
     catch {status.textContent='书名限 1—300 字，理由限 200 字';return;}
-    busy=true; submit.disabled=true; query.readOnly=true; reason.readOnly=true; status.textContent='';
+    busy=true; submit.disabled=true; query.readOnly=true; reason.readOnly=true; referenceEditor.setReadonly(true); status.textContent='';
     try {
       if (!editing && !selected) {
         clearTimeout(timer);
@@ -191,6 +194,7 @@ if (form) {
         }
       }
       const payload=editing ? {reason:text} : {work_id:selected?.id ?? null,title,reason:text,confirmed_unmatched:manualNew};
+      payload.references=references;
       payload.contains_spoilers=Boolean(text) && spoilers.checked;
       if (!editing && !selected) {
         try { payload.metadata = readMetadata(form); }
@@ -204,6 +208,6 @@ if (form) {
     } catch(error){
       status.textContent=error.message;
       if(error.code==='existing_candidate' || error.code==='resubmission_required'){selected=null; searchState='pending'; await search.run(query.value);}
-    } finally {busy=false; submit.disabled=false; query.readOnly=editing; reason.readOnly=false; if (manual) manual.disabled = manual.hidden;}
+    } finally {busy=false; submit.disabled=false; query.readOnly=editing; reason.readOnly=false; referenceEditor.setReadonly(false); if (manual) manual.disabled = manual.hidden;}
   });
 }
