@@ -1,0 +1,10 @@
+/* A shared, compact row for optional reason settings. */
+.recommend-options{display:flex;align-items:center;flex-wrap:wrap;gap:6px 28px;margin:12px 0 22px}
+.recommend-option{position:relative;display:inline-flex;align-items:center;gap:7px;min-height:32px}
+.recommend-page .recommend-options .check-option{margin:0;min-height:32px;font-size:13px;line-height:20px;color:var(--ink)}
+.recommend-options .reason-option-help{position:static;align-items:center}
+.reason-option-help>button{display:grid;place-items:center;width:17px;height:17px;min-height:0;padding:0;border:1px solid var(--muted);border-radius:50%;background:transparent;color:var(--muted);font-size:11px;font-weight:600;line-height:1;cursor:help}
+.reason-option-help>button:hover{color:var(--ink);border-color:var(--accent);background:var(--wash)}
+.reason-option-help>.control-tooltip{width:248px;max-width:calc(100vw - 56px);white-space:normal;font-weight:400}
+.recommend-page .reason-editor>.field-hint{margin:7px 0 0;font-size:12px}
+@media(max-width:520px){.recommend-options{gap:2px;margin-bottom:18px}.recommend-option{flex-basis:100%;min-height:36px}}
