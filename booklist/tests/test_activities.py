@@ -85,7 +85,7 @@ class ActivityTests(TestCase):
         page = self.client.get(path)
         self.assertContains(page, '简介内容&lt;script&gt;不执行&lt;/script&gt;')
         self.assertNotContains(page, '<script>不执行</script>')
-        self.assertContains(page, f'class="back-link" href="/activities/{self.period.pk}/"')
+        self.assertContains(page, f'class="back-link" data-shelf-return href="/activities/{self.period.pk}/"')
         self.assertContains(page, f'data-activity="{self.period.pk}"')
         self.assertContains(page, '<span data-action-label>已推荐</span><strong data-action-count>2</strong>', html=True)
         self.assertContains(page, '本期理由独有')
@@ -111,7 +111,7 @@ class ActivityTests(TestCase):
         self.assertContains(page, '已结束')
         self.assertContains(page, '历史理由')
         self.assertContains(page, '<h2>简介</h2>')
-        self.assertContains(page, f'class="back-link" href="/activities/{self.period.pk}/"')
+        self.assertContains(page, f'class="back-link" data-shelf-return href="/activities/{self.period.pk}/"')
         self.assertNotContains(page, 'data-action=')
         self.assertNotContains(page, '&amp;edit=1')
 
@@ -412,7 +412,7 @@ class ActivityTests(TestCase):
         self.assertNotContains(self.client.get('/'),'id="recommend-form"')
         self.assertContains(self.client.get('/recommend/'),'id="recommend-form"')
         self.assertContains(self.client.get(f'/activities/{self.period.pk}/recommend/'),f'data-activity="{self.period.pk}"')
-        self.assertContains(self.client.get('/'),'推荐活动')
+        self.assertContains(self.client.get('/'),'主题推荐')
 
     def test_activity_reason_pagination_sorting_and_public_count_not_used(self):
         for index in range(3):

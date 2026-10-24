@@ -84,7 +84,7 @@ def csrf_failure(request, reason=''):
 
 @endpoint('GET')
 def home(request, data):
-    return HttpResponse('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>共享书单</title><h1>共享书单</h1><p>项目基础服务已就绪，书单功能正在分阶段实现。</p></html>')
+    return HttpResponse('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>ヨイツ図書館 || Yoitsu Library</title><h1>ヨイツ図書館</h1><p>项目基础服务已就绪，书单功能正在分阶段实现。</p></html>')
 
 
 @endpoint('GET')

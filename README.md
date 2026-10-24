@@ -1,8 +1,9 @@
 <p align="center">
-  <img src="static/logo.png" width="88" height="88" alt="共享书单 Logo">
+  <img src="static/logo.png" width="88" height="88" alt="ヨイツ図書館 Logo">
 </p>
 
-<h1 align="center">共享书单</h1>
+<h1 align="center">ヨイツ図書館</h1>
+<p align="center">Yoitsu Library</p>
 
 
 

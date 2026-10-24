@@ -56,8 +56,8 @@ if (form) {
     submit.closest('.recommend-control').removeAttribute('data-tooltip-dismissed');
     existingNotice.hidden = !selected || !(selected.recommendation_count > 0);
     existingNotice.textContent = existingNotice.hidden ? '' : selected.recommended
-      ? `你已${activity ? '在本活动中' : '在公共书单中'}推荐过这本书，${selected.own_reason?.trim() ? '可修改推荐理由' : '可补充推荐理由'}。`
-      : `这本书已${activity ? '在本活动中被推荐' : '被推荐到公共书单'}，点击「+1」表示你也推荐。`;
+      ? `你已${activity ? '在本活动中' : '在公共书架中'}推荐过这本书，${selected.own_reason?.trim() ? '可修改推荐理由' : '可补充推荐理由'}。`
+      : `这本书已${activity ? '在本活动中被推荐' : '被推荐到公共书架'}，点击「+1」表示你也推荐。`;
   }
   function count() {
     try { document.querySelector('#reason-length').textContent = `${Array.from(normalize(reason.value, 'reason')).length} / 200`; }

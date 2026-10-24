@@ -56,11 +56,12 @@ def home(request, data):
 
 @endpoint('GET')
 def work_page(request, data, work_id):
-    parameters(request, ('activity',))
+    parameters(request, ('activity', 'from'))
     read_limit(request)
     from . import public_booklist as books
     from . import user_metadata, activities
     from .recommend_views import positive
+    return_url = shelf_return_url(request.GET.get('from', ''), request.GET.get('activity'))
     period = activities.get(positive(request.GET['activity'])) if 'activity' in request.GET else None
     if period: activities.advance_due(); period.refresh_from_db()
     historical = period is not None and period.status == 'ended'
@@ -93,6 +94,30 @@ def work_page(request, data, work_id):
             if history and history.snapshot_description is not None:
                 work.update(description=history.snapshot_description, tags=history.snapshot_tags or [])
             can_edit_metadata = False
-        return page(request, 'booklist/work.html', {'work': work, 'interaction': interaction, 'activity': result['activity'], 'can_edit_metadata': can_edit_metadata})
+        return page(request, 'booklist/work.html', {'work': work, 'interaction': interaction, 'activity': result['activity'], 'can_edit_metadata': can_edit_metadata, 'return_url': return_url})
     interaction = books.serialize([books.require_work(work_id)], request.anonymous_client)[0] if work['is_public'] else None
-    return page(request, 'booklist/work.html', {'work': work, 'interaction': interaction, 'can_edit_metadata': can_edit_metadata})
+    return page(request, 'booklist/work.html', {'work': work, 'interaction': interaction, 'can_edit_metadata': can_edit_metadata, 'return_url': return_url})
+
+
+def shelf_return_url(value, activity=None):
+    from urllib.parse import urlsplit, parse_qs
+    from .protocol import pagination
+    from .shelf_filters import search_text, tag_ids
+    from .shelf_sort import validate, validate_period
+    fallback = f'/activities/{activity}/' if activity and activity.isascii() and activity.isdecimal() and str(int(activity)) == activity and int(activity) > 0 else '/'
+    try:
+        if not value or len(value) > 4096 or any(ord(char) < 32 for char in value) or '\\' in value:
+            return fallback
+        parsed = urlsplit(value)
+        if parsed.scheme or parsed.netloc or parsed.fragment or parsed.path != fallback:
+            return fallback
+        params = parse_qs(parsed.query, keep_blank_values=True, max_num_fields=30)
+        allowed = {'page', 'page_size', 'sort', 'q', 'tag'} | ({'period'} if fallback == '/' else set())
+        if set(params) - allowed or any(len(values) != 1 for key, values in params.items() if key != 'tag'):
+            return fallback
+        pagination(params.get('page', ['1'])[0], params.get('page_size', ['20'])[0])
+        search_text(params.get('q', [''])[0]); tag_ids(params.get('tag', []))
+        validate(params.get('sort', ['recommendations'])[0]); validate_period(params.get('period', ['all'])[0])
+        return value
+    except (ValueError, ValidationError):
+        return fallback

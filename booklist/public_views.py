@@ -32,11 +32,22 @@ def home(request, data):
 
 @endpoint('GET')
 def random_book(request, data):
-    parameters(request, ())
+    parameters(request, ('exclude',))
     read_limit(request)
-    work_id = books.public_works().order_by('?').values_list('pk', flat=True).first()
-    response = redirect(f'/works/{work_id}/') if work_id is not None else page(
-        request, 'booklist/random_empty.html', {})
+    current = request.GET.get('exclude')
+    if current is not None:
+        from .recommend_views import positive
+        if len(current) > 18:
+            raise ValidationError('作品编号无效')
+        current = positive(current)
+    eligible = books.public_works()
+    work_id = eligible.exclude(pk=current).order_by('?').values_list('pk', flat=True).first() if current is not None else eligible.order_by('?').values_list('pk', flat=True).first()
+    if work_id is not None:
+        response = redirect(f'/works/{work_id}/')
+    elif current is not None and eligible.filter(pk=current).exists():
+        response = page(request, 'booklist/random_single.html', {'current_work_id': current})
+    else:
+        response = page(request, 'booklist/random_empty.html', {})
     response['Cache-Control'] = 'no-store'
     return response
 

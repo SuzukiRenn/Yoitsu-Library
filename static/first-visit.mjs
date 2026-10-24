@@ -41,7 +41,7 @@ export function installFirstVisit(doc = document, win = window) {
   const previousFocus = doc.activeElement;
   const steps = [
     {target: recommend, title: '推荐一本书', text: '点「推荐」，搜索书名即可推荐。'},
-    {target: activities, title: '参加推荐活动', text: '点「推荐活动」，查看并参与本期活动。'}
+    {target: activities, title: '参加主题推荐', text: '点「主题推荐」，查看并参与本期活动。'}
   ];
   let index = 0, frame, lastGeometry;
   const position = () => {

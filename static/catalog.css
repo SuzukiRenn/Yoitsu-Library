@@ -437,3 +437,6 @@ html{scrollbar-gutter:stable}
 .reason-preview>.spoiler-preview>.reason-text{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;max-height:36px;margin:0;line-height:18px}
 .spoiler-reason>.reason-text{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
 .reason-content>.spoiler-reason{flex:1}
+
+.brand{white-space:nowrap}
+@media(max-width:380px){.site-header,.public-header{height:auto;flex-wrap:wrap;gap:10px 12px;padding-top:12px;padding-bottom:12px}.site-header .main-nav{margin-left:auto}}

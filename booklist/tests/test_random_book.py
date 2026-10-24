@@ -32,11 +32,37 @@ class RandomBookTests(TestCase):
 
     def test_empty_shelf_has_a_return_link(self):
         response = self.client.get('/random-book/')
-        self.assertContains(response, '公共书单暂无作品')
-        self.assertContains(response, '← 返回书单')
+        self.assertContains(response, '公共书架暂无作品')
+        self.assertContains(response, '← 返回书架')
         self.assertEqual(response['Cache-Control'], 'no-store')
 
     def test_no_filters_or_writes(self):
         self.work()
         self.assertEqual(self.client.get('/random-book/?q=不存在').status_code, 400)
         self.assertEqual(self.client.post('/random-book/').status_code, 405)
+
+    def test_excludes_current_but_keeps_the_other_eligible_book(self):
+        current=self.work(); other=self.work()
+        response=self.client.get(f'/random-book/?exclude={current.pk}')
+        self.assertRedirects(response,f'/works/{other.pk}/',fetch_redirect_response=False)
+        self.assertEqual(response['Cache-Control'],'no-store')
+
+    def test_only_current_book_explains_instead_of_redirecting(self):
+        current=self.work()
+        response=self.client.get(f'/random-book/?exclude={current.pk}')
+        self.assertContains(response,'公共书架里暂时只有这一本')
+        self.assertContains(response,f'href="/works/{current.pk}/"')
+        self.assertEqual(response['Cache-Control'],'no-store')
+
+    def test_nonpublic_current_does_not_exclude_the_single_public_candidate(self):
+        current=Work.objects.create(original_submitted_title='不在公共书架')
+        other=self.work()
+        self.assertRedirects(self.client.get(f'/random-book/?exclude={current.pk}'),f'/works/{other.pk}/',fetch_redirect_response=False)
+        PublicRecommendation.objects.filter(work=other).update(withdrawn_at=timezone.now())
+        self.assertContains(self.client.get(f'/random-book/?exclude={current.pk}'),'公共书架暂无作品')
+
+    def test_exclusion_parameter_validation_and_detail_link(self):
+        current=self.work()
+        for value in ['', '0', '-1', '01', 'abc', '9'*19, '1&exclude=2']:
+            self.assertEqual(self.client.get('/random-book/?exclude='+value).status_code,400)
+        self.assertContains(self.client.get(f'/works/{current.pk}/'),f'href="/random-book/?exclude={current.pk}"')

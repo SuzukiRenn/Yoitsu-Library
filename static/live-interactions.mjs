@@ -51,7 +51,7 @@ export function updateInteraction(container, work) {
     }
   }
   let note = container.querySelector('[data-live-note]');
-  const message = emptyPublic ? (work.resubmission_required ? '已退出书单，重新推荐需填写作品资料' : '已退出公共书单') : !available ? '作品暂不可用' : !writable ? '活动已暂停或结束' : emptyActivity ? '已退出本活动书单' : '';
+  const message = emptyPublic ? (work.resubmission_required ? '已退出书单，重新推荐需填写作品资料' : '已退出公共书架') : !available ? '作品暂不可用' : !writable ? '活动已暂停或结束' : emptyActivity ? '已退出本活动书单' : '';
   if (message && !note) {
     note = document.createElement('p'); note.dataset.liveNote = ''; note.className = 'live-note';
     container.append(note);
