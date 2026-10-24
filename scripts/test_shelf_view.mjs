@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {installShelfView} from '../static/shelf-view.mjs';
+const events={},windowEvents={},storage=new Map(),icons=['list','cards'].map(viewIcon=>({dataset:{viewIcon},toggleAttribute(name,value){this[name]=value;}}));
+const attrs={},tip={};let compact=false;
+const root={dataset:{shelfView:'cards'}};
+const card={getBoundingClientRect:()=>({top:compact?40:100,bottom:150})};
+const button={hidden:true,setAttribute:(k,v)=>attrs[k]=v,querySelector:()=>tip,querySelectorAll:()=>icons,addEventListener:(k,v)=>events[k]=v};
+const shelf={querySelectorAll:()=>[card]};
+const doc={documentElement:root,querySelector:s=>s.includes('toggle')?button:shelf};
+const scrolls=[];
+const win={scrollY:100,scrollBy:(x,y)=>scrolls.push(y),localStorage:{setItem:(k,v)=>storage.set(k,v)},addEventListener:(k,v)=>windowEvents[k]=v};
+installShelfView(doc,win);
+assert.equal(button.hidden,false);assert.equal(attrs['aria-pressed'],'false');
+events.click();assert.equal(root.dataset.shelfView,'compact');assert.equal(attrs['aria-label'],'切换为卡片视图');assert.equal(storage.get('booklist:shelf-view:v1'),'compact');assert.equal(icons[0].hidden,true);
+windowEvents.storage({key:'booklist:shelf-view:v1',newValue:'cards'});assert.equal(root.dataset.shelfView,'cards');
+win.localStorage.setItem=()=>{throw Error('blocked');};events.click();assert.equal(root.dataset.shelfView,'compact');
+assert.equal(scrolls.length,3);
+console.log('Shared shelf preference, cross-tab updates, toggle labels, anchor retention and restricted storage passed.');

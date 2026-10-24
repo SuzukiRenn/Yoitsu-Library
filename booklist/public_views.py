@@ -32,22 +32,38 @@ def home(request, data):
 
 @endpoint('GET')
 def random_book(request, data):
-    parameters(request, ('exclude',))
+    parameters(request, ('exclude', 'activity'))
     read_limit(request)
-    current = request.GET.get('exclude')
-    if current is not None:
-        from .recommend_views import positive
-        if len(current) > 18:
-            raise ValidationError('作品编号无效')
-        current = positive(current)
-    eligible = books.public_works()
-    work_id = eligible.exclude(pk=current).order_by('?').values_list('pk', flat=True).first() if current is not None else eligible.order_by('?').values_list('pk', flat=True).first()
-    if work_id is not None:
-        response = redirect(f'/works/{work_id}/')
-    elif current is not None and eligible.filter(pk=current).exists():
-        response = page(request, 'booklist/random_single.html', {'current_work_id': current})
+    from .recommend_views import positive
+    def identifier(name):
+        value = request.GET.get(name)
+        if value is None:
+            return None
+        if len(value) > 18:
+            raise ValidationError('编号无效')
+        return positive(value)
+    current = identifier('exclude')
+    activity_id = identifier('activity')
+    activity = None
+    if activity_id is not None:
+        from . import activities, catalog
+        from .models import ActivityWork
+        activities.advance_due()
+        period = activities.get(activity_id)
+        activity = activities.summary(period)
+        snapshots = ActivityWork.objects.filter(activity=period, archived_at__isnull=True,
+            merged_into__isnull=True, pk__in=activities.recs(activity_id).values('activity_work_id'))
+        eligible = catalog.visible_works(include_retired=period.status == 'ended').filter(pk__in=snapshots.values('work_id'))
     else:
-        response = page(request, 'booklist/random_empty.html', {})
+        eligible = books.public_works()
+    work_id = eligible.exclude(pk=current).order_by('?').values_list('pk', flat=True).first() if current is not None else eligible.order_by('?').values_list('pk', flat=True).first()
+    suffix = f'?activity={activity_id}' if activity_id is not None else ''
+    if work_id is not None:
+        response = redirect(f'/works/{work_id}/{suffix}')
+    elif current is not None and eligible.filter(pk=current).exists():
+        response = page(request, 'booklist/random_single.html', {'current_work_id': current, 'activity': activity})
+    else:
+        response = page(request, 'booklist/random_empty.html', {'activity': activity})
     response['Cache-Control'] = 'no-store'
     return response
 

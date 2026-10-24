@@ -66,3 +66,62 @@ class RandomBookTests(TestCase):
         for value in ['', '0', '-1', '01', 'abc', '9'*19, '1&exclude=2']:
             self.assertEqual(self.client.get('/random-book/?exclude='+value).status_code,400)
         self.assertContains(self.client.get(f'/works/{current.pk}/'),f'href="/random-book/?exclude={current.pk}"')
+
+
+class ActivityRandomBookTests(TestCase):
+    def setUp(self):
+        from datetime import timedelta
+        from booklist.models import Activity
+        _, self.person = services.issue_anonymous()
+        admin = services.initialize_admin('owner', 'Monthly-Booklist!Testing-Password-49')
+        now = timezone.now()
+        self.period = Activity.objects.create(title='随机主题', status='active', created_by=admin,
+            start_at=now-timedelta(hours=1), started_at=now-timedelta(hours=1), scheduled_end_at=now+timedelta(days=1))
+
+    def entry(self, **fields):
+        from booklist.models import ActivityWork, Recommendation
+        work = Work.objects.create(original_submitted_title='主题作品', **fields)
+        snap = ActivityWork.objects.create(activity=self.period, work=work, snapshot_title=work.display_title)
+        rec = Recommendation.objects.create(scope='activity', activity=self.period, activity_work=snap, work=work, anonymous_client=self.person)
+        return work, snap, rec
+
+    def test_scope_and_current_exclusion_survive_detail_navigation(self):
+        current,_,_ = self.entry(); chosen,_,_ = self.entry()
+        other = Work.objects.create(original_submitted_title='仅公共', public_added_at=timezone.now())
+        PublicRecommendation.objects.create(work=other,anonymous_client=self.person)
+        response=self.client.get(f'/random-book/?activity={self.period.pk}&exclude={current.pk}')
+        self.assertRedirects(response,f'/works/{chosen.pk}/?activity={self.period.pk}',fetch_redirect_response=False)
+        page=self.client.get(f'/works/{chosen.pk}/?activity={self.period.pk}')
+        self.assertContains(page,f'/random-book/?exclude={chosen.pk}&amp;activity={self.period.pk}')
+        shelf=self.client.get(f'/activities/{self.period.pk}/')
+        self.assertContains(shelf,f'/random-book/?activity={self.period.pk}')
+        self.assertContains(shelf,'data-shelf-view-toggle')
+        self.assertContains(self.client.get('/'),'data-shelf-view-toggle')
+
+    def test_ineligible_activity_entries_are_not_drawn(self):
+        chosen,_,_=self.entry()
+        self.entry(hidden_at=timezone.now()); self.entry(review_status='pending'); self.entry(merged_into=chosen)
+        _,snap,rec=self.entry();rec.archived_at=timezone.now();rec.save();snap.archived_at=timezone.now();snap.save()
+        _,_,rec=self.entry();rec.withdrawn_at=timezone.now();rec.save()
+        _,_,rec=self.entry();rec.invalidated_at=timezone.now();rec.save()
+        self.assertRedirects(self.client.get(f'/random-book/?activity={self.period.pk}'),f'/works/{chosen.pk}/?activity={self.period.pk}',fetch_redirect_response=False)
+
+    def test_empty_and_single_do_not_fall_back_to_public(self):
+        response=self.client.get(f'/random-book/?activity={self.period.pk}')
+        self.assertContains(response,'这个主题暂无作品')
+        current,_,_=self.entry()
+        response=self.client.get(f'/random-book/?activity={self.period.pk}&exclude={current.pk}')
+        self.assertContains(response,'这个主题里暂时只有这一本')
+        self.assertContains(response,f'/works/{current.pk}/?activity={self.period.pk}')
+        self.assertEqual(response['Cache-Control'],'no-store')
+
+    def test_historical_snapshots_can_include_retired_public_works(self):
+        work,_,_=self.entry(source_metadata={'manual_retired_at':'2026-10-23'})
+        self.period.status='ended';self.period.ended_at=timezone.now();self.period.save()
+        self.assertRedirects(self.client.get(f'/random-book/?activity={self.period.pk}'),f'/works/{work.pk}/?activity={self.period.pk}',fetch_redirect_response=False)
+
+    def test_invalid_or_unpublished_activity_is_rejected(self):
+        for value in ['', '0', '01', 'abc', '9'*19, '1&activity=2']:
+            self.assertEqual(self.client.get('/random-book/?activity='+value).status_code,400)
+        self.period.status='draft';self.period.started_at=None;self.period.save()
+        self.assertEqual(self.client.get(f'/random-book/?activity={self.period.pk}').status_code,404)

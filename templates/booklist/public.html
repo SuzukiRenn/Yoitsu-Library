@@ -2,6 +2,7 @@
 {% block feedback_footer %}{% endblock %}
 {% block header_class %} public-header{% endblock %}
 {% block site_location %}<h1 class="header-current"><span aria-hidden="true">/</span> 公共书架</h1>{% endblock %}
+{% block shelf_view_control %}{% include 'booklist/shelf_view_control.html' %}{% endblock %}
 {% block content %}
 <section class="public-shelf" data-live-shelf>
 {% include 'booklist/shelf_controls.html' %}<p class="sr-only" data-shelf-status role="status"></p>

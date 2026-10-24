@@ -1,2 +1,2 @@
 {% extends 'booklist/base.html' %}
-{% block content %}<section class="work-detail"><h1>公共书架暂无作品</h1><p>先推荐一本喜欢的书吧。</p><a class="back-link" href="/">← 返回书架</a></section>{% endblock %}
+{% block content %}<section class="work-detail"><h1>{% if activity %}这个主题暂无作品{% else %}公共书架暂无作品{% endif %}</h1><p>先推荐一本喜欢的书吧。</p><a class="back-link" href="{% if activity %}/activities/{{ activity.id }}/{% else %}/{% endif %}">← 返回{% if activity %}主题推荐{% else %}书架{% endif %}</a></section>{% endblock %}
