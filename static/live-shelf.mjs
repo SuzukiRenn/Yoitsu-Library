@@ -1,7 +1,7 @@
-import {createShelfMotion} from './shelf-motion.mjs?v=20261021-9';
+import {createShelfMotion} from './shelf-motion.mjs?v=20261024-motion-perf-1';
 import {initializeCovers} from './cover-images.mjs?v=20261020-2';
 import {initializePageSizes} from './page-size.mjs?v=20261020-2';
-import {initializeTagFilters, updateTagFilter} from './tag-filter.mjs?v=20261021-19';
+import {initializeTagFilters, updateTagFilter} from './tag-filter.mjs?v=20261024-tag-mode-1';
 
 const ids = grid => [...grid.querySelectorAll('[data-shelf-work]')].map(card => card.dataset.shelfWork);
 export function membershipChanged(before, after) {

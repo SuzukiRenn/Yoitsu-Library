@@ -8,4 +8,4 @@
 .guide-actions{display:flex;align-items:center;justify-content:space-between;gap:16px}
 .guide-actions button{min-height:44px;padding:9px 18px;border:1px solid transparent;border-radius:7px;cursor:pointer;font:inherit;font-size:14px}
 .guide-skip{background:transparent;color:var(--muted)}
-.guide-next{background:var(--ink);color:var(--paper)}
+.guide-next{background:var(--solid);color:var(--on-solid)}

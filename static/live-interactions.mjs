@@ -1,6 +1,6 @@
-import {renderRecommenders} from './account.mjs?v=20261022-account-home';
-import {renderReasonPreview} from './reason-ui.mjs?v=20261022-identity-sync';
-import {createPublicApi} from './public-api.mjs?v=20261022-identity-sync';
+import {renderRecommenders} from './account.mjs?v=20261024-identity-sync';
+import {renderReasonPreview} from './reason-ui.mjs?v=20261024-identity-sync';
+import {createPublicApi} from './public-api.mjs?v=20261024-identity-sync';
 
 export function updateInteraction(container, work) {
   renderRecommenders(container, work);
@@ -53,7 +53,7 @@ export function updateInteraction(container, work) {
     }
   }
   let note = container.querySelector('[data-live-note]');
-  const message = emptyPublic ? (work.resubmission_required ? '已退出书单，重新推荐需填写作品资料' : '已退出公共书单') : !available ? '作品暂不可用' : !writable ? '活动已暂停或结束' : emptyActivity ? '已退出本活动书单' : '';
+  const message = emptyPublic ? (work.resubmission_required ? '已退出书单，重新推荐需填写作品资料' : '已退出公共书架') : !available ? '作品暂不可用' : !writable ? '活动已暂停或结束' : emptyActivity ? '已退出本活动书单' : '';
   if (message && !note) {
     note = document.createElement('p'); note.dataset.liveNote = ''; note.className = 'live-note';
     container.append(note);
@@ -73,7 +73,8 @@ export function updateInteraction(container, work) {
   const preview = container.closest('.public-card')?.querySelector('.reason-preview');
   if (preview && available) {
     renderReasonPreview(preview, work.top_reason, container.dataset.work, activity);
-    let link = preview.querySelector('a');
+    // Citations inside the reason body are independent work links.
+    let link = preview.querySelector(':scope > a.reason-link');
     if (!work.reason_count) link?.remove();
     else {
       if (!link) {

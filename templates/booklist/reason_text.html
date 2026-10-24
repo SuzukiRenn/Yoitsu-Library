@@ -1,0 +1,1 @@
+{% for part in item.parts %}{% if part.url %}<a class="reason-reference" href="{{ part.url }}">{{ part.text }}</a>{% else %}{{ part.text }}{% endif %}{% empty %}{{ item.reason }}{% endfor %}

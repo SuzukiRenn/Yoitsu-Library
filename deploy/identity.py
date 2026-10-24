@@ -67,9 +67,17 @@ def anonymous_snapshot():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('release'); parser.add_argument('--catalog', required=True); parser.add_argument('--covers', required=True)
+    parser.add_argument('release'); parser.add_argument('--catalog'); parser.add_argument('--covers')
+    parser.add_argument('--update-only', action='store_true')
+    parser.add_argument('--increment'); parser.add_argument('--increment-sha256')
     args = parser.parse_args()
     release = args.release
+    if args.increment and (not args.update_only or not re.fullmatch('[a-f0-9]{64}', args.increment_sha256 or '')):
+        raise RuntimeError('Increment requires an explicit existing-deployment update and checksum')
+    if args.update_only and (not (STATE / 'release.txt').is_file() or not (STATE / 'data/booklist.sqlite3').is_file()):
+        raise RuntimeError('Update-only deployment requires existing release and database; never initialize')
+    if not args.update_only and not (args.catalog and args.covers):
+        raise RuntimeError('Initial deployment requires catalog and covers')
     if os.geteuid() != 0 or not re.fullmatch('[a-f0-9]{40}', release):
         raise RuntimeError('Root operator and explicit full release required')
     checkout = ROOT / 'releases' / release
@@ -163,8 +171,10 @@ def main():
             if database.exists():
                 run(*command, 'run', '-T', '--rm', '--no-deps', 'backup', 'python', 'scripts/sqlite_backup.py',
                     '--source', '/var/lib/shared-booklist-identity/booklist.sqlite3', '--output-dir', '/backups', '--verify-restore')
+            from scripts.catalog_preservation import capture, verify
+            preserved = capture(database) if database.exists() else None
             run(*tool, 'python', 'manage.py', 'migrate', '--noinput')
-            if not old_release:
+            if not old_release and not args.update_only:
                 receipt = run(*command, 'run', '-T', '--rm', '--no-deps', '-v',
                     str(Path(args.catalog).resolve()) + ':/tmp/identity-catalog.json:ro',
                     '-v', str(Path(args.covers).resolve()) + ':/tmp/identity-covers.tar:ro',
@@ -178,9 +188,27 @@ def main():
                         raise RuntimeError('Linked identity data')
                     os.chown(path, 10001, 10001); path.chmod(0o700 if path.is_dir() else 0o600)
                 (STATE / 'initial-catalog.json').write_text(receipt + '\n')
+            increment_receipt = None
+            if args.increment:
+                print('PHASE append_approved_catalog_increment', flush=True)
+                payload = run(*command, 'run', '-T', '--rm', '--no-deps', '-v',
+                    str(Path(args.increment).resolve()) + ':/tmp/catalog-increment.json:ro',
+                    'tools', 'python', 'scripts/import_catalog_increment.py',
+                    '--manifest', '/tmp/catalog-increment.json', '--sha256', args.increment_sha256,
+                    '--output', '/var/lib/shared-booklist-identity/catalog-increments/' + release,
+                    '--apply', capture=True, timeout=600)
+                print(payload, flush=True)
+                increment_receipt = json.loads(next(line.split(' ', 1)[1] for line in payload.splitlines()
+                    if line.startswith('CATALOG_INCREMENT_SUCCESS ')))
+                if not increment_receipt.get('success') or not increment_receipt.get('preexisting_rows_unchanged'):
+                    raise RuntimeError('Catalog increment did not preserve existing rows')
+            if preserved is not None:
+                verify(database, preserved)
+                print('PREEXISTING_IDENTITY_DATA_VERIFIED', flush=True)
             run(*command, 'up', '-d', '--no-build', '--wait', '--wait-timeout', '120')
             run(*command, 'exec', '-T', 'app', 'python', 'scripts/predeploy_health.py')
-            for path in ('/health/', '/account/login/', '/account/register/', '/static/account.mjs', '/static/account.css'):
+            for path in ('/health/', '/account/login/', '/account/register/', '/static/account.mjs', '/static/account.css', '/static/appearance.css', '/static/appearance.mjs',
+                         '/static/shelf-view-motion.mjs', '/static/reason-reference-editor.mjs', '/static/edition-badge.mjs'):
                 run('curl', '--noproxy', '*', '--fail', '--silent', '--show-error', '--resolve',
                     DOMAIN + ':' + str(PORT) + ':127.0.0.1', '-o', '/dev/null',
                     'https://' + DOMAIN + ':' + str(PORT) + path)
@@ -197,7 +225,9 @@ def main():
                 raise RuntimeError('Anonymous containers changed during identity deployment; inspect before proceeding')
             (STATE / 'anonymous-containers.json').write_text(json.dumps(anonymous_before, indent=2))
             receipt = {'success': True, 'release': release, 'bind': '127.0.0.1:' + str(PORT),
-                       'public_access': False, 'tls_system_ca_verified': True, 'anonymous_services_modified': False}
+                       'public_access': False, 'tls_system_ca_verified': True, 'anonymous_services_modified': False,
+                       'previous_release': old_release, 'update_only': args.update_only, 'preexisting_data_preserved': preserved is not None,
+                       'catalog_increment': increment_receipt}
             (STATE / 'receipt.json').write_text(json.dumps(receipt, indent=2))
             (STATE / 'release.txt').write_text(release + '\n')
             new = ROOT / 'current.new'

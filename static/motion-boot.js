@@ -12,7 +12,13 @@ window.addEventListener('pagereveal', event => {
   if (!card?.isConnected) return;
   card.classList.add('work-opening');
   const rect = card.getBoundingClientRect();
-  if (rect.bottom <= 0 || rect.top >= window.innerHeight) {
+  let restoring = document.documentElement.hasAttribute?.('data-shelf-position-restoring');
+  try {
+    const pending = JSON.parse(window.sessionStorage.getItem('booklist:shelf-return:v1') || 'null');
+    restoring ||= pending?.url === window.location.pathname + window.location.search && Date.now() - pending.at < 15000;
+  } catch {}
+  const traversing = window.navigation?.activation?.navigationType === 'traverse';
+  if (!restoring && !traversing && (rect.bottom <= 0 || rect.top >= window.innerHeight)) {
     card.scrollIntoView({block:'nearest',behavior:'instant'});
   }
   const cleanup = () => card.classList.remove('work-opening');

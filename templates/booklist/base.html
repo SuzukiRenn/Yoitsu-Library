@@ -1,24 +1,29 @@
 {% load static %}<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{% block title %}共享书单{% endblock %}</title>
+<title>{% block title %}{% endblock %}ヨイツ図書館 || Yoitsu Library</title>
 <link rel="icon" type="image/png" href="{% static 'logo.png' %}?v=20261022-charcoal-1">
 <link rel="preconnect" href="https://img.wenku8.com">
 <link rel="dns-prefetch" href="//img.wenku8.com">
-<script src="{% static 'motion-boot.js' %}?v=20261021-5"></script>
-<link rel="stylesheet" href="{% static 'catalog.css' %}?v=20261022-charcoal-1">
-<link rel="stylesheet" href="{% static 'feedback.css' %}?v=20261022-6">
-<link rel="stylesheet" href="{% static 'first-visit.css' %}?v=20261022-3">
-<script type="module" src="{% static 'first-visit.mjs' %}?v=20261022-identity-sync"></script>
-<link rel="stylesheet" href="{% static 'motion.css' %}?v=20261022-charcoal-1">
-<script type="module" src="{% static 'public.mjs' %}?v=20261022-identity-sync"></script>
-<link rel="stylesheet" href="{% static 'account.css' %}?v=20261022-auth-actions">
-<script type="module" src="{% static 'account.mjs' %}?v=20261022-account-home"></script>
+<script src="{% static 'appearance-boot.js' %}?v=20261024-appearance-1"></script>
+<script src="{% static 'shelf-view-boot.js' %}?v=20261024-view-1"></script>
+<script src="{% static 'motion-boot.js' %}?v=20261024-browse-return-3"></script>
+<link rel="stylesheet" href="{% static 'catalog.css' %}?v=20261024-web-alignment-2">
+<link rel="stylesheet" href="{% static 'feedback.css' %}?v=20261024-appearance-1">
+<link rel="stylesheet" href="{% static 'first-visit.css' %}?v=20261024-appearance-1">
+<script type="module" src="{% static 'first-visit.mjs' %}?v=20261024-section-names-1"></script>
+<link rel="stylesheet" href="{% static 'motion.css' %}?v=20261024-appearance-1">
+<script type="module" src="{% static 'public.mjs' %}?v=20261024-identity-sync"></script>
+<link rel="stylesheet" href="{% static 'appearance.css' %}?v=20261024-appearance-3">
+<link rel="stylesheet" href="{% static 'account.css' %}?v=20261024-identity-sync">
+<script type="module" src="{% static 'account.mjs' %}?v=20261024-identity-sync"></script>
 {% block scripts %}{% endblock %}</head>
 <body><a class="skip-link" href="#main">跳到内容</a>
-<header class="site-header{% block header_class %}{% endblock %}{% if has_admin_access %} has-admin-tools{% endif %}"><div class="header-location"><a class="brand" href="/"><img src="{% static 'logo.png' %}?v=20261022-charcoal-1" width="28" height="28" alt="" aria-hidden="true">共享书单</a>{% block site_location %}{% endblock %}</div><div class="header-controls">
-<nav class="account-nav" aria-label="账户导航">{% if current_account %}<a href="/notifications/">消息 <span data-unread-count{% if not unread_notifications %} hidden{% endif %}>{{ unread_notifications }}</span></a><details class="account-menu" data-account-menu><summary aria-label="个人菜单：{{ current_account.display_name }}">{{ current_account.display_name }}<span aria-hidden="true">▾</span></summary><div class="account-menu-list"><a href="/account/">个人主页</a><button type="button" data-account-logout>退出</button></div></details>{% else %}<a href="/account/login/">登录</a><a href="/account/register/">注册</a>{% endif %}</nav>
-<nav class="main-nav" aria-label="主导航"><a href="/"{% if not navigation_activities %} aria-current="true"{% endif %}>公共书单</a><a href="/activities/"{% if navigation_activities %} aria-current="true"{% endif %}>推荐活动</a></nav>{% if has_admin_access %}<a class="admin-return" href="/manage/">返回管理后台</a>{% endif %}</div></header>
+<header class="site-header{% block header_class %}{% endblock %}{% if has_admin_access %} has-admin-tools{% endif %}"><div class="header-location"><a class="brand" href="/"><img src="{% static 'logo.png' %}?v=20261022-charcoal-1" width="28" height="28" alt="" aria-hidden="true"><span lang="ja">ヨイツ図書館</span></a>{% block site_location %}{% endblock %}</div><div class="header-controls"><nav class="account-nav" aria-label="账户导航">{% if current_account %}<a href="/notifications/">消息 <span data-unread-count{% if not unread_notifications %} hidden{% endif %}>{{ unread_notifications }}</span></a><details class="account-menu" data-account-menu><summary aria-label="个人菜单：{{ current_account.display_name }}">{{ current_account.display_name }}<span aria-hidden="true">▾</span></summary><div class="account-menu-list"><a href="/account/">个人主页</a><button type="button" data-account-logout>退出</button></div></details>{% else %}<a href="/account/login/">登录</a><a href="/account/register/">注册</a>{% endif %}</nav>
+<nav class="main-nav" aria-label="主导航"><a href="/"{% if not navigation_activities %} aria-current="true"{% endif %}>公共书架</a><a href="/activities/"{% if navigation_activities %} aria-current="true"{% endif %}>主题推荐</a></nav>{% if has_admin_access %}<a class="admin-return" href="/manage/">返回管理后台</a>{% endif %}</div></header>
 <main id="main">{% block content %}{% endblock %}</main>
+{% block shelf_view_control %}{% endblock %}
+{% include 'booklist/appearance_control.html' %}
+<a class="random-book recommend-control" data-random-book href="{% block random_book_url %}/random-book/{% if activity.id %}?activity={{ activity.id }}{% endif %}{% endblock %}" aria-label="随机推荐" aria-describedby="random-book-tooltip"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h3c4 0 8 10 12 10h3M18 14l3 3-3 3M3 17h3c1.5 0 3-1.5 4.5-3.5M13.5 10.5C15 8.5 16.5 7 18 7h3M18 4l3 3-3 3"/></svg><span class="control-tooltip" id="random-book-tooltip" role="tooltip">随机推荐</span></a>
 <button type="button" class="back-to-top" data-back-to-top aria-label="回到顶部" title="回到顶部" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5h14M12 20V9m-5 5 5-5 5 5"/></svg></button>
 <p id="action-status" class="action-status" role="status"></p>
 {% include 'booklist/legal_footer.html' %}

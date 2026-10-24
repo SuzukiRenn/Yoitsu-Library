@@ -112,7 +112,7 @@ if (typeof document !== 'undefined') {
       if(append)for(const item of data.results) {
         const li=document.createElement('li');li.className=`notification${item.read ? '' : ' unread'}`;
         const p=document.createElement('p');p.textContent=`${item.actor.display_name} 赞了你推荐的《${item.work_title}》`;
-        const note=document.createElement('p');note.className='section-note';note.textContent=`${item.activity_title || '公共书单'} · ${new Date(item.created_at).toLocaleString()}`;
+        const note=document.createElement('p');note.className='section-note';note.textContent=`${item.activity_title || '公共书架'} · ${new Date(item.created_at).toLocaleString()}`;
         const actions=document.createElement('div');actions.className='notification-actions';
         const a=document.createElement('a');a.className='primary notification-action';a.textContent='查看作品';a.href=item.url;
         actions.append(a);li.append(p,note,actions);

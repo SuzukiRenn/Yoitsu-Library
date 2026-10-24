@@ -50,7 +50,7 @@ export function render(canvas,plan,index,images=new Map()) {
   canvas.width=WIDTH;canvas.height=height;
   const ctx=canvas.getContext('2d');ctx.fillStyle='#f1f3ed';ctx.fillRect(0,0,WIDTH,height);ctx.textBaseline='top';
   const text=(value,x,y,size=24,color='#717171',bold=false)=>{ctx.font=`${bold?650:400} ${size}px ${FONT}`;ctx.fillStyle=color;ctx.fillText(value,x,y);};
-  text('共享书单  /  活动推荐',LEFT,46,22,'#717171');
+  text('ヨイツ図書館  /  主题推荐',LEFT,46,22,'#717171');
   let hy=94;for(const row of plan.header){text(row.text,LEFT,hy,row.size,row.color,true);hy+=row.height;}
   text(`${plan.snapshot.activity.start_label} — ${plan.snapshot.activity.end_label}`,LEFT,hy+10,22);
   text(`${plan.snapshot.total} 部作品  ·  ${plan.snapshot.recommendations} 次推荐`,LEFT,hy+47,24,'#555555');

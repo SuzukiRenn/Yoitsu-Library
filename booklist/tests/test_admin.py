@@ -56,11 +56,11 @@ class AdminTests(TestCase):
         response = self.client.get('/manage/')
         self.assertContains(response, '<strong class="admin-brand">书单管理</strong>', html=True)
         self.assertContains(response, '<a href="/manage/" aria-current="page">作品库</a>', html=True)
-        self.assertContains(response, '<a href="/manage/?section=public">公共书单</a>', html=True)
+        self.assertContains(response, '<a href="/manage/?section=public">公共书架</a>', html=True)
         self.assertContains(response, '<a href="/">查看前台</a>', html=True)
         self.assertNotContains(response, '>管理</a>')
         response = self.client.get(f'/manage/activities/{self.period.pk}/')
-        self.assertContains(response, '<a href="/manage/?section=activities" aria-current="page">推荐活动</a>', html=True)
+        self.assertContains(response, '<a href="/manage/?section=activities" aria-current="page">主题推荐</a>', html=True)
 
     def test_admin_public_shelf_filters_and_counts_active_records(self):
         PublicRecommendation.objects.create(work=self.first, anonymous_client=self.person)
@@ -72,7 +72,7 @@ class AdminTests(TestCase):
         self.assertNotContains(response, '待合并')
         self.assertContains(response, '推荐 1 · 点赞 1')
         self.assertContains(response, '管理作品与理由')
-        self.assertContains(response, '<a href="/manage/?section=public" aria-current="page">公共书单</a>', html=True)
+        self.assertContains(response, '<a href="/manage/?section=public" aria-current="page">公共书架</a>', html=True)
         self.assertNotContains(self.client.get('/manage/?section=public&q=不存在'), '主作品')
         moderation.visibility(self.actor, self.first.pk, True, '测试隐藏')
         self.assertNotContains(self.client.get('/manage/?section=public'), '主作品')

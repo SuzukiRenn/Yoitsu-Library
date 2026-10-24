@@ -26,3 +26,9 @@ assert.equal(h.ghosts[0].removed,true);assert.equal(h.records[0].animation.cance
 h=harness();h.reduced.matches=true;finish=h.motion.capture(h.grid);h.a.top=220;finish();assert.equal(h.records.length,0);
 h=harness();finish=h.motion.capture(h.grid);h.a.top=220;finish();h.events.pagehide();assert.equal(h.records[0].animation.cancelled,true);
 console.log('Live shelf reorders move retained and offscreen cards; exits fade inert snapshots; rapid updates, pagehide and reduced motion clean up safely.');
+
+// Reading another card after an animation write forces a style/layout flush in browsers.
+h=harness();finish=h.motion.capture(h.grid);
+for(const card of [h.a,h.b]){const read=card.getBoundingClientRect.bind(card);card.getBoundingClientRect=()=>{assert.equal(h.records.length,0,'all new geometry must be read before any animation starts');return read();};}
+h.a.top=220;h.b.top=100;finish();assert.equal(h.records.length,2);
+console.log('Reordering batches all geometry reads before animation writes.');

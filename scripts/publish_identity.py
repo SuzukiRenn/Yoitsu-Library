@@ -22,6 +22,8 @@ def main():
     parser.add_argument('--source', type=Path, default=ROOT / '.runtime/identity-preview')
     parser.add_argument('--payload', type=Path)
     parser.add_argument('--server-host')
+    parser.add_argument('--update-only', action='store_true', help='Require an existing identity deployment; never initialize catalog or accounts')
+    parser.add_argument('--increment', type=Path, help='Approved metadata-only catalog increment')
     args = parser.parse_args()
     if not args.prepare_only and (not args.server_host or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]*', args.server_host)):
         parser.error('Use --prepare-only or supply an explicit --server-host')
@@ -36,15 +38,37 @@ def main():
             raise RuntimeError('Commit all reviewed release files first')
         release = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
         folder = ROOT / '.runtime' / ('identity-publish-' + uuid.uuid4().hex)
+        folder.mkdir(parents=True)
         catalog = folder / 'catalog'
-        receipt = export(args.source, catalog)
+        if args.increment and not args.update_only:
+            parser.error('--increment requires --update-only')
+        if args.update_only:
+            receipt = {'mode': 'update', 'accounts_and_interactions_exported': False}
+        else:
+            receipt = export(args.source, catalog)
+        content = {'mode': 'update' if args.update_only else 'initial', 'sha256': {}}
+        if args.increment:
+            payload = args.increment.read_bytes()
+            doc = json.loads(payload)
+            if doc.get('format') != 1 or doc.get('count') != len(doc.get('works', [])):
+                raise RuntimeError('Invalid catalog increment')
+            (folder / 'catalog-increment.json').write_bytes(payload)
+            content['sha256']['catalog-increment.json'] = hashlib.sha256(payload).hexdigest()
+            receipt['increment_works'] = doc['count']
+        if not args.update_only:
+            content['sha256'].update(json.loads((catalog / 'manifest.json').read_text())['sha256'])
+        (folder / 'manifest.json').write_text(json.dumps(content), encoding='utf-8')
         bundle = folder / 'release.bundle'
         subprocess.run(['git', 'bundle', 'create', str(bundle), 'HEAD'], cwd=ROOT, check=True)
         packet = folder / 'packet.tar'
         with tarfile.open(packet, 'w') as archive:
             archive.add(bundle, arcname='release.bundle', recursive=False)
-            for name in ('catalog.json', 'covers.tar', 'manifest.json'):
-                archive.add(catalog / name, arcname=name, recursive=False)
+            archive.add(folder / 'manifest.json', arcname='manifest.json', recursive=False)
+            if not args.update_only:
+                for name in ('catalog.json', 'covers.tar'):
+                    archive.add(catalog / name, arcname=name, recursive=False)
+            if args.increment:
+                archive.add(folder / 'catalog-increment.json', arcname='catalog-increment.json', recursive=False)
         with packet.open('rb') as stream:
             digest = hashlib.file_digest(stream, 'sha256').hexdigest()
         manifest = {'release': release, 'packet_sha256': digest, 'catalog': receipt}

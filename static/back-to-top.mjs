@@ -1,22 +1,32 @@
 const button=document.querySelector('[data-back-to-top]');
 if(button){
+  const controls=[button,document.querySelector('[data-random-book]'),document.querySelector('[data-shelf-view-toggle]'),document.querySelector('[data-appearance-toggle]')].filter(Boolean);
+  const header=document.querySelector('.site-header');
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
-  const content=document.querySelector('[data-shelf-grid]') || document.querySelector('.work-detail') || document.querySelector('main');
   let frame;
   const update=()=>{
     frame=undefined;
-    button.hidden=window.scrollY<=Math.max(320,window.innerHeight*.6);
-    if(window.innerWidth<=700){
-      button.style.removeProperty('left');
-      button.style.removeProperty('right');
-    }else if(!button.hidden && content){
-      const edge=content.getBoundingClientRect().right;
-      const limit=document.documentElement.clientWidth-button.getBoundingClientRect().width-12;
-      button.style.left=`${Math.min(edge+12,limit)}px`;
-      button.style.right='auto';
+    const visible=window.scrollY>Math.max(320,window.innerHeight*.6);
+    if(!visible && document.activeElement===button)document.querySelector('.brand')?.focus({preventScroll:true});
+    button.toggleAttribute('data-visible',visible);
+    button.inert=!visible;
+    button.setAttribute('aria-hidden',String(!visible));
+    // All pages share the header edge, even when their article widths differ.
+    for(const control of controls){
+      if(window.innerWidth<=700 || !header){
+        control.style.removeProperty('left');control.style.removeProperty('right');
+      }else{
+        const width=control.getBoundingClientRect().width;
+        const edge=header.getBoundingClientRect().right;
+        const left=Math.max(12,Math.min(edge+12,document.documentElement.clientWidth-width-12));
+        control.style.left=`${left}px`;control.style.right='auto';
+      }
     }
+
+
   };
   const schedule=()=>{if(frame===undefined)frame=window.requestAnimationFrame(update);};
+  document.addEventListener('booklist:floating-controls',schedule);
   window.addEventListener('scroll',schedule,{passive:true});
   window.addEventListener('resize',schedule);
   window.addEventListener('pageshow',update);
@@ -25,5 +35,7 @@ if(button){
     if(event.detail===0)document.querySelector('.brand')?.focus({preventScroll:true});
     window.scrollTo({top:0,behavior:reduced.matches?'instant':'smooth'});
   });
+  button.setAttribute('data-reveal-ready','');
+  button.hidden=false;
   update();
 }

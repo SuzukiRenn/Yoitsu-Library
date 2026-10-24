@@ -1,11 +1,11 @@
 {% extends 'booklist/base.html' %}
-{% block title %}{% if mode == 'notifications' %}消息{% elif mode == 'settings' %}修改信息{% elif mode == 'register' %}注册{% else %}登录{% endif %} · 共享书单{% endblock %}
+{% block title %}{% if mode == 'notifications' %}消息{% elif mode == 'settings' %}修改信息{% elif mode == 'register' %}注册{% else %}登录{% endif %} · {% endblock %}
 {% block content %}<section class="account-panel">
 {% if mode == 'notifications' %}
 <div class="section-heading"><h1>消息</h1><div class="notification-actions"><a class="reason-link notification-action" href="/">← 返回书单</a><button type="button" class="primary notification-action" data-read-all>全部已读</button></div></div>
 <ol class="notification-list" data-notifications>{% for item in notifications %}<li class="notification{% if not item.read_at %} unread{% endif %}" data-notification="{{ item.id }}">
 <p><strong>{{ item.event.actor.display_name }}</strong> 赞了你推荐的《{{ item.work_title }}》</p>
-<p class="section-note">{% if item.activity_title %}{{ item.activity_title }}{% else %}公共书单{% endif %} · {{ item.created_at|date:'Y-m-d H:i' }}</p>
+<p class="section-note">{% if item.activity_title %}{{ item.activity_title }}{% else %}公共书架{% endif %} · {{ item.created_at|date:'Y-m-d H:i' }}</p>
 <div class="notification-actions"><a class="primary notification-action" href="/notifications/{{ item.id }}/work/">查看作品</a>
 {% if not item.read_at %}<button type="button" class="reason-link notification-action" data-read="{{ item.id }}">标为已读</button>{% endif %}</div></li>{% empty %}<li class="empty-state">暂无消息</li>{% endfor %}</ol>
 <button type="button" class="reason-link notification-action" data-more-notifications hidden>加载更多</button>

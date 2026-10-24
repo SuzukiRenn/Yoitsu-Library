@@ -33,9 +33,13 @@ def recommend(request, data, activity_id=None):
             if own is None:
                 from .services import DomainError
                 raise DomainError('not_found','本期推荐不存在',404)
+            work['own_contains_spoilers'] = own.contains_spoilers
+            work['own_reason_references'] = own.reason_references if own else []
             work['own_reason'] = own.reason
         elif work:
             own = activities.recs(activity_id).filter(work_id=work_id, anonymous_client=request.anonymous_client).first() if request.anonymous_client else None
+            work['own_contains_spoilers'] = own.contains_spoilers if own else False
+            work['own_reason_references'] = own.reason_references if own else []
             work['own_reason'] = own.reason if own else ''
     elif work:
         work.update(books.serialize([books.require_work(work_id, public=editing)], request.anonymous_client)[0])
@@ -69,9 +73,13 @@ def candidates(request, data):
         own = recs.filter(anonymous_client=client).first() if client else None
         row['recommendation_count'] = recs.count(); row['recommended'] = own is not None
         if activity_id:
+            row['own_contains_spoilers'] = own.contains_spoilers if own else False
+            row['own_reason_references'] = own.reason_references if own else []
             row['own_reason'] = own.reason if own else ''
         else:
             reason = books.reasons().filter(work_id=row['id'], anonymous_client=client).first() if client else None
+            row['own_contains_spoilers'] = reason.contains_spoilers if reason else False
+            row['own_reason_references'] = reason.reason_references if reason else []
             row['own_reason'] = reason.reason if reason else ''
         row['in_scope'] = row['recommendation_count'] > 0 if activity_id else row['is_public']
     return JsonResponse(payload)

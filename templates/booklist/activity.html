@@ -1,14 +1,15 @@
-{% extends 'booklist/base.html' %}{% block title %}{{ activity.title }} · 推荐活动{% endblock %}
+{% extends 'booklist/base.html' %}{% block title %}{{ activity.title }} · 主题推荐 · {% endblock %}
 {% block feedback_footer %}{% endblock %}
 {% block header_class %} public-header{% endblock %}
-{% block site_location %}<span class="header-current"><span aria-hidden="true">/</span> 推荐活动</span>{% endblock %}
+{% block site_location %}<span class="header-current"><span aria-hidden="true">/</span> 主题推荐</span>{% endblock %}
+{% block shelf_view_control %}{% include 'booklist/shelf_view_control.html' %}{% endblock %}
 {% block content %}<section class="public-shelf" data-live-shelf>
 <div class="section-heading activity-heading">
 <a class="back-link activity-history-link" href="/activities/history/">回顾往期活动</a>
 <div class="activity-heading-info"><div class="activity-title"><h1>{{ activity.title }}</h1><span class="activity-status">{{ activity.status_label }}{% if activity.corrected %} · 已修正{% endif %}</span></div>{% if activity.theme %}<p class="activity-theme">{{ activity.theme }}</p>{% endif %}<p class="section-note activity-dates"><time>{{ activity.start_label }}</time> — <time>{{ activity.end_label }}</time></p></div>
 </div>
 {% if can_export_summary %}<p><a href="/manage/activities/{{ activity.id }}/summary/">生成总结图片 · 管理员</a></p>{% endif %}
-{% include 'booklist/shelf_controls.html' %}<p class="sr-only" data-shelf-status role="status"></p><div class="book-grid" data-shelf-grid>{% for work in results %}<article class="public-card" data-shelf-work="{{ work.id }}"><div class="public-card-main"><a class="card-open" href="/works/{{ work.id }}/?activity={{ activity.id }}" tabindex="-1" aria-label="{{ work.title }}"></a><div class="public-book"><a class="book-cover" href="/works/{{ work.id }}/?activity={{ activity.id }}" aria-label="{{ work.title }}">{% include 'booklist/cover_image.html' %}</a><div class="book-info"><h2><a class="book-title" href="/works/{{ work.id }}/?activity={{ activity.id }}">{{ work.title }}</a></h2>{% if work.author %}<p class="book-author">{{ work.author }}</p>{% endif %}</div></div>
+{% include 'booklist/shelf_controls.html' %}<p class="sr-only" data-shelf-status role="status"></p><div class="book-grid" data-shelf-grid>{% for work in results %}<article class="public-card" data-shelf-work="{{ work.id }}"><div class="public-card-main"><a class="card-open" href="/works/{{ work.id }}/?activity={{ activity.id }}" tabindex="-1" aria-label="{{ work.title }}"></a><div class="public-book"><a class="book-cover" href="/works/{{ work.id }}/?activity={{ activity.id }}" aria-label="{{ work.title }}">{% include 'booklist/cover_image.html' %}</a><div class="book-info"><h2><a class="book-title" href="/works/{{ work.id }}/?activity={{ activity.id }}">{{ work.title }}{% include 'booklist/web_badge.html' %}</a></h2>{% if work.author %}<p class="book-author">{% include 'booklist/work_author.html' %}</p>{% endif %}<div class="tags">{% include 'booklist/work_tags.html' %}</div></div></div>
 {% include 'booklist/activity_actions.html' %}</div>
-{% include 'booklist/reason_preview.html' %}</article>{% empty %}<p>{% if query or selected_tags %}没有找到匹配的作品{% else %}暂无推荐{% endif %}</p>{% endfor %}</div>
+{% include 'booklist/reason_preview.html' %}</article>{% empty %}<p>{% if query or selected_tags or recommended_only or liked_only %}没有找到匹配的作品{% else %}暂无推荐{% endif %}</p>{% endfor %}</div>
 <div data-shelf-pagination="bottom">{% include 'booklist/list_pagination.html' %}</div></section>{% endblock %}

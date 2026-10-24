@@ -1,5 +1,5 @@
 {% extends 'booklist/base.html' %}{% load static %}
-{% block scripts %}<script type="module" src="{% static 'catalog.mjs' %}"></script>{% endblock %}
+{% block scripts %}<script type="module" src="{% static 'catalog.mjs' %}?v=20261024-editions-1"></script>{% endblock %}
 {% block content %}
 <section class="search-area"><h1 class="sr-only">作品查询</h1>
 <form id="search-form" class="search-form" method="get" action="/catalog/" role="search"><label for="book-query" class="sr-only">书名</label><div class="search-box"><input id="book-query" name="q" type="search" value="{{ query }}" autocomplete="off" placeholder="书名或别名" aria-describedby="search-status"><button type="submit">搜索</button></div></form></section>

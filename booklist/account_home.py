@@ -51,7 +51,7 @@ def context(request):
             work.update(title=snap.snapshot_title,author=snap.snapshot_author,
                         cover_url=catalog.cover_url(snap.snapshot_cover_url))
         entries.append({'work':work, 'at':row.contribution_at,
-            'scope':snap.activity.title if snap else '公共书单',
+            'scope':snap.activity.title if snap else '公共书架',
             'url':f'/works/{row.pk}/'+(f'?activity={snap.activity_id}' if snap else '')})
     result['contributions'] = entries
     return result

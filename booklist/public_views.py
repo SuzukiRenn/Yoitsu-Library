@@ -5,6 +5,7 @@ from django.http import JsonResponse
 from django.shortcuts import redirect
 from .list_pagination import PAGE_SIZE, navigation
 from .shelf_sort import controls, period_controls
+from .shelf_filters import personal_filters, personal_parameters, tag_mode_parameters
 from . import public_booklist as books, services
 from .catalog_views import page, parameters, read_limit
 from .protocol import pagination
@@ -12,9 +13,9 @@ from .views import endpoint
 
 
 def list_data(request, fixed_size=None):
-    if set(request.GET) - {'page', 'page_size', 'tag', 'sort', 'period', 'q'} or any(len(request.GET.getlist(key)) != 1 for key in request.GET if key != 'tag'):
+    if set(request.GET) - {'page', 'page_size', 'tag', 'sort', 'period', 'q', 'recommended', 'liked', 'tag_mode'} or any(len(request.GET.getlist(key)) != 1 for key in request.GET if key != 'tag'):
         raise ValidationError('查询参数无效')
-    return books.listing(request.anonymous_client, request.GET.get('page', '1'), fixed_size if fixed_size is not None else request.GET.get('page_size', '20'), request.GET.getlist('tag'), request.GET.get('sort', 'recommendations'), period=request.GET.get('period', 'all'), q=request.GET.get('q', ''))
+    return books.listing(request.anonymous_client, request.GET.get('page', '1'), fixed_size if fixed_size is not None else request.GET.get('page_size', '20'), request.GET.getlist('tag'), request.GET.get('sort', 'recommendations'), period=request.GET.get('period', 'all'), q=request.GET.get('q', ''), tag_mode=request.GET.get('tag_mode', 'all'), **personal_filters(request.GET))
 
 
 @endpoint('GET')
@@ -22,13 +23,51 @@ def home(request, data):
     read_limit(request)
     result = list_data(request, PAGE_SIZE)
     def link(number):
-        return '?' + urlencode([('tag', tag) for tag in result['selected_tags']] + ([('q', result['query'])] if result['query'] else []) + [('page_size', result['page_size']), ('sort', result['sort']), ('period', result['period']), ('page', number)])
+        return '?' + urlencode(personal_parameters(result) + tag_mode_parameters(result) + [('tag', tag) for tag in result['selected_tags']] + ([('q', result['query'])] if result['query'] else []) + [('page_size', result['page_size']), ('sort', result['sort']), ('period', result['period']), ('page', number)])
     result['paging'] = navigation(result, link)
     result['sort_options'] = controls(result)
     result['period_options'] = period_controls(result)
     if result['page'] > result['paging']['count']:
         return redirect(request.path + result['paging']['last_url'])
     return page(request, 'booklist/public.html', result)
+
+
+@endpoint('GET')
+def random_book(request, data):
+    parameters(request, ('exclude', 'activity'))
+    read_limit(request)
+    from .recommend_views import positive
+    def identifier(name):
+        value = request.GET.get(name)
+        if value is None:
+            return None
+        if len(value) > 18:
+            raise ValidationError('编号无效')
+        return positive(value)
+    current = identifier('exclude')
+    activity_id = identifier('activity')
+    activity = None
+    if activity_id is not None:
+        from . import activities, catalog
+        from .models import ActivityWork
+        activities.advance_due()
+        period = activities.get(activity_id)
+        activity = activities.summary(period)
+        snapshots = ActivityWork.objects.filter(activity=period, archived_at__isnull=True,
+            merged_into__isnull=True, pk__in=activities.recs(activity_id).values('activity_work_id'))
+        eligible = catalog.visible_works(include_retired=period.status == 'ended').filter(pk__in=snapshots.values('work_id'))
+    else:
+        eligible = books.public_works()
+    work_id = eligible.exclude(pk=current).order_by('?').values_list('pk', flat=True).first() if current is not None else eligible.order_by('?').values_list('pk', flat=True).first()
+    suffix = f'?activity={activity_id}' if activity_id is not None else ''
+    if work_id is not None:
+        response = redirect(f'/works/{work_id}/{suffix}')
+    elif current is not None and eligible.filter(pk=current).exists():
+        response = page(request, 'booklist/random_single.html', {'current_work_id': current, 'activity': activity})
+    else:
+        response = page(request, 'booklist/random_empty.html', {'activity': activity})
+    response['Cache-Control'] = 'no-store'
+    return response
 
 
 @endpoint('GET')
@@ -53,7 +92,7 @@ def write(request, scope, data, operation):
     return JsonResponse(services.idempotent(client, scope, request.headers.get('Idempotency-Key'), data, authenticated_operation))
 
 
-@endpoint('POST', fields={'work_id': (int, type(None)), 'title': str, 'reason': str, 'confirmed_unmatched': bool}, optional_fields={'metadata': dict})
+@endpoint('POST', fields={'work_id': (int, type(None)), 'title': str, 'reason': str, 'confirmed_unmatched': bool}, optional_fields={'metadata': dict, 'contains_spoilers': bool, 'references':list})
 def submit(request, data):
     return write(request, 'public.submit', data, lambda: books.submit(request.anonymous_client, data))
 
@@ -78,13 +117,13 @@ def relation(request, data, work_id, kind):
     return write(request, f'public.{kind}.{work_id}', data, operation)
 
 
-@endpoint('POST', fields={'reason': str})
+@endpoint('POST', fields={'reason': str}, optional_fields={'contains_spoilers': bool, 'references':list})
 def reason(request, data, work_id):
     def operation():
         work = books.require_work(work_id)
         if not books.recommendations().filter(work=work, anonymous_client=request.anonymous_client).exists():
             raise services.DomainError('recommendation_required', '请先推荐这本书，再写推荐理由', 409)
-        books.set_reason(work, request.anonymous_client, data['reason'])
+        books.set_reason(work, request.anonymous_client, data['reason'], data.get('contains_spoilers'), data.get('references'))
         return {'work': books.serialize([work], request.anonymous_client)[0]}
     return write(request, f'public.reason.{work_id}', data, operation)
 

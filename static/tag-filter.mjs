@@ -38,7 +38,8 @@ export function initializeTagFilters(scope=document){
     });
    }
    pickedSection.hidden=!selected;
-   count.textContent=String(selected);count.hidden=!selected;empty.hidden=!!visible;
+   const total=selected+[...form.querySelectorAll('[data-personal-filter]')].filter(input=>input.checked).length;
+   count.textContent=String(total);count.hidden=!total;empty.hidden=!!visible;
    if(form.contains(focused) && focused.isConnected && form.ownerDocument.activeElement!==focused)focused.focus({preventScroll:true});
   }
   function update(){
@@ -59,7 +60,15 @@ export function initializeTagFilters(scope=document){
   search.addEventListener('input',update);
   form.addEventListener('change',update);
   form.querySelector('[data-clear-tag-selection]').addEventListener('click',()=>{
-   labels.forEach(label=>{label.querySelector('input').checked=false;});update();
+   labels.forEach(label=>{label.querySelector('input').checked=false;});
+   for(const input of form.querySelectorAll('[data-tag-mode]'))input.checked=input.value==='all';
+   update();
+   form.requestSubmit();
+  });
+  form.querySelector('[data-clear-filter-selection]')?.addEventListener('click',()=>{
+   for(const input of form.querySelectorAll('input[type=checkbox]'))input.checked=false;
+   for(const input of form.querySelectorAll('[data-tag-mode]'))input.checked=input.value==='all';
+   update();form.requestSubmit();
   });
   win.addEventListener('pagehide',clearMotion);
   reduced.addEventListener('change',()=>{if(reduced.matches)clearMotion();});
@@ -85,6 +94,8 @@ export function initializeTagFilters(scope=document){
     if(!syncSelection && label.querySelector('input').checked){label.querySelector('.tag-count').textContent='0';next.push(label);}
     else label.remove();
    }
+   if(syncSelection)for(const input of form.querySelectorAll('[data-personal-filter]'))input.checked=!!source.querySelector(`[name="${input.name}"]`)?.checked;
+   if(syncSelection)for(const input of form.querySelectorAll('[data-tag-mode]'))input.checked=input.value===(source.querySelector('[name="tag_mode"]:checked')?.value || 'all');
    labels=next;render();
    if(form.contains(focused) && focused.isConnected && form.ownerDocument.activeElement!==focused)focused.focus({preventScroll:true});
   });

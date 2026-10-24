@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Exists, OuterRef
 from .models import Work, WorkAlias, WorkTag, TagSuppression, PublicRecommendation, PublicLike, UserWorkMetadata
 from .services import DomainError
+from .editions import edition_info
 from .text import normalize, WHITESPACE
 
 MAX_TERMS = 20000
@@ -91,7 +92,7 @@ def serialize_works(works, detail=False):
         author = work.author_override if work.author_overridden else work.wenku8_author or ''
         if manual and work.wenku8_book_id is None and not work.author_overridden:
             author = manual.author or author
-        row = {'id': work.pk, 'title': work.display_title,
+        row = {**edition_info(work.source_metadata), 'id': work.pk, 'title': work.display_title,
                'author': author,
                'cover_url': versioned_cover(work) or cover_url(work.cover_url_override if work.cover_url_overridden else work.wenku8_cover_url),
                'is_public': work.pk in public_ids,

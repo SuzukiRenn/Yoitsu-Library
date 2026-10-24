@@ -1,0 +1,3 @@
+{% extends 'booklist/base.html' %}
+{% block random_book_url %}/random-book/?exclude={{ current_work_id }}{% if activity %}&amp;activity={{ activity.id }}{% endif %}{% endblock %}
+{% block content %}<section class="work-detail"><h1>{% if activity %}这个主题里暂时只有这一本{% else %}公共书架里暂时只有这一本{% endif %}</h1><p>有其他作品加入后，再来随机推荐吧。</p><a class="back-link" href="/works/{{ current_work_id }}/{% if activity %}?activity={{ activity.id }}{% endif %}">← 返回作品详情</a></section>{% endblock %}

@@ -9,7 +9,7 @@ from .models import PublicRecommendation, PublicLike, Recommendation, Work, Work
 from .protocol import pagination
 from .text import normalize
 from .shelf_sort import validate as validate_sort, validate_period
-from .shelf_filters import search_text, tag_ids, search_public
+from .shelf_filters import search_text, tag_ids, search_public, tag_match_mode
 
 
 def recommendations():
@@ -45,6 +45,8 @@ def serialize(works, client=None):
     own_recs = set(recs.filter(anonymous_client=client).values_list('work_id', flat=True)) if client else set()
     own_likes = set(votes.filter(anonymous_client=client).values_list('work_id', flat=True)) if client else set()
     own_reasons = dict(reasons().filter(work_id__in=ids, anonymous_client=client).values_list('work_id', 'reason')) if client else {}
+    own_spoilers = dict(reasons().filter(work_id__in=ids, anonymous_client=client).values_list('work_id', 'contains_spoilers')) if client else {}
+    own_refs = dict(reasons().filter(work_id__in=ids, anonymous_client=client).values_list('work_id','reason_references')) if client else {}
     visible_reasons = reasons().filter(text_hidden_at__isnull=True)
     reason_counts = counts(visible_reasons.filter(work_id__in=ids))
     from .reason_likes import entries
@@ -55,22 +57,30 @@ def serialize(works, client=None):
         pk = row['id']
         row.update(people[pk])
         row.update(recommendation_count=rec_counts.get(pk, 0), like_count=like_counts.get(pk, 0),
-                   recommended=pk in own_recs, liked=pk in own_likes, own_reason=own_reasons.get(pk, ''),
+                   recommended=pk in own_recs, liked=pk in own_likes, own_reason=own_reasons.get(pk, ''), own_reason_references=own_refs.get(pk, []), own_contains_spoilers=own_spoilers.get(pk, False),
                    reason_count=reason_counts.get(pk, 0),
                    reasons=entries(visible_reasons.filter(work_id=pk), client, limit=2),
                    top_reason=next(iter(entries(visible_reasons.filter(work_id=pk), client, limit=1, popular=True)), None))
     return result
 
 
-def listing(client=None, page=1, page_size=20, tags=(), sort="recommendations", period="all", q=""):
+def listing(client=None, page=1, page_size=20, tags=(), sort="recommendations", period="all", q="", *, ids_only=False, recommended_only=False, liked_only=False, tag_mode="all"):
     sort = validate_sort(sort)
     period = validate_period(period)
     offset, size = pagination(page, page_size)
     tags = tag_ids(tags)
+    tag_mode = tag_match_mode(tag_mode)
     q = search_text(q)
     query = search_public(public_works(), q)
-    for tag in tags:
-        query = query.filter(pk__in=effective_tags().filter(tag_id=tag).values('work_id'))
+    if recommended_only:
+        query=query.filter(pk__in=recommendations().filter(anonymous_client=client).values('work_id')) if client else query.none()
+    if liked_only:
+        query=query.filter(pk__in=likes().filter(anonymous_client=client).values('work_id')) if client else query.none()
+    if tags and tag_mode == 'any':
+        query = query.filter(pk__in=effective_tags().filter(tag_id__in=tags).values('work_id'))
+    else:
+        for tag in tags:
+            query = query.filter(pk__in=effective_tags().filter(tag_id=tag).values('work_id'))
     active = Q(publicrecommendation__withdrawn_at__isnull=True, publicrecommendation__invalidated_at__isnull=True, publicrecommendation__archived_at__isnull=True)
     active_likes = Q(publiclike__cancelled_at__isnull=True, publiclike__invalidated_at__isnull=True, publiclike__archived_at__isnull=True)
     if period != 'all':
@@ -88,9 +98,11 @@ def listing(client=None, page=1, page_size=20, tags=(), sort="recommendations", 
     ordering = {'recommendations': ('-rank_count', '-rank_likes'),
                 'likes': ('-rank_likes', '-rank_count'), 'newest': ()}
     query = query.order_by(*ordering[sort], '-public_added_at', 'id')
+    if ids_only:
+        return list(query.values_list('pk', flat=True))
     tag_rows = effective_tags().filter(work_id__in=public_works().values('id')).values('tag_id', 'tag__name').annotate(count=Count('work_id', distinct=True)).order_by('-count', 'tag__name', 'tag_id')
     return {'results': serialize(query[offset:offset+size], client), 'total': query.count(), 'page': int(page),
-            'page_size': size, 'selected_tags': tags, 'sort': sort, 'period': period, 'query': q,
+            'page_size': size, 'selected_tags': tags, 'tag_mode': tag_mode, 'recommended_only':recommended_only, 'liked_only':liked_only, 'filter_count':len(tags)+int(recommended_only)+int(liked_only), 'sort': sort, 'period': period, 'query': q,
             'tags': [{'id': row['tag_id'], 'name': row['tag__name'], 'count': row['count']} for row in tag_rows]}
 
 
@@ -106,9 +118,13 @@ def require_work(work_id, public=True):
     return work
 
 
-def set_reason(work, client, value):
+@transaction.atomic
+def set_reason(work, client, value, contains_spoilers=None, references=None, reference_source=None):
     value = normalize(value, 'reason')
     row = reasons().filter(work=work, anonymous_client=client).first()
+    from .reason_references import validate
+    refs=validate(value,references,row or reference_source,work.pk)
+    spoilers = bool(value) and (row.contains_spoilers if contains_spoilers is None and row else bool(contains_spoilers))
     if not value:
         if row:
             if row.text_hidden_at:
@@ -117,19 +133,21 @@ def set_reason(work, client, value):
             else:
                 row.delete()
     elif row:
-        if row.text_hidden_at and row.reason != value:
+        if row.text_hidden_at and (row.reason != value or row.reason_references != refs):
             row.archived_at = timezone.now()
             row.save(update_fields=['archived_at', 'updated_at'])
-            Recommendation.objects.create(work=work, anonymous_client=client, scope='public', reason=value, text_hidden_at=row.text_hidden_at)
+            Recommendation.objects.create(work=work, anonymous_client=client, scope='public', reason=value, contains_spoilers=spoilers, reason_references=refs, text_hidden_at=row.text_hidden_at)
         else:
             row.reason = value
-            row.save(update_fields=['reason', 'updated_at'])
+            row.contains_spoilers = spoilers
+            row.reason_references = refs
+            row.save(update_fields=['reason', 'contains_spoilers', 'reason_references', 'updated_at'])
     else:
         if Recommendation.objects.filter(work=work, anonymous_client=client, scope='public', invalidated_at__isnull=False).exists():
             raise services.DomainError('moderated', '该记录已失效，需管理员处理', 409)
         # A moderated history must not become visible simply through a new text row.
         hidden = Recommendation.objects.filter(work=work, anonymous_client=client, scope='public', text_hidden_at__isnull=False).order_by('-id').first()
-        Recommendation.objects.create(work=work, anonymous_client=client, scope='public', reason=value,
+        Recommendation.objects.create(work=work, anonymous_client=client, scope='public', reason=value, contains_spoilers=spoilers, reason_references=refs,
                                       text_hidden_at=hidden.text_hidden_at if hidden else None)
 
 
@@ -206,5 +224,5 @@ def submit(client, data):
     set_relation(work, client, 'recommend', True, origin='submit')
     # Empty optional input must not erase an existing reason during a repeat recommendation.
     if reason:
-        set_reason(work, client, reason)
+        set_reason(work, client, reason, data.get('contains_spoilers'), data.get('references'))
     return {'status': 'pending'} if pending else {'status': 'saved', 'work': serialize([work], client)[0]}

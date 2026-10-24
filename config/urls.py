@@ -43,6 +43,7 @@ urlpatterns = [
     path('api/v1/admin/merges/', admin_views.merge),
     path('api/v1/admin/merges/<int:operation_id>/undo/', admin_views.undo),
     path('', public_views.home), path('catalog/', catalog_views.home), path('health/', views.health),
+    path('random-book/', public_views.random_book),
     path('recommend/', recommend_views.recommend),
     path('api/v1/recommend/candidates/', recommend_views.candidates),
     path('activities/', activity_views.index),

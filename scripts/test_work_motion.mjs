@@ -60,12 +60,12 @@ console.log('Native transitions suppress duplicate entry for the entire document
 
 const {readFileSync}=await import('node:fs');
 const {runInNewContext}=await import('node:vm');
-function earlyHarness(previous='http://local/works/12/'){
+function earlyHarness(previous='http://local/works/12/',options={}){
  const h=harness(), earlyEvents={};
  runInNewContext(readFileSync(new URL('../static/motion-boot.js',import.meta.url),'utf8'),{
   URL,
-  window:{...h.win,addEventListener:(name,fn)=>{earlyEvents[name]=fn;},navigation:{activation:{from:{url:previous}}}},
-  document:{documentElement:{classList:{add:name=>h.rootClasses.add(name)}},querySelector:selector=>selector === '.public-card[data-shelf-work="12"]' ? h.card : null}
+  window:{...h.win,location:{...h.win.location,pathname:'/',search:''},sessionStorage:{getItem:()=>options.pending?JSON.stringify({url:'/',at:Date.now()}):null},addEventListener:(name,fn)=>{earlyEvents[name]=fn;},navigation:{activation:{from:{url:previous},navigationType:options.traverse?'traverse':'push'}}},
+  document:{documentElement:{hasAttribute:()=>Boolean(options.restoring),classList:{add:name=>h.rootClasses.add(name)}},querySelector:selector=>selector === '.public-card[data-shelf-work="12"]' ? h.card : null}
  });
  return {...h,reveal:earlyEvents.pagereveal,get scrolled(){return h.scrolled;}};
 }
@@ -85,3 +85,11 @@ for(const url of ['http://local/works/99/','http://local/recommend/','https://ot
 h=earlyHarness();h.reduced.matches=true;h.reveal({viewTransition:{finished:Promise.resolve()}});assert.equal(h.classes.size,0);
 h=earlyHarness();h.reveal({viewTransition:{finished:Promise.reject(Error('skip'))}});await Promise.resolve();assert.equal(h.classes.size,0);
 console.log('Early return setup matches before deferred modules, keeps the document marker, handles offscreen cards, missing cards, reduced motion and skipped transitions.');
+
+for(const options of [{restoring:true},{pending:true},{traverse:true}]) {
+ h=earlyHarness('http://local/works/12/',options);
+ h.card.getBoundingClientRect=()=>({top:1000,bottom:1300});
+ h.reveal({viewTransition:{finished:Promise.resolve()}});
+ assert.equal(h.scrolled,false);await Promise.resolve();
+}
+console.log('Return transitions do not override explicit saved positions or native browser history scroll restoration.');

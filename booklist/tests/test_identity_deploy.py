@@ -111,3 +111,22 @@ class IdentityDeploymentTests(unittest.TestCase):
                 verify(target, catalog)
             with closing(sqlite3.connect(target)) as db:
                 self.assertEqual(db.execute('SELECT title FROM booklist_work').fetchone()[0], 'Changed after import')
+
+
+class ExistingRowPreservationTests(unittest.TestCase):
+    def test_additive_schema_and_new_rows_preserve_existing_values(self):
+        from scripts.catalog_preservation import capture, verify
+        with tempfile.TemporaryDirectory() as folder:
+            database=Path(folder)/'catalog.sqlite3'
+            with closing(sqlite3.connect(database)) as db:
+                db.execute('CREATE TABLE records(id INTEGER PRIMARY KEY, value TEXT)')
+                db.execute("INSERT INTO records VALUES(1,'existing account record')");db.commit()
+            before=capture(database)
+            with closing(sqlite3.connect(database)) as db:
+                db.execute("ALTER TABLE records ADD COLUMN extra TEXT NOT NULL DEFAULT '[]'")
+                db.execute("INSERT INTO records VALUES(2,'new metadata','[]')");db.commit()
+            self.assertTrue(verify(database,before))
+            with closing(sqlite3.connect(database)) as db:
+                db.execute("UPDATE records SET value='changed' WHERE id=1");db.commit()
+            with self.assertRaisesRegex(RuntimeError,'Preexisting data changed'):
+                verify(database,before)

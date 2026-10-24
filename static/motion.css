@@ -47,7 +47,7 @@
     transform: translateY(1px) scale(.98);
     box-shadow: none;
   }
-  :is(nav a, .brand, .scope-label a, .source-link, .book-title, summary):active {
+  :is(nav a, .brand, .scope-label a, .source-link, .book-title, a.book-cover, .work-tag, .work-author, summary):active {
     transform: translateY(1px);
   }
   input:is([type="checkbox"], [type="radio"]):not(:disabled):active {
@@ -61,17 +61,17 @@
 }
 
 /* Inline text links need a box for movement; existing card/button layouts take precedence. */
-:where(nav a, .scope-label a, .source-link, .book-title) { display: inline-block; }
+:where(nav a, .scope-label a, .source-link, .book-title, .work-tag, .work-author) { display: inline-block; }
 summary { cursor: pointer; }
 :is(a[href], button, input, select, textarea, summary):focus-visible {
-  outline: 2px solid #555555;
+  outline: 2px solid var(--accent,#555555);
   outline-offset: 3px;
 }
 
 @media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
   .public-card:hover, .book-card:hover, .period:hover {
     transform: translateY(-2px);
-    border-color: #a5a5a5;
+    border-color: var(--strong-line,#a5a5a5);
     box-shadow: 0 5px 15px #22222210;
   }
   .candidate:not(:disabled):not([aria-disabled="true"]):hover { border-color: #888888; }
@@ -79,7 +79,7 @@ summary { cursor: pointer; }
     transform: translateY(-1px);
     box-shadow: 0 3px 7px #2222221a;
   }
-  :is(nav a, .brand, .scope-label a, .source-link, .book-title, summary):hover:not(:active) {
+  :is(nav a, .brand, .scope-label a, .source-link, .book-title, a.book-cover, .work-tag, .work-author, summary):hover:not(:active) {
     transform: translateY(-1px);
   }
   .tag-filter label:hover { box-shadow: 0 2px 6px #2222221a; }
@@ -125,4 +125,24 @@ summary { cursor: pointer; }
     animation-duration: 520ms;
   }
   ::view-transition-old(work-title), ::view-transition-new(work-title) { animation-duration: 420ms; }
+}
+
+
+/* Layout switching has its own card/cover/title matches, not a page entrance. */
+@media(prefers-reduced-motion:no-preference){
+ html[data-shelf-view-changing] main,html[data-shelf-view-changing] .site-header{view-transition-name:none}
+ html[data-shelf-view-changing] .public-card{transition:none;transform:none}
+ html[data-shelf-view-changing]::view-transition-group(*){animation-duration:380ms;animation-timing-function:cubic-bezier(.22,.75,.25,1)}
+ html[data-shelf-view-changing]::view-transition-image-pair(*){isolation:isolate;overflow:clip;border-radius:7px}
+ html[data-shelf-view-changing]::view-transition-old(*),html[data-shelf-view-changing]::view-transition-new(*){height:100%;mix-blend-mode:normal;object-fit:fill}
+ html[data-shelf-view-changing]::view-transition-old(*){animation:booklist-fade-out 220ms ease-out both}
+ html[data-shelf-view-changing]::view-transition-new(*){animation:booklist-fade-in 300ms ease-out both}
+ html[data-shelf-view-changing]::view-transition-old(root),html[data-shelf-view-changing]::view-transition-new(root){animation:none}
+}
+
+@media(prefers-reduced-motion:no-preference){
+ @supports(view-transition-class:shelf-layout-card){
+  html[data-shelf-view-changing]::view-transition-old(.shelf-layout-card),html[data-shelf-view-changing]::view-transition-new(.shelf-layout-card),
+  html[data-shelf-view-changing]::view-transition-old(.shelf-layout-title),html[data-shelf-view-changing]::view-transition-new(.shelf-layout-title){object-fit:none;object-position:left top}
+ }
 }

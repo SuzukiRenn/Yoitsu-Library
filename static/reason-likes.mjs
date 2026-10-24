@@ -1,7 +1,7 @@
 import {installReasonFolds} from './reason-folds.mjs?v=20261020-1';
-import {createPublicApi} from './public-api.mjs?v=20261022-identity-sync';
-import {renderReasonButton, reasonRow} from './reason-ui.mjs?v=20261022-identity-sync';
-import {updateInteraction} from './live-interactions.mjs?v=20261022-identity-sync';
+import {createPublicApi} from './public-api.mjs?v=20261024-identity-sync';
+import {renderReasonButton, reasonRow, updateReasonContent} from './reason-ui.mjs?v=20261024-identity-sync';
+import {updateInteraction} from './live-interactions.mjs?v=20261024-identity-sync';
 export function startReasonLikes({doc=document, win=window, fetcher=fetch, write=createPublicApi()}={}) {
   const status=doc.querySelector('#action-status');
   const section=doc.querySelector('[data-reasons-work]');
@@ -12,6 +12,8 @@ export function startReasonLikes({doc=document, win=window, fetcher=fetch, write
   const buttons=()=>[...doc.querySelectorAll('[data-reason-like]')];
   function update(item) {
     for (const button of buttons().filter(b=>b.dataset.reasonId===String(item.id))) renderReasonButton(button,item);
+    const row=list?.querySelector(`[data-reason-row="${item.id}"]`);
+    if(row){updateReasonContent(row,item);initializeFolds?.(list);}
   }
   function plan() {win.clearTimeout(timer);if(section&&!stopped&&!doc.hidden)timer=win.setTimeout(poll,delay);}
   async function poll() {
@@ -57,7 +59,7 @@ export function startReasonLikes({doc=document, win=window, fetcher=fetch, write
       const page=Number(more.dataset.page)+1;
       const response=await fetcher(`${prefix(section.dataset.activity)}/works/${section.dataset.reasonsWork}/reasons/?page=${page}&page_size=2`,{credentials:'same-origin',cache:'no-store'});
       const payload=await response.json();if(!response.ok)throw Error(payload.error?.message||'请求失败');
-      for(const item of payload.results)if(!list.querySelector(`[data-reason-row="${item.id}"]`))list.append(reasonRow(doc,item,list.children.length+1,section.dataset.reasonsWork,section.dataset.activity));
+      for(const item of payload.results)if(!list.querySelector(`[data-reason-row="${item.id}"]`))list.append(reasonRow(doc,item,section.dataset.reasonsWork,section.dataset.activity));
       initializeFolds?.(list);
       section.querySelector('[data-reason-total]').textContent=`${payload.total} 条`;
       more.dataset.page=String(page);more.hidden=page*2>=payload.total;

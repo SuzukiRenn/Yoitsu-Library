@@ -496,7 +496,7 @@ class AccountTests(TestCase):
 
     def test_synced_shared_shell_and_mobile_assets_keep_account_navigation(self):
         response = self.browser('alice').get('/')
-        for fragment in ('logo.png', 'feedback.css', 'first-visit.mjs', '公共书单', 'shelf-recommend',
+        for fragment in ('logo.png', 'feedback.css', 'first-visit.mjs', '公共书架', 'shelf-recommend',
                          'account-nav', '消息', '青禾', '反馈', 'shelf-controls'):
             self.assertContains(response, fragment)
         self.assertNotContains(response, 'public-period.css')
