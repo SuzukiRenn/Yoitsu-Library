@@ -1,5 +1,6 @@
 import {renderReasonPreview} from './reason-ui.mjs?v=20261024-references-1';
-import {createPublicApi} from './public-api.mjs';
+import {createPublicApi} from './public-api.mjs?v=20261025-withdraw-1';
+import {writeWithConfirmation,confirmWithdrawal} from './withdraw-confirm.mjs?v=20261025-1';
 
 export function updateInteraction(container, work) {
   const available = work.available !== false;
@@ -86,7 +87,8 @@ export function updateInteraction(container, work) {
 }
 
 export function startLiveInteractions({doc = document, write = createPublicApi(), fetcher = fetch, refresh,
-  render = updateInteraction, schedule = setTimeout, cancel = clearTimeout} = {}) {
+  render = updateInteraction, schedule = setTimeout, cancel = clearTimeout,
+  confirm = message => confirmWithdrawal(message,doc)} = {}) {
   const containers = () => [...doc.querySelectorAll('.public-actions[data-work]')];
   if (!containers().length && !refresh) return;
   const status = doc.querySelector('#action-status');
@@ -138,13 +140,18 @@ export function startLiveInteractions({doc = document, write = createPublicApi()
     if (!container || button.disabled || busy.has(container)) return;
     busy.add(container); generation++; request?.abort();
     const buttons = [...container.querySelectorAll('[data-action]')];
+    const originalDisabled=buttons.map(item=>item.disabled);
     buttons.forEach(item => {item.disabled = true;});
     container.setAttribute('aria-busy', 'true'); status.textContent = '';
     doc.defaultView?.clearTimeout(statusTimer);
     const prefix = container.dataset.activity ? `/api/v1/activities/${container.dataset.activity}` : '/api/v1/public';
     const payload = button.dataset.action === 'withdraw' ? {} : {enabled: button.dataset.enabled === 'true'};
+    let prompted=false;
     try {
-      const result = await write(`${prefix}/works/${container.dataset.work}/${button.dataset.action}/`, payload);
+      const url=`${prefix}/works/${container.dataset.work}/${button.dataset.action}/`;
+      const withdrawing=button.dataset.action==='withdraw' || (button.dataset.action==='recommend' && !payload.enabled);
+      const result=withdrawing ? await writeWithConfirmation(write,url,payload,message=>{prompted=true;return confirm(message);}) : await write(url,payload);
+      if(!result){buttons.forEach((item,index)=>{item.disabled=originalDisabled[index];});return;}
       render(container, result.work);
       status.textContent = '已更新';
       statusTimer = doc.defaultView?.setTimeout(() => {status.textContent = '';}, 1800);
@@ -153,6 +160,7 @@ export function startLiveInteractions({doc = document, write = createPublicApi()
       buttons.forEach(item => {item.disabled = container.dataset.readonly === 'true';});
     } finally {
       busy.delete(container); generation++; container.removeAttribute('aria-busy'); plan();
+      if(prompted){const target=button.isConnected && !button.disabled ? button : doc.querySelector('[data-tag-dropdown] > summary, .brand');target?.focus?.({preventScroll:true});}
     }
   });
   doc.addEventListener('booklist:shelf-navigation', event => {

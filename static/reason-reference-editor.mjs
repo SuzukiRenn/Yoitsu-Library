@@ -112,7 +112,7 @@ export function createReasonReferenceEditor(textarea,{exclude=()=>null,fetcher=f
  editor.addEventListener('drop',event=>event.preventDefault());
  editor.addEventListener('beforeinput',event=>{if(event.inputType==='insertParagraph' || event.inputType==='insertLineBreak'){event.preventDefault();insertText('\n');schedule();}});
  editor.addEventListener('keydown',event=>{
-  if(composing || event.isComposing)return;
+  if(composing || event.isComposing || event.keyCode===229)return;
   if(event.key==='Escape'){close();return;}
   if(!popup.hidden && ['ArrowDown','ArrowUp','Enter'].includes(event.key)){
    event.preventDefault();if(event.key==='Enter')choose(active);else{active=(active+(event.key==='ArrowDown'?1:-1)+options.length)%options.length;highlight();}return;

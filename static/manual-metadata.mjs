@@ -1,5 +1,5 @@
 import {normalize} from './text.mjs';
-import './tag-autocomplete.mjs?v=20261020-2';
+import './tag-autocomplete.mjs?v=20261025-keyboard-1';
 export function readMetadata(root = document) {
   let author;
   try { author = normalize(root.querySelector('#manual-author').value, 'title'); }

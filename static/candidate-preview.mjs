@@ -5,7 +5,7 @@ export function createCandidatePreview() {
   panel.id = 'candidate-preview'; panel.className = 'candidate-preview';
   panel.setAttribute('role', 'group'); panel.setAttribute('aria-label', '作品预览'); panel.hidden = true;
   document.body.append(panel);
-  let active = null, showTimer = null, hideTimer = null;
+  let active = null, showTimer = null, hideTimer = null, returningFocus=false;
 
   function hide() {
     clearTimeout(showTimer); clearTimeout(hideTimer);
@@ -69,6 +69,8 @@ export function createCandidatePreview() {
       const empty = document.createElement('span'); empty.className = 'section-note'; empty.textContent = '暂无标签'; tags.append(empty);
     }
     info.append(title, author, tags); panel.replaceChildren(cover, info);
+    // Keep preview links directly after their trigger in keyboard order; fixed positioning stays out of flow.
+    button.after(panel);
     active = button; button.setAttribute('aria-describedby', panel.id); panel.hidden = false;
     position(button);
   }
@@ -81,7 +83,10 @@ export function createCandidatePreview() {
     if (active && !panel.contains(event.target)) position(active);
   }, true);
   document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && active) { event.preventDefault(); hide(); }
+    if (event.key === 'Escape' && active && !event.isComposing && event.keyCode!==229) {
+      event.preventDefault();const trigger=active,restore=panel.contains(document.activeElement);hide();
+      if(restore && trigger.isConnected){returningFocus=true;trigger.focus({preventScroll:true});returningFocus=false;}
+    }
   });
 
   return {
@@ -93,7 +98,7 @@ export function createCandidatePreview() {
         showTimer = setTimeout(() => show(button, work), 220);
       });
       button.addEventListener('pointerleave', laterHide);
-      button.addEventListener('focus', () => show(button, work));
+      button.addEventListener('focus', () => {if(!returningFocus)show(button, work);});
       button.addEventListener('blur', laterHide);
       button.addEventListener('click', hide);
     },

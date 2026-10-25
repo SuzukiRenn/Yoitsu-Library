@@ -1,6 +1,8 @@
 import {appendEditionBadge} from './edition-badge.mjs?v=20261024-editions-1';
 import {createSearchController} from './catalog-search.mjs';
 
+import {installCandidateKeyboard} from './candidate-keyboard.mjs?v=20261025-1';
+
 const form = document.querySelector('#search-form');
 const input = document.querySelector('#book-query');
 const results = document.querySelector('#search-results');
@@ -56,6 +58,7 @@ function update() {
   }
   timer = setTimeout(() => controller.run(input.value), 300);
 }
+installCandidateKeyboard({input,list:results,selector:'.book-title',isComposing:()=>composing,onEnter:()=>{clearTimeout(timer);controller.run(input.value);}});
 input.addEventListener('input', update);
 input.addEventListener('compositionstart', () => { composing = true; clearTimeout(timer); controller.cancel(); status.textContent = ''; results.setAttribute('aria-busy', 'false'); });
 input.addEventListener('compositionend', () => { composing = false; update(); });

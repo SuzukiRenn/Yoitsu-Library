@@ -1,9 +1,9 @@
 import {installAppearance} from './appearance.mjs?v=20261024-appearance-2';
 installAppearance();
-import {installShelfSort} from './shelf-sort.mjs?v=20261024-tag-mode-1';
+import {installShelfSort} from './shelf-sort.mjs?v=20261025-keyboard-1';
 import {startReasonLikes} from './reason-likes.mjs?v=20261024-no-reason-number-1';
-import {startLiveInteractions} from './live-interactions.mjs?v=20261024-reference-poll-fix-1';
-import {createShelfRefresh} from './live-shelf.mjs?v=20261024-motion-perf-1';
+import {startLiveInteractions} from './live-interactions.mjs?v=20261025-withdraw-1';
+import {createShelfRefresh} from './live-shelf.mjs?v=20261025-keyboard-1';
 import './navigation-motion.mjs?v=20261020-1';
 import './work-motion.mjs?v=20261021-5';
 import {installShelfReturn} from './shelf-return.mjs?v=20261024-references-1';

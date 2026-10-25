@@ -67,19 +67,28 @@ def submit(request, data, activity_id):
     return write(request, f'activity.submit.{activity_id}', data, lambda: activities.submit(activity_id, request.anonymous_client, data))
 
 
-@endpoint('POST', fields={})
+def guarded_recommendation(request, data, activity_id, work_id, enabled):
+    if not enabled:
+        activities.require_open(activity_id)
+        work = books.require_work(work_id)
+        from .withdrawal import require_confirmation
+        require_confirmation(work, request.anonymous_client, activity_id, data.get('confirmation'))
+    return activities.recommend(activity_id, work_id, request.anonymous_client, enabled)
+
+
+@endpoint('POST', fields={}, optional_fields={'confirmation':str})
 def withdraw(request, data, activity_id, work_id):
     activities.advance_due()
     return write(request, f'activity.withdraw.{activity_id}.{work_id}', data, lambda: interaction_result(
-        request, activity_id, work_id, lambda: activities.withdraw(activity_id, work_id, request.anonymous_client)))
+        request, activity_id, work_id, lambda: guarded_recommendation(request, data, activity_id, work_id, False)))
 
 
-@endpoint('POST', fields={'enabled': bool})
+@endpoint('POST', fields={'enabled': bool}, optional_fields={'confirmation':str})
 def recommend(request, data, activity_id, work_id):
     activities.advance_due()
     return write(request, f'activity.recommend.{activity_id}.{work_id}', data,
                  lambda: interaction_result(request, activity_id, work_id,
-                     lambda: activities.recommend(activity_id, work_id, request.anonymous_client, data['enabled'])))
+                     lambda: guarded_recommendation(request, data, activity_id, work_id, data['enabled'])))
 
 
 @endpoint('POST', fields={'enabled': bool})

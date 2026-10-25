@@ -29,7 +29,13 @@ class PublicTests(TestCase):
         return self.post('/api/v1/public/recommendations/', dict(work_id=work_id, title=title, reason=reason, confirmed_unmatched=confirmed_unmatched), **kwargs)
 
     def action(self, kind, enabled=True, **kwargs):
-        return self.post(f'/api/v1/public/works/{self.work.pk}/{kind}/', {'enabled': enabled}, **kwargs)
+        path=f'/api/v1/public/works/{self.work.pk}/{kind}/'
+        response=self.post(path, {'enabled':enabled}, **kwargs)
+        # Lifecycle tests opt in to the new confirmation; raw protocol checks live in test_withdrawal_confirmation.
+        prompt=response.json().get('error',{}).get('confirmation')
+        if prompt:
+            response=self.post(path, {'enabled':enabled,'confirmation':prompt['token']}, **kwargs)
+        return response
 
     def current(self):
         return books.serialize([self.work], self.person)[0]

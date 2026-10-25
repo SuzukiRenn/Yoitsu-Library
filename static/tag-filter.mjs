@@ -74,7 +74,7 @@ export function initializeTagFilters(scope=document){
   reduced.addEventListener('change',()=>{if(reduced.matches)clearMotion();});
   dropdown.addEventListener('toggle',()=>{if(!dropdown.open)clearMotion();else fitPanel();});
   form.addEventListener('keydown',event=>{
-   if(event.key==='Escape' && dropdown.open){event.preventDefault();dropdown.open=false;dropdown.querySelector('summary').focus();}
+   if(event.key==='Escape' && !event.isComposing && event.keyCode!==229 && !event.defaultPrevented && dropdown.open){event.preventDefault();dropdown.open=false;dropdown.querySelector('summary').focus();}
   });
   form.ownerDocument.addEventListener('pointerdown',event=>{if(dropdown.open && !dropdown.contains(event.target))dropdown.open=false;});
   filters.set(form,(source,{syncSelection=false}={})=>{

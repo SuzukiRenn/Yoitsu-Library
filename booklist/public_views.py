@@ -89,7 +89,7 @@ def submit(request, data):
     return write(request, 'public.submit', data, lambda: books.submit(request.anonymous_client, data))
 
 
-@endpoint('POST', fields={'enabled': bool})
+@endpoint('POST', fields={'enabled': bool}, optional_fields={'confirmation': str})
 def recommend(request, data, work_id):
     return relation(request, data, work_id, 'recommend')
 
@@ -102,6 +102,9 @@ def like(request, data, work_id):
 def relation(request, data, work_id, kind):
     def operation():
         work = books.require_work(work_id)
+        if kind == 'recommend' and not data['enabled']:
+            from .withdrawal import require_confirmation
+            require_confirmation(work, request.anonymous_client, token=data.get('confirmation'))
         books.set_relation(work, request.anonymous_client, kind, data['enabled'])
         result = books.serialize([work], request.anonymous_client)[0]
         result.update(in_shelf=result['recommendation_count'] > 0, resubmission_required='manual_retired_at' in work.source_metadata)

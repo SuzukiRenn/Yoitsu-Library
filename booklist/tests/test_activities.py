@@ -31,7 +31,13 @@ class ActivityTests(TestCase):
             'confirmed_unmatched':False,'copy_public_reason':copy},browser,key)
 
     def action(self, name, data=None, browser=None):
-        return self.post(f'/api/v1/activities/{self.period.pk}/works/{self.work.pk}/{name}/',data or {},browser)
+        path=f'/api/v1/activities/{self.period.pk}/works/{self.work.pk}/{name}/'
+        response=self.post(path,data or {},browser)
+        # Exercise the explicit confirmation before asserting existing lifecycle behavior.
+        prompt=response.json().get('error',{}).get('confirmation')
+        if prompt:
+            response=self.post(path,{**(data or {}),'confirmation':prompt['token']},browser)
+        return response
 
     def other(self):
         browser=Client(); token, person=services.issue_anonymous();browser.cookies[settings.ANONYMOUS_COOKIE]=token
