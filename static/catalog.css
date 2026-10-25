@@ -530,3 +530,7 @@ html[data-shelf-view=compact] .public-card>.reason-preview{display:none}
 .withdraw-confirm .form-actions{justify-content:flex-end;gap:12px;flex-wrap:wrap}
 
 .search-match{color:inherit;background:color-mix(in srgb,var(--accent) 18%,var(--surface));border-radius:3px;padding:0;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+
+.tag-load-more{display:block;margin:12px auto 0;min-height:34px;padding:7px 18px;font-size:12px;line-height:18px;background:var(--tag-bg)}
+
+.tag-load-more[hidden]{display:none}

@@ -11,5 +11,6 @@
 <div class="tag-picked" data-picked-section hidden><p>已选标签</p><div class="tags" data-picked-tags></div></div>
 <label class="sr-only" for="tag-search">搜索标签</label><input id="tag-search" type="search" placeholder="查找标签" autocomplete="off" aria-controls="filter-tags">
 <div class="tags" id="filter-tags">{% for tag in tags %}<label class="tag" data-tag-name="{{ tag.name }}"><input type="checkbox" name="tag" value="{{ tag.id }}" {% if tag.id in selected_tags %}checked{% endif %}>{{ tag.name }} <span class="tag-count">{{ tag.count }}</span></label>{% endfor %}</div>
+<button type="button" class="tag-load-more" data-tag-load-more aria-controls="filter-tags" hidden>加载更多</button>
 <p class="tag-filter-empty" role="status"{% if tags %} hidden{% endif %}>没有匹配的标签</p><div class="tag-panel-footer"><button type="submit" class="primary">应用筛选</button></div></div></details></div>
 </form>
