@@ -1,7 +1,8 @@
-import {createShelfMotion} from './shelf-motion.mjs?v=20261024-motion-perf-1';
+import {syncHeatLabels} from './heat-display.mjs?v=20261025-1';
+import {createShelfMotion} from './shelf-motion.mjs?v=20261025-reading-1';
 import {initializeCovers} from './cover-images.mjs?v=20261020-2';
 import {initializePageSizes} from './page-size.mjs?v=20261020-2';
-import {initializeTagFilters, updateTagFilter} from './tag-filter.mjs?v=20261025-keyboard-1';
+import {initializeTagFilters, updateTagFilter} from './tag-filter.mjs?v=20261025-reading-1';
 
 const ids = grid => [...grid.querySelectorAll('[data-shelf-work]')].map(card => card.dataset.shelfWork);
 export function membershipChanged(before, after) {
@@ -49,6 +50,17 @@ export function createShelfRefresh({doc = document, win = window, fetcher = fetc
       const added = after.filter(id => !before.includes(id)).length;
       status.textContent = added ? `书单已更新，本页新增 ${added} 部作品` : '书单已更新';
     }
+    // The server renders matches against its own scope and frozen snapshot fields.
+    // Copy only the visible field content; keep the card and its interaction state attached.
+    for(const incoming of newCards){
+      const current=grid.querySelector?.(`[data-shelf-work="${incoming.dataset.shelfWork}"]`);
+      if(!current)continue;
+      for(const selector of ['.book-info .book-title','.book-info .work-author']){
+        const field=current.querySelector(selector),nextField=incoming.querySelector(selector);
+        if(field && nextField && field.innerHTML!==nextField.innerHTML)field.replaceChildren(...[...nextField.childNodes].map(node=>doc.importNode(node,true)));
+      }
+    }
+    syncHeatLabels(shelf);
     const total = shelf.querySelector('[data-shelf-total]'), nextTotal = next.querySelector('[data-shelf-total]');
     if (total && nextTotal && total.textContent !== nextTotal.textContent) total.textContent = nextTotal.textContent;
     const incomingPagerSignature = [...next.querySelectorAll('[data-shelf-pagination]')].map(slot => slot.innerHTML).join('');

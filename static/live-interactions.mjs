@@ -3,6 +3,8 @@ import {renderReasonPreview} from './reason-ui.mjs?v=20261024-identity-sync';
 import {createPublicApi} from './public-api.mjs?v=20261025-withdraw-1';
 import {writeWithConfirmation,confirmWithdrawal} from './withdraw-confirm.mjs?v=20261025-1';
 
+import {syncHeatLabels} from './heat-display.mjs?v=20261025-1';
+
 export function updateInteraction(container, work) {
   renderRecommenders(container, work);
   const available = work.available !== false;
@@ -53,6 +55,7 @@ export function updateInteraction(container, work) {
       }
     }
   }
+  syncHeatLabels(container);
   let note = container.querySelector('[data-live-note]');
   const message = emptyPublic ? (work.resubmission_required ? '已退出书单，重新推荐需填写作品资料' : '已退出公共书架') : !available ? '作品暂不可用' : !writable ? '活动已暂停或结束' : emptyActivity ? '已退出本活动书单' : '';
   if (message && !note) {

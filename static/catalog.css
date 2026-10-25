@@ -528,3 +528,5 @@ html[data-shelf-view=compact] .public-card>.reason-preview{display:none}
 .withdraw-confirm h2{margin:0 0 16px;font-size:20px}
 .withdraw-confirm p{font-size:14px;line-height:1.8;overflow-wrap:anywhere}
 .withdraw-confirm .form-actions{justify-content:flex-end;gap:12px;flex-wrap:wrap}
+
+.search-match{color:inherit;background:color-mix(in srgb,var(--accent) 18%,var(--surface));border-radius:3px;padding:0;box-decoration-break:clone;-webkit-box-decoration-break:clone}

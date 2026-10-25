@@ -1,6 +1,7 @@
+import {motionPreference} from './motion-preference.mjs?v=20261025-1';
 // Match the same book across layouts; keep the live DOM, focus and scroll anchor.
 export function createShelfViewMotion({doc=document,win=window}={}){
- const root=doc.documentElement,reduced=win.matchMedia?.('(prefers-reduced-motion: reduce)');
+ const root=doc.documentElement,reduced=motionPreference(win,doc);
  let active;
  function finish(run){
   if(active!==run)return;

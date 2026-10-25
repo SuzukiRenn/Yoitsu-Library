@@ -1,8 +1,9 @@
+import {motionPreference} from './motion-preference.mjs?v=20261025-1';
 // Keep real document navigation, forms and history intact; animate only the main nav.
 export function installNavigationMotion(doc = document, win = window) {
   const main = doc.querySelector('main');
   if (!main || typeof main.animate !== 'function') return;
-  const reduced = win.matchMedia('(prefers-reduced-motion: reduce)');
+  const reduced = motionPreference(win,doc);
   let pending;
   function reset() {
     const previous = pending;

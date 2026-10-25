@@ -1,7 +1,8 @@
+import {motionPreference} from './motion-preference.mjs?v=20261025-1';
 // Measure rendered lines, so wrapping, explicit newlines and narrow screens agree.
 export function installReasonFolds(doc=document, win=window) {
   const observed=new WeakSet();
-  const reduced=win.matchMedia('(prefers-reduced-motion: reduce)');
+  const reduced=motionPreference(win,doc);
   function measure(body) {
     const text=body.querySelector('.reason-text'), button=body.querySelector('[data-reason-expand]');
     const line=Number.parseFloat(win.getComputedStyle(text).lineHeight);
@@ -40,6 +41,7 @@ export function installReasonFolds(doc=document, win=window) {
         {duration:220,easing:'cubic-bezier(.2,.7,.3,1)'});
     }
   });
+  reduced.addEventListener?.('change',()=>{if(reduced.matches)for(const clip of doc.querySelectorAll('.reason-clip'))clip.getAnimations?.().forEach(animation=>animation.cancel());});
   win.addEventListener('resize',()=>initialize());
   doc.fonts?.ready.then(()=>initialize());
   initialize();

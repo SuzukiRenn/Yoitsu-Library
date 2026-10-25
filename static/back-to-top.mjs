@@ -1,8 +1,9 @@
+import {motionPreference} from './motion-preference.mjs?v=20261025-1';
 const button=document.querySelector('[data-back-to-top]');
 if(button){
   const controls=[button,document.querySelector('[data-random-book]'),document.querySelector('[data-shelf-view-toggle]'),document.querySelector('[data-appearance-toggle]')].filter(Boolean);
   const header=document.querySelector('.site-header');
-  const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
+  const reduced=motionPreference(window,document);
   let frame;
   const update=()=>{
     frame=undefined;

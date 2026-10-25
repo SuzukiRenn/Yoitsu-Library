@@ -146,3 +146,9 @@ summary { cursor: pointer; }
   html[data-shelf-view-changing]::view-transition-old(.shelf-layout-title),html[data-shelf-view-changing]::view-transition-new(.shelf-layout-title){object-fit:none;object-position:left top}
  }
 }
+
+/* A user-requested reduction applies to CSS motion as well as JS animations. */
+html[data-motion=reduce]{scroll-behavior:auto!important}
+html[data-motion=reduce] *,html[data-motion=reduce] *::before,html[data-motion=reduce] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+html[data-motion=reduce] :is(.public-card,.book-card,.book-cover,.book-title,.work-tag,.work-author,button,summary):is(:hover,:active){transform:none!important}
+html[data-motion=reduce]::view-transition-group(*),html[data-motion=reduce]::view-transition-old(*),html[data-motion=reduce]::view-transition-new(*){animation:none!important}

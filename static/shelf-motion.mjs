@@ -1,6 +1,7 @@
+import {motionPreference} from './motion-preference.mjs?v=20261025-1';
 // FLIP retained cards; fade removed snapshots without delaying the server state.
 export function createShelfMotion({doc=document,win=window}={}) {
-  const reduced=win.matchMedia('(prefers-reduced-motion: reduce)');
+  const reduced=motionPreference(win,doc);
   const animations=new Set(), ghosts=new Set();
   const visible=r=>r.bottom>0 && r.top<win.innerHeight;
   function clear(){

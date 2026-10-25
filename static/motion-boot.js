@@ -2,7 +2,7 @@
 window.addEventListener('pagereveal', event => {
   if (!event.viewTransition) return;
   document.documentElement.classList.add('native-page-transition');
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (document.documentElement.dataset?.motion==='reduce' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {event.viewTransition.skipTransition?.();return;}
   const previous = window.navigation?.activation?.from?.url;
   if (!previous) return;
   const url = new URL(previous, window.location.href);
@@ -24,3 +24,5 @@ window.addEventListener('pagereveal', event => {
   const cleanup = () => card.classList.remove('work-opening');
   event.viewTransition.finished.then(cleanup,cleanup);
 });
+
+window.addEventListener('pageswap',event=>{if(document.documentElement.dataset?.motion==='reduce')event.viewTransition?.skipTransition?.();});
