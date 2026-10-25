@@ -99,6 +99,7 @@ def activity(request, data, activity_id):
         from .services import DomainError
         raise DomainError('not_found','活动不存在',404)
     row.status_label = activities.LABELS[row.status]
+    row.destination_locked = activities.destination_locked(row)
     transitions = list(ActivityTransition.objects.filter(activity=row).order_by('-id')[:100])
     for event in transitions:
         event.from_label = activities.LABELS[event.from_status]; event.to_label = activities.LABELS[event.to_status]

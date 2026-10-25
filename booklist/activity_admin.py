@@ -14,8 +14,16 @@ def timestamp(value):
     return result
 
 
+def destination(value):
+    if value not in activities.DESTINATIONS:
+        raise services.DomainError('invalid_destination', '推荐归属无效')
+    return value
+
+
 def state(row):
     return {'title': row.title, 'theme': row.theme, 'status': row.status,
+        'recommendation_destination': row.recommendation_destination,
+        'destination_locked': activities.destination_locked(row),
         'start_at': utc_milliseconds(row.start_at), 'end_at': utc_milliseconds(row.scheduled_end_at)}
 
 
@@ -26,7 +34,8 @@ def create(actor, data):
     if start >= end:
         raise services.DomainError('invalid_time', '开始时间须早于结束时间')
     row = Activity.objects.create(title=normalize(data['title'], 'activity_title', required=True),
-        theme=normalize(data['theme'], 'theme'), start_at=start, scheduled_end_at=end, created_by=actor)
+        theme=normalize(data['theme'], 'theme'), start_at=start, scheduled_end_at=end, created_by=actor,
+        recommendation_destination=destination(data.get('recommendation_destination', 'public')))
     services.audit(actor, 'activity.create', row, after=state(row))
     return {'id': row.pk, **state(row)}
 
@@ -34,7 +43,7 @@ def create(actor, data):
 @transaction.atomic
 def update(actor, activity_id, data):
     services.require_active(actor)
-    row = Activity.objects.filter(pk=activity_id).first()
+    row = Activity.objects.select_for_update().filter(pk=activity_id).first()
     if row is None:
         raise services.DomainError('not_found', '活动不存在', 404)
     if row.status in ('ended', 'cancelled') or (row.status in ('active', 'paused') and timezone.now() >= row.scheduled_end_at):
@@ -53,6 +62,10 @@ def update(actor, activity_id, data):
         start = row.start_at
     if row.status != 'draft' and (end <= timezone.now() or activities.conflict(row.started_at or start, end, row.pk)):
         raise services.DomainError('activity_conflict', '活动时段无效或冲突', 409)
+    target_destination = destination(data.get('recommendation_destination', row.recommendation_destination))
+    if target_destination != row.recommendation_destination and activities.destination_locked(row):
+        raise services.DomainError('activity_destination_locked', '本期已有参与推荐，推荐归属不可修改', 409)
+    row.recommendation_destination = target_destination
     row.title = normalize(data['title'], 'activity_title', required=True)
     row.theme = normalize(data['theme'], 'theme'); row.start_at=start; row.scheduled_end_at=end
     row.save(); services.audit(actor, 'activity.update', row, before=before, after=state(row), reason=reason)
@@ -62,7 +75,7 @@ def update(actor, activity_id, data):
 @transaction.atomic
 def action(actor, activity_id, action, reason):
     services.require_active(actor)
-    row = Activity.objects.filter(pk=activity_id).first()
+    row = Activity.objects.select_for_update().filter(pk=activity_id).first()
     if row is None:
         raise services.DomainError('not_found', '活动不存在', 404)
     now = timezone.now(); reason = normalize(reason, 'activity_title', required=True); before=state(row)

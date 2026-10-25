@@ -169,6 +169,8 @@ class TagSuppression(Timestamped):
 class Activity(Timestamped):
     title = models.CharField(max_length=100)
     theme = models.CharField(max_length=500, default='')
+    recommendation_destination = models.CharField(max_length=20, default='public', choices=[('public', '同时推荐到公共书架'), ('activity_only', '仅推荐到本期活动')])
+    first_recommended_at = models.DateTimeField(null=True)
     start_at = models.DateTimeField()
     scheduled_end_at = models.DateTimeField()
     started_at = models.DateTimeField(null=True)
@@ -181,7 +183,8 @@ class Activity(Timestamped):
     corrected_at = models.DateTimeField(null=True)
 
     class Meta:
-        constraints = [models.CheckConstraint(condition=Q(start_at__lt=F('scheduled_end_at')), name='activity_time_order'),
+        constraints = [models.CheckConstraint(condition=Q(recommendation_destination__in=['public', 'activity_only']), name='activity_recommendation_destination'),
+            models.CheckConstraint(condition=Q(start_at__lt=F('scheduled_end_at')), name='activity_time_order'),
             models.CheckConstraint(condition=Q(started_at__isnull=True) | Q(started_at__lt=F('scheduled_end_at')), name='activity_started_before_deadline'),
             models.CheckConstraint(condition=Q(ended_at__isnull=True) | (Q(ended_at__gte=F('started_at')) & Q(ended_at__lte=F('scheduled_end_at'))), name='activity_end_consistency'),
             models.CheckConstraint(condition=Q(status='draft', started_at__isnull=True, ended_at__isnull=True, cancelled_at__isnull=True) | Q(status='scheduled', started_at__isnull=True, ended_at__isnull=True, cancelled_at__isnull=True) | Q(status__in=['active','paused'], started_at__isnull=False, ended_at__isnull=True, cancelled_at__isnull=True) | Q(status='ended', started_at__isnull=False, ended_at__isnull=False, cancelled_at__isnull=True) | Q(status='cancelled', started_at__isnull=True, ended_at__isnull=True, cancelled_at__isnull=False), name='activity_state_times')]
@@ -287,6 +290,7 @@ class PublicLike(Timestamped):
 
 
 class PendingActivitySubmission(Timestamped):
+    recommendation_destination = models.CharField(max_length=20, default='public')
     activity = models.ForeignKey(Activity, on_delete=P)
     work = models.ForeignKey(Work, on_delete=P)
     anonymous_client = models.ForeignKey(AnonymousClient, on_delete=P)

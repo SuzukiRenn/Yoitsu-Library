@@ -1,4 +1,4 @@
-"""Activity recommendations also enroll a unique public recommendation."""
+"""Activity participation follows its period's fixed recommendation destination."""
 from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
@@ -9,6 +9,20 @@ from .protocol import pagination, utc_milliseconds
 from .text import normalize
 from .shelf_sort import validate as validate_sort
 from .shelf_filters import search_text,tag_ids,tag_match_mode
+
+DESTINATIONS = {'public': '同时推荐到公共书架', 'activity_only': '仅推荐到本期活动'}
+
+
+def destination_locked(row):
+    # History includes withdrawn, invalidated and archived participation. Never unlock on withdrawal.
+    return row.first_recommended_at is not None or Recommendation.objects.filter(activity=row, scope='activity').exists()
+
+
+def lock_destination(row, at=None):
+    if row.first_recommended_at is None:
+        row.first_recommended_at = at or timezone.now()
+        row.save(update_fields=['first_recommended_at', 'updated_at'])
+
 
 LABELS = {'draft': '草稿', 'scheduled': '待开始', 'active': '进行中', 'paused': '暂停', 'ended': '已结束', 'cancelled': '已取消'}
 
@@ -26,7 +40,9 @@ def writable(row, now=None):
 
 
 def require_open(activity_id):
-    row = get(activity_id)
+    row = Activity.objects.select_for_update().exclude(status='draft').filter(pk=activity_id).first()
+    if row is None:
+        raise services.DomainError('not_found', '活动不存在', 404)
     if not writable(row):
         raise services.DomainError('activity_readonly', '该活动不可提交', 409)
     return row
@@ -44,6 +60,8 @@ def votes(activity_id):
 
 def summary(row):
     return {'id': row.pk, 'title': row.title, 'theme': row.theme, 'status': row.status,
+        'recommendation_destination': row.recommendation_destination,
+        'recommendation_destination_label': DESTINATIONS[row.recommendation_destination],
         'status_label': LABELS[row.status], 'writable': writable(row), 'corrected': row.corrected_at is not None,
         'start_at': utc_milliseconds(row.started_at or row.start_at),
         'end_at': utc_milliseconds(row.ended_at or row.scheduled_end_at),
@@ -116,8 +134,11 @@ def listing(activity_id, client=None, page=1, page_size=20, *, work_id=None, sor
             'tags':sorted(tag_counts.values(),key=lambda tag:(-tag['count'],tag['name'],tag['id']))}
 
 
+@transaction.atomic
 def submit(activity_id, client, data):
     activity = require_open(activity_id)
+    if data.get('expected_recommendation_destination', activity.recommendation_destination) != activity.recommendation_destination:
+        raise services.DomainError('activity_destination_changed', '本期推荐归属已调整，请刷新页面后再提交', 409)
     reason = normalize(data['reason'], 'reason')
     work = books.resolve_submission(data, client)
     from .reason_references import validate
@@ -125,9 +146,11 @@ def submit(activity_id, client, data):
     refs=validate(reason,data.get('references'),previous,work.pk)
     if work.review_status == 'pending':
         PendingActivitySubmission.objects.create(activity=activity, work=work, anonymous_client=client,
+            recommendation_destination=activity.recommendation_destination,
             reason=reason, reason_references=refs, contains_spoilers=bool(reason) and data.get('contains_spoilers', False), copy_public_reason=data['copy_public_reason'])
         return {'status': 'pending'}
-    books.enroll(work)
+    if activity.recommendation_destination == 'public':
+        books.enroll(work)
     snap = ActivityWork.objects.filter(activity=activity, work=work, archived_at__isnull=True, merged_into__isnull=True).first()
     if snap is None:
         metadata = catalog.work_detail(work.pk)
@@ -145,9 +168,11 @@ def submit(activity_id, client, data):
         hidden = history.filter(text_hidden_at__isnull=False).order_by('-id').first()
         row=Recommendation.objects.create(scope='activity', activity=activity, activity_work=snap, work=work,
             anonymous_client=client, reason=reason, reason_references=refs, contains_spoilers=bool(reason) and data.get('contains_spoilers', False), text_hidden_at=hidden.text_hidden_at if hidden else None)
-    books.set_relation(work, client, 'recommend', True, origin='activity')
-    if data['copy_public_reason'] and reason and not books.reasons().filter(work=work, anonymous_client=client).exists():
-        books.set_reason(work, client, reason, data.get('contains_spoilers'), refs, reference_source=row)
+    lock_destination(activity)
+    if activity.recommendation_destination == 'public':
+        books.set_relation(work, client, 'recommend', True, origin='activity')
+        if data['copy_public_reason'] and reason and not books.reasons().filter(work=work, anonymous_client=client).exists():
+            books.set_reason(work, client, reason, data.get('contains_spoilers'), refs, reference_source=row)
     return {'status': 'saved', 'activity_id': activity.pk, 'work_id': work.pk}
 
 
@@ -165,7 +190,7 @@ def edit_reason(row, text, contains_spoilers=None, references=None):
 
 @transaction.atomic
 def withdraw(activity_id, work_id, client):
-    require_open(activity_id); work = books.require_work(work_id)
+    require_open(activity_id); work = books.require_work(work_id, public=False)
     changed = recs(activity_id).filter(work_id=work_id, anonymous_client=client).update(withdrawn_at=timezone.now(), updated_at=timezone.now())
     if changed and not recs(activity_id).filter(work_id=work_id).exists():
         from .lifecycle import finish_activity_cycle
@@ -173,14 +198,17 @@ def withdraw(activity_id, work_id, client):
     return {'status': 'saved'}
 
 
+@transaction.atomic
 def recommend(activity_id, work_id, client, enabled):
     if not enabled:
         return withdraw(activity_id, work_id, client)
     require_open(activity_id)
-    work = books.require_work(work_id)
+    work = books.require_work(work_id, public=False)
     # A list button can join an existing entry, never revive a stale or missing entry.
     snap = ActivityWork.objects.filter(activity_id=activity_id, work=work, archived_at__isnull=True,
                                       merged_into__isnull=True).first()
+    if snap is None and work.public_added_at is None and not ActivityWork.objects.filter(activity_id=activity_id, work=work).exists():
+        raise services.DomainError('not_found', '本期作品不存在', 404)
     if snap is None or not recs(activity_id).filter(activity_work=snap).exists():
         raise services.DomainError('not_in_activity', '请先推荐到该活动', 409)
     if recs(activity_id).filter(work=work, anonymous_client=client).exists():
@@ -191,7 +219,7 @@ def recommend(activity_id, work_id, client, enabled):
 
 
 def reason(activity_id, work_id, client, value, contains_spoilers=None, references=None):
-    require_open(activity_id); books.require_work(work_id)
+    require_open(activity_id); books.require_work(work_id, public=False)
     row = recs(activity_id).filter(work_id=work_id, anonymous_client=client).first()
     if row is None:
         raise services.DomainError('not_found', '活动推荐不存在', 404)
@@ -200,7 +228,7 @@ def reason(activity_id, work_id, client, value, contains_spoilers=None, referenc
 
 
 def like(activity_id, work_id, client, enabled):
-    require_open(activity_id); books.require_work(work_id)
+    require_open(activity_id); books.require_work(work_id, public=False)
     row = votes(activity_id).filter(work_id=work_id, anonymous_client=client).first()
     if not enabled:
         if row:

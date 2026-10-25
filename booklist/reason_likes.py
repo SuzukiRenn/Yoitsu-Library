@@ -29,7 +29,7 @@ def like(request, data, work_id, reason_id, activity_id=None):
     def operation():
         if activity_id is not None:
             activities.advance_due(); activities.require_open(activity_id)
-            books.require_work(work_id)
+            books.require_work(work_id, public=False)
             query = activities.recs(activity_id)
         else:
             books.require_work(work_id)

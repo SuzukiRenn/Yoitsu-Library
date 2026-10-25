@@ -24,6 +24,7 @@ if (form) {
   const manual = document.querySelector('#manual-metadata');
   function manualState(show) { if (manual) { manual.hidden = !show; manual.disabled = !show; } }
   const editing = form.dataset.editing === 'true', activity = form.dataset.activity;
+  const activityOnly = form.dataset.recommendationDestination === 'activity_only';
   let selected = form.dataset.work ? {id: Number(form.dataset.work), in_scope: form.dataset.inScope === 'true', recommended: form.dataset.recommended === 'true', recommendation_count: Number(form.dataset.recommendationCount || 0), own_reason: reason.value} : null;
   const referenceEditor=createReasonReferenceEditor(reason,{exclude:()=>selected?.id});
   let timer = null, composing = false, busy = false, searchState = selected || editing ? 'ready' : 'idle';
@@ -54,7 +55,7 @@ if (form) {
   }
   function label() {
     const plusOne = !editing && !selected?.recommended && Boolean(selected?.in_scope);
-    submit.textContent = editing || selected?.recommended ? '保存' : plusOne ? '+1' : '推荐';
+    submit.textContent = editing || selected?.recommended ? '保存' : plusOne ? '+1' : activityOnly ? '推荐到本期' : '推荐';
     submitTip.hidden = !plusOne;
     if (plusOne) submit.setAttribute('aria-describedby',submitTip.id);
     else submit.removeAttribute('aria-describedby');
@@ -204,7 +205,10 @@ if (form) {
         try { payload.metadata = readMetadata(form); }
         catch (error) { status.textContent = error.message || '简介最多 2000 字'; return; }
       }
-      if(activity && !editing)payload.copy_public_reason=document.querySelector('#copy-public-reason').checked;
+      if(activity && !editing){
+        payload.copy_public_reason=Boolean(document.querySelector('#copy-public-reason')?.checked);
+        payload.expected_recommendation_destination=form.dataset.recommendationDestination;
+      }
       if (manual) manual.disabled = true;
       const result=await write(form.dataset.target,payload);
       if(result.status==='pending'){status.textContent='待核查'; submit.hidden=true;}

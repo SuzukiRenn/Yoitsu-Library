@@ -61,7 +61,7 @@ def detail_api(request, data, activity_id):
 FIELDS = {'work_id': (int, type(None)), 'title': str, 'reason': str, 'confirmed_unmatched': bool, 'copy_public_reason': bool}
 
 
-@endpoint('POST', fields=FIELDS, optional_fields={'metadata': dict, 'contains_spoilers': bool, 'references':list})
+@endpoint('POST', fields=FIELDS, optional_fields={'metadata': dict, 'contains_spoilers': bool, 'references':list, 'expected_recommendation_destination':str})
 def submit(request, data, activity_id):
     activities.advance_due()
     return write(request, f'activity.submit.{activity_id}', data, lambda: activities.submit(activity_id, request.anonymous_client, data))
@@ -70,7 +70,7 @@ def submit(request, data, activity_id):
 def guarded_recommendation(request, data, activity_id, work_id, enabled):
     if not enabled:
         activities.require_open(activity_id)
-        work = books.require_work(work_id)
+        work = books.require_work(work_id, public=False)
         from .withdrawal import require_confirmation
         require_confirmation(work, request.anonymous_client, activity_id, data.get('confirmation'))
     return activities.recommend(activity_id, work_id, request.anonymous_client, enabled)
@@ -115,12 +115,12 @@ def reasons(request, data, activity_id, work_id):
     return JsonResponse({'total':query.count(), 'results':entries(query, request.anonymous_client, offset=offset, limit=size, writable=activities.writable(period))})
 
 
-@endpoint('POST', admin=True, fields=('title','theme','start_at','end_at'))
+@endpoint('POST', admin=True, fields=('title','theme','start_at','end_at'), optional_fields={'recommendation_destination':str})
 def create(request, data):
     return JsonResponse(activity_admin.create(request.admin, data), status=201)
 
 
-@endpoint('POST', admin=True, fields=('title','theme','start_at','end_at','reason'))
+@endpoint('POST', admin=True, fields=('title','theme','start_at','end_at','reason'), optional_fields={'recommendation_destination':str})
 def update(request, data, activity_id):
     activities.advance_due()
     return JsonResponse(activity_admin.update(request.admin, activity_id, data))
