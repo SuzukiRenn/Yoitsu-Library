@@ -52,8 +52,7 @@ def attribution(query, work_ids):
     seen = set()
     for row in rows:
         account = owners.get(row.anonymous_client_id)
-        person = {'username': account.username if account else '',
-            'display_name': account.display_name if account else '历史匿名推荐者',
+        person = {'display_name': account.display_name if account else '历史匿名推荐者',
             'withdrawn': row.withdrawn_at is not None}
         firsts.setdefault(row.work_id, (row.anonymous_client_id, person))
         if row.withdrawn_at is None and (row.work_id, row.anonymous_client_id) not in seen:

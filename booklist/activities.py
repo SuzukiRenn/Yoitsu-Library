@@ -118,6 +118,18 @@ def listing(activity_id, client=None, page=1, page_size=20, *, work_id=None, sor
             'tags':sorted(tag_counts.values(),key=lambda tag:(-tag['count'],tag['name'],tag['id']))}
 
 
+def ensure_snapshot(activity, work):
+    """Create a complete participation snapshot once; never rewrite an existing snapshot."""
+    snap = ActivityWork.objects.filter(activity=activity, work=work, archived_at__isnull=True, merged_into__isnull=True).first()
+    if snap is None:
+        metadata = catalog.serialize_works([work], detail=True)[0]
+        snap = ActivityWork.objects.create(activity=activity, work=work, snapshot_title=normalize(work.display_title, 'title', required=True),
+            snapshot_author=normalize(metadata['author'], 'title'),
+            snapshot_description=metadata['description'], snapshot_tags=metadata['tags'],
+            snapshot_cover_url=catalog.snapshot_cover(work))
+    return snap
+
+
 def submit(activity_id, client, data):
     activity = require_open(activity_id)
     reason = normalize(data['reason'], 'reason')
@@ -130,13 +142,7 @@ def submit(activity_id, client, data):
             reason=reason, reason_references=refs, contains_spoilers=bool(reason) and data.get('contains_spoilers', False), copy_public_reason=data['copy_public_reason'])
         return {'status': 'pending'}
     books.enroll(work)
-    snap = ActivityWork.objects.filter(activity=activity, work=work, archived_at__isnull=True, merged_into__isnull=True).first()
-    if snap is None:
-        metadata = catalog.work_detail(work.pk)
-        snap = ActivityWork.objects.create(activity=activity, work=work, snapshot_title=normalize(work.display_title, 'title', required=True),
-            snapshot_author=normalize(metadata['author'], 'title'),
-            snapshot_description=metadata['description'], snapshot_tags=metadata['tags'],
-            snapshot_cover_url=catalog.snapshot_cover(work))
+    snap = ensure_snapshot(activity, work)
     row = recs(activity_id).filter(work=work, anonymous_client=client).first()
     if row:
         edit_reason(row, reason, data.get('contains_spoilers'), refs)

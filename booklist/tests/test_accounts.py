@@ -153,11 +153,48 @@ class AccountTests(TestCase):
             self.assertEqual(self.post(client, '/api/v1/account/login/', {'username': 'alice', 'password': 'wrong'}).status_code, 401)
         self.assertEqual(self.post(client, '/api/v1/account/login/', {'username': 'alice', 'password': PASSWORD}).status_code, 429)
 
+    def test_guest_and_reader_public_payloads_only_expose_nicknames(self):
+        for activity in (False, True):
+            self.recommend('alice', activity=activity)
+            if not activity:
+                books.set_reason(self.work, self.readers['alice'].principal, '公开理由')
+        from booklist.models import PublicRecommendation
+        _, legacy = services.issue_anonymous()
+        books.set_relation(self.work, legacy, 'recommend', True)
+        books.set_reason(self.work, legacy, '旧匿名理由')
+        paths = [
+            '/api/v1/public/works/',
+            f'/api/v1/public/stats/?ids={self.work.pk}',
+            f'/api/v1/public/works/{self.work.pk}/reasons/',
+            f'/api/v1/activities/{self.activity.pk}/',
+            f'/api/v1/activities/{self.activity.pk}/stats/?ids={self.work.pk}',
+            f'/api/v1/activities/{self.activity.pk}/works/{self.work.pk}/reasons/',
+        ]
+        def check(value):
+            if isinstance(value, dict):
+                self.assertNotIn('username', value)
+                for child in value.values(): check(child)
+            elif isinstance(value, list):
+                for child in value: check(child)
+            elif isinstance(value, str):
+                self.assertNotEqual(value, 'alice')
+        for client in (self.browser(), self.browser('bob')):
+            for path in paths:
+                with self.subTest(path=path):
+                    response=client.get(path)
+                    self.assertEqual(response.status_code, 200, response.content)
+                    check(response.json())
+        listing=self.browser().get('/api/v1/public/works/').json()
+        self.assertIn('青禾', json.dumps(listing, ensure_ascii=False))
+        self.assertIn('历史匿名推荐者', json.dumps(listing, ensure_ascii=False))
+        self.assertEqual(accounts.public(self.readers['alice'])['username'], 'alice')
+
+
     def test_first_and_co_recommendation_withdrawal_rejoin_and_live_snapshot(self):
         self.recommend('alice')
         response = self.relation('bob', 'recommend')
-        self.assertEqual(response.json()['work']['first_recommender']['username'], 'alice')
-        self.assertEqual(response.json()['work']['co_recommenders'][0]['username'], 'bob')
+        self.assertEqual(response.json()['work']['first_recommender']['display_name'], '青禾')
+        self.assertEqual(response.json()['work']['co_recommenders'][0]['display_name'], '林间')
         self.relation('alice', 'recommend', False)
         row = self.browser('bob').get('/api/v1/public/stats/', {'ids': self.work.pk}).json()['results'][0]
         self.assertTrue(row['first_recommender']['withdrawn'])
@@ -212,7 +249,7 @@ class AccountTests(TestCase):
         self.relation('carol', 'like', False, activity=True); self.relation('carol', 'like', activity=True)
         self.assertEqual(Notification.objects.count(), 4)
         self.assertEqual(books.serialize([self.work])[0]['recommendation_count'], 2)
-        self.assertEqual(activities.listing(self.activity.pk)['results'][0]['co_recommenders'][0]['username'], 'bob')
+        self.assertEqual(activities.listing(self.activity.pk)['results'][0]['co_recommenders'][0]['display_name'], '林间')
         browser = self.browser('alice')
         self.assertNotContains(browser.get(f'/activities/{self.activity.pk}/'), 'data-recommenders')
         self.assertContains(browser.get(f'/works/{self.work.pk}/?activity={self.activity.pk}'), 'data-recommenders')
@@ -226,7 +263,7 @@ class AccountTests(TestCase):
         self.assertEqual(ReasonLike.objects.count(), 1)
         self.assertEqual(Notification.objects.count(), 0)
         row = books.serialize([self.work])[0]['top_reason']
-        self.assertEqual(row['author']['username'], 'alice')
+        self.assertEqual(row['author'], {'display_name': '青禾'})
         self.assertEqual(row['like_count'], 1)
         self.assertEqual(PublicLike.objects.count(), 0)
         detail = client.get(f'/works/{self.work.pk}/')

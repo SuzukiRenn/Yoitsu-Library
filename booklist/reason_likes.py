@@ -25,9 +25,8 @@ def entries(query, client=None, *, limit=None, offset=0, popular=False, writable
     owners = {account.principal_id: account for account in Account.objects.filter(principal_id__in=[row.anonymous_client_id for row in rows])}
     return decorate([{'id': row.pk, 'reason': row.reason, 'reason_references': row.reason_references,
         'contains_spoilers': row.contains_spoilers, 'like_count': row.like_count, 'liked': row.liked,
-        'author': {'display_name': owners[row.anonymous_client_id].display_name,
-                   'username': owners[row.anonymous_client_id].username} if row.anonymous_client_id in owners
-                   else {'display_name': '历史匿名推荐者', 'username': ''}, 'writable': writable} for row in rows])
+        'author': {'display_name': owners[row.anonymous_client_id].display_name} if row.anonymous_client_id in owners
+                   else {'display_name': '历史匿名推荐者'}, 'writable': writable} for row in rows])
 
 
 @endpoint('POST', fields={'enabled': bool})

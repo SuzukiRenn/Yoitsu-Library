@@ -55,7 +55,7 @@ export function createShelfRefresh({doc = document, win = window, fetcher = fetc
     for(const incoming of newCards){
       const current=grid.querySelector?.(`[data-shelf-work="${incoming.dataset.shelfWork}"]`);
       if(!current)continue;
-      for(const selector of ['.book-info .book-title','.book-info .work-author']){
+      for(const selector of ['.book-info .book-title','.book-info .work-author','.book-info .tags']){
         const field=current.querySelector(selector),nextField=incoming.querySelector(selector);
         if(field && nextField && field.innerHTML!==nextField.innerHTML)field.replaceChildren(...[...nextField.childNodes].map(node=>doc.importNode(node,true)));
       }
