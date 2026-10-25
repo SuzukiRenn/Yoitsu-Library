@@ -1,12 +1,15 @@
 import {motionPreference} from './motion-preference.mjs?v=20261025-1';
 // Native details keeps tag filtering usable without JavaScript; the panel is out of flow.
 const filters=new WeakMap();
+const TAG_BATCH_SIZE=12;
 export function initializeTagFilters(scope=document){
  for(const form of scope.querySelectorAll('[data-tag-filter]')){
   if(filters.has(form))continue;
   const dropdown=form.querySelector('[data-tag-dropdown]');
   const list=form.querySelector('#filter-tags'),search=form.querySelector('#tag-search');
   const count=form.querySelector('[data-tag-selection-count]'),empty=form.querySelector('.tag-filter-empty');
+  const more=form.querySelector('[data-tag-load-more]');
+  let visibleLimit=TAG_BATCH_SIZE;
   const picked=form.querySelector('[data-picked-tags]'),pickedSection=form.querySelector('[data-picked-section]');
   const win=form.ownerDocument.defaultView,reduced=motionPreference(win,form.ownerDocument);
   const animations=new Set();
@@ -28,17 +31,20 @@ export function initializeTagFilters(scope=document){
   function clearMotion(){for(const animation of animations)animation.cancel();animations.clear();}
   function render(){
    const focused=form.ownerDocument.activeElement;
-   const query=key(search.value);let selected=0,visible=0;
+   const query=key(search.value);let selected=0,visible=0,matching=0;
    for(const destination of [picked,list]){
     const desired=labels.filter(label=>label.querySelector('input').checked===(destination===picked));
     desired.forEach((label,index)=>{
      if(destination.children[index]!==label)destination.insertBefore(label,destination.children[index] || null);
      const checked=label.querySelector('input').checked;
-     label.hidden=!checked && !!query && !key(label.dataset.tagName).includes(query);
+     const matches=!query || key(label.dataset.tagName).includes(query);
+     if(!checked && matches)matching++;
+     label.hidden=!checked && (!matches || matching>visibleLimit);
      if(checked)selected++;else if(!label.hidden)visible++;
     });
    }
    pickedSection.hidden=!selected;
+   if(more)more.hidden=matching<=visibleLimit;
    const total=selected+[...form.querySelectorAll('[data-personal-filter]')].filter(input=>input.checked).length;
    count.textContent=String(total);count.hidden=!total;empty.hidden=!!visible;
    if(form.contains(focused) && focused.isConnected && form.ownerDocument.activeElement!==focused)focused.focus({preventScroll:true});
@@ -58,7 +64,16 @@ export function initializeTagFilters(scope=document){
     animations.add(animation);const done=()=>animations.delete(animation);animation.finished.then(done,done);
    }
   }
-  search.addEventListener('input',update);
+  search.addEventListener('input',()=>{visibleLimit=TAG_BATCH_SIZE;update();});
+  more?.addEventListener('click',()=>{
+   const restoreFocus=form.ownerDocument.activeElement===more;
+   visibleLimit+=TAG_BATCH_SIZE;update();
+   // The final batch hides the control; keep keyboard focus inside the newly revealed list.
+   if(more.hidden && restoreFocus){
+    [...list.querySelectorAll('[data-tag-name]')].filter(label=>!label.hidden).at(-1)?.querySelector('input').focus({preventScroll:true});
+   }
+   fitPanel();
+  });
   form.addEventListener('change',update);
   form.querySelector('[data-clear-tag-selection]').addEventListener('click',()=>{
    labels.forEach(label=>{label.querySelector('input').checked=false;});

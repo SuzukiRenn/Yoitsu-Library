@@ -2,7 +2,7 @@ import {syncHeatLabels} from './heat-display.mjs?v=20261025-1';
 import {createShelfMotion} from './shelf-motion.mjs?v=20261025-reading-1';
 import {initializeCovers} from './cover-images.mjs?v=20261020-2';
 import {initializePageSizes} from './page-size.mjs?v=20261020-2';
-import {initializeTagFilters, updateTagFilter} from './tag-filter.mjs?v=20261025-reading-1';
+import {initializeTagFilters, updateTagFilter} from './tag-filter.mjs?v=20261025-tags-more-1';
 
 const ids = grid => [...grid.querySelectorAll('[data-shelf-work]')].map(card => card.dataset.shelfWork);
 export function membershipChanged(before, after) {
