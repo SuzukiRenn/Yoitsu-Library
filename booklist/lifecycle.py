@@ -14,9 +14,14 @@ def freeze_activity_metadata(activity_id):
         snap.save(update_fields=['snapshot_description', 'snapshot_tags', 'updated_at'])
 
 
+def manual_can_retire(work):
+    return not (work.wenku8_book_id or work.merged_into_id or work.hidden_at or
+        work.review_status != 'clear' or 'manual_retired_at' in work.source_metadata)
+
+
 def retire_manual_if_unused(work):
     from . import catalog, public_booklist as books, services
-    if work.wenku8_book_id or work.merged_into_id or work.hidden_at or work.review_status != 'clear' or 'manual_retired_at' in work.source_metadata:
+    if not manual_can_retire(work):
         return
     if books.recommendations().filter(work=work).exists():
         return

@@ -98,7 +98,7 @@ function initialize(root) {
   input.addEventListener('compositionstart',()=>{composing=true;hide();});
   input.addEventListener('compositionend',()=>{composing=false;schedule();});
   input.addEventListener('keydown',event=>{
-    if (composing || event.isComposing) return;
+    if (composing || event.isComposing || event.keyCode===229) return;
     if (event.key==='Escape') {event.preventDefault();hide();return;}
     if (!panel.hidden && ['PageUp','PageDown'].includes(event.key)) {
       event.preventDefault();

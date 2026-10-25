@@ -1,10 +1,12 @@
-import {createReasonReferenceEditor} from './reason-reference-editor.mjs?v=20261024-references-slash-1';
+import {createReasonReferenceEditor} from './reason-reference-editor.mjs?v=20261025-keyboard-1';
 import {appendEditionBadge} from './edition-badge.mjs?v=20261024-editions-1';
 import {createPublicApi} from './public-api.mjs?v=20261024-identity-sync';
 import {createSearchController} from './catalog-search.mjs?v=20261022-1';
 import {normalize} from './text.mjs';
-import {createCandidatePreview} from './candidate-preview.mjs?v=20261024-editions-1';
-import {readMetadata} from './manual-metadata.mjs?v=20261020-5';
+import {createCandidatePreview} from './candidate-preview.mjs?v=20261025-keyboard-1';
+import {readMetadata} from './manual-metadata.mjs?v=20261025-keyboard-1';
+
+import {installCandidateKeyboard} from './candidate-keyboard.mjs?v=20261025-1';
 
 const form = document.querySelector('#recommend-form');
 if (form) {
@@ -144,6 +146,8 @@ if (form) {
       if (moveFocus) firstNewCandidate?.focus({preventScroll:true});
     }
   });
+  installCandidateKeyboard({input:query,list:candidates,selector:'.candidate',isComposing:()=>composing,onEscape:()=>preview.hide(),
+    onEnter:()=>{if(!editing && !selected && !busy){clearTimeout(timer);search.run(query.value);}}});
   function invalidate() {
     hideSelectedCard();
     manualNew=false;

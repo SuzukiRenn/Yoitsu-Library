@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import {installCandidateKeyboard} from '../static/candidate-keyboard.mjs';
+const inputEvents={},listEvents={};let focused=null,escaped=0,entered=0,composing=false;
+const input={addEventListener:(k,f)=>inputEvents[k]=f,focus:()=>focused=input};
+const item=()=>({hidden:false,disabled:false,getClientRects:()=>[{}],focus(){focused=this;}});
+const a=item(),b=item(),hidden=item();hidden.hidden=true;
+let pending=false;
+const list={getAttribute:()=>pending?'true':'false',addEventListener:(k,f)=>listEvents[k]=f,querySelectorAll:()=>[a,hidden,b]};
+installCandidateKeyboard({input,list,selector:'.candidate',isComposing:()=>composing,onEscape:()=>escaped++,onEnter:()=>entered++});
+const event=(key,target=input,extra={})=>({key,target,preventDefault(){this.prevented=true;},stopPropagation(){this.stopped=true;},...extra});
+inputEvents.keydown(event('ArrowDown'));assert.equal(focused,a);
+listEvents.keydown(event('ArrowDown',a));assert.equal(focused,b);
+listEvents.keydown(event('ArrowDown',b));assert.equal(focused,a);
+listEvents.keydown(event('ArrowUp',a));assert.equal(focused,b);
+const enter=event('Enter',a);listEvents.keydown(enter);assert.equal(enter.prevented,undefined,'Native Enter must activate the focused candidate');
+listEvents.keydown(event('Escape',a));assert.equal(focused,input);assert.equal(escaped,1);
+inputEvents.keydown(event('Enter'));assert.equal(entered,1);
+for(const extra of [{isComposing:true},{keyCode:229},{ctrlKey:true},{shiftKey:true}]){focused=null;inputEvents.keydown(event('ArrowDown',input,extra));assert.equal(focused,null);}
+pending=true;focused=null;inputEvents.keydown(event('ArrowDown'));assert.equal(focused,null);pending=false;
+composing=true;inputEvents.keydown(event('Enter'));assert.equal(entered,1);
+const text=item();listEvents.keydown(event('ArrowDown',text));assert.equal(focused,null,'Do not intercept keys in unrelated controls');
+console.log('Candidate arrows, native Enter, Escape focus return, IME and unrelated keys passed');

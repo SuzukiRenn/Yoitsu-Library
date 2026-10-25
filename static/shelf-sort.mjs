@@ -13,7 +13,7 @@ export function installShelfSort(refresh, {doc=document,win=window,fetcher=fetch
       if(dropdown.open){const tags=shelf.querySelector('[data-tag-dropdown]');if(tags)tags.open=false;}
     });
     dropdown.addEventListener('keydown',event=>{
-      if(event.key==='Escape' && dropdown.open){event.preventDefault();dropdown.open=false;dropdown.querySelector('summary').focus();}
+      if(event.key==='Escape' && !event.isComposing && event.keyCode!==229 && !event.defaultPrevented && dropdown.open){event.preventDefault();dropdown.open=false;dropdown.querySelector('summary').focus();}
     });
   }
   const status=doc.querySelector('#action-status');

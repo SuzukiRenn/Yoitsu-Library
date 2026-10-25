@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {writeWithConfirmation} from '../static/withdraw-confirm.mjs';
+const prompt=token=>Object.assign(Error('last'),{code:'withdrawal_confirmation_required',confirmation:{token,message:'最后一份推荐'}});
+let calls=[],dialogs=0;
+assert.equal(await writeWithConfirmation(async(url,payload)=>{calls.push(payload);throw prompt('token');},'/recommend/',{enabled:false},async()=>{dialogs++;return false;}),null);
+assert.equal(calls.length,1);assert.equal(dialogs,1);
+calls=[];dialogs=0;
+const result=await writeWithConfirmation(async(url,payload)=>{calls.push(payload);if(calls.length===1)throw prompt('first');if(calls.length===2)throw prompt('changed');return {saved:true};},'/recommend/',{enabled:false},async()=>{dialogs++;return true;});
+assert.deepEqual(result,{saved:true});assert.equal(dialogs,2);
+assert.deepEqual(calls,[{enabled:false},{enabled:false,confirmation:'first'},{enabled:false,confirmation:'changed'}]);
+assert.deepEqual(await writeWithConfirmation(async()=>({saved:true}),'/recommend/',{enabled:false},()=>assert.fail('Ordinary withdrawal must stay quick')),{saved:true});
+await assert.rejects(writeWithConfirmation(async()=>{throw Error('offline');},'/recommend/',{enabled:false},()=>assert.fail()),/offline/);
+console.log('Withdrawal cancellation, changed effects, quick ordinary actions and network errors passed');

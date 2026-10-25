@@ -60,7 +60,8 @@ def endpoint(method, admin=False, fields=(), optional_fields=None):
                         return error('invalid_request', '字段缺失、类型错误或含未知字段', 400)
                 return fn(request, data, *args, **kwargs)
             except services.DomainError as exc:
-                response = error(exc.code, exc.message, exc.status)
+                response = (JsonResponse({'error': {'code':exc.code, 'message':exc.message, 'confirmation':exc.confirmation}}, status=exc.status)
+                            if hasattr(exc, 'confirmation') else error(exc.code, exc.message, exc.status))
                 if exc.status == 429:
                     response['Retry-After'] = '60'
                 return response

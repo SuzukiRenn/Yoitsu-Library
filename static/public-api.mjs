@@ -8,7 +8,7 @@ export function createPublicApi({fetcher = fetch, newKey = () => crypto.randomUU
         window.location.assign('/account/login/?next=' + encodeURIComponent(window.location.pathname + window.location.search + window.location.hash));
       }
       const error = Error(body.error?.message || '请求失败');
-      error.status = response.status; error.code = body.error?.code;
+      error.status = response.status; error.code = body.error?.code; error.confirmation = body.error?.confirmation;
       throw error;
     }
     return body;
