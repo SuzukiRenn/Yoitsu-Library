@@ -1,4 +1,4 @@
-{% extends 'booklist/base.html' %}
+{% extends 'booklist/base.html' %}{% load search_highlight %}
 {% block feedback_footer %}{% endblock %}
 {% block header_class %} public-header{% endblock %}
 {% block site_location %}<h1 class="header-current"><span aria-hidden="true">/</span> 公共书架</h1>{% endblock %}
@@ -6,7 +6,7 @@
 {% block content %}
 <section class="public-shelf" data-live-shelf>
 {% include 'booklist/shelf_controls.html' %}<p class="sr-only" data-shelf-status role="status"></p>
-<div class="book-grid" data-shelf-grid>{% for work in results %}<article class="public-card" data-shelf-work="{{ work.id }}"><div class="public-card-main"><a class="card-open" href="/works/{{ work.id }}/" tabindex="-1" aria-label="{{ work.title }}"></a><div class="public-book"><a class="book-cover" href="/works/{{ work.id }}/" aria-label="{{ work.title }}">{% include 'booklist/cover_image.html' %}</a><div class="book-info"><a class="book-title" href="/works/{{ work.id }}/">{{ work.title }}{% include 'booklist/web_badge.html' %}</a>{% if work.author %}<p class="book-author">{% include 'booklist/work_author.html' %}</p>{% endif %}<div class="tags">{% include 'booklist/work_tags.html' %}</div></div></div>
+<div class="book-grid" data-shelf-grid>{% for work in results %}<article class="public-card" data-shelf-work="{{ work.id }}"><div class="public-card-main"><a class="card-open" href="/works/{{ work.id }}/" tabindex="-1" aria-label="{{ work.title }}"></a><div class="public-book"><a class="book-cover" href="/works/{{ work.id }}/" aria-label="{{ work.title }}">{% include 'booklist/cover_image.html' %}</a><div class="book-info"><a class="book-title" href="/works/{{ work.id }}/">{% highlight_text work.title query %}{% include 'booklist/web_badge.html' %}</a>{% if work.author %}<p class="book-author">{% include 'booklist/work_author.html' with highlight_query=query %}</p>{% endif %}<div class="tags">{% include 'booklist/work_tags.html' %}</div></div></div>
 {% include 'booklist/actions.html' %}</div>
 {% include 'booklist/reason_preview.html' %}</article>{% empty %}<div class="empty-state"><h2>{% if query or selected_tags or recommended_only or liked_only %}没有找到匹配的作品{% else %}暂无推荐{% endif %}</h2></div>{% endfor %}</div>
 <div data-shelf-pagination="bottom">{% include 'booklist/list_pagination.html' %}</div></section>

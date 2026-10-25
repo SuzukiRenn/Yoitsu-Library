@@ -1,4 +1,4 @@
-import {createShelfViewMotion} from './shelf-view-motion.mjs?v=20261024-motion-perf-1';
+import {createShelfViewMotion} from './shelf-view-motion.mjs?v=20261025-reading-1';
 export function installShelfView(doc=document,win=window){
  const shelf=doc.querySelector('[data-live-shelf]'),button=doc.querySelector('[data-shelf-view-toggle]');
  if(!shelf || !button)return;

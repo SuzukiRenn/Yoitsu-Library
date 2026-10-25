@@ -26,7 +26,7 @@ body:has([data-shelf-view-toggle]) .appearance-toggle{bottom:calc(33.333vh + 174
 .appearance-mode-option:has(input:checked){background:var(--wash);border-color:var(--accent);font-weight:600}
 .appearance-mode-option>input,.appearance-color-option>input{position:absolute;width:1px;height:1px;opacity:0;margin:0;pointer-events:none}
 .appearance-mode-option:has(input:focus-visible),.appearance-color-option:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:3px}
-.appearance-colors{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.appearance-colors{display:grid;grid-template-columns:repeat(5,44px);justify-content:start;gap:8px}
 .appearance-dialog .appearance-color-option{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:8px 3px;margin:0;border-radius:6px;font-size:12px;color:var(--muted);cursor:pointer}
 .appearance-swatch{display:block;width:32px;height:32px;border:3px solid var(--surface);border-radius:50%;box-shadow:0 0 0 1px var(--line);background:#555555}
 .appearance-swatch[data-color=moss]{background:#708a72}.appearance-swatch[data-color=blue]{background:#748ca7}.appearance-swatch[data-color=rose]{background:#ad8797}.appearance-swatch[data-color=brown]{background:#a18c6c}
@@ -41,3 +41,12 @@ body:has([data-shelf-view-toggle]) .appearance-toggle{bottom:calc(33.333vh + 174
 @media(max-width:700px){.appearance-toggle{bottom:calc(33.333vh + 112px + env(safe-area-inset-bottom))}body:has([data-shelf-view-toggle]) .appearance-toggle{bottom:calc(33.333vh + 168px + env(safe-area-inset-bottom))}}
 @media(max-width:480px){.appearance-dialog{padding:20px}.appearance-colors{gap:5px}.appearance-actions>button{min-height:44px;padding-inline:14px}.appearance-actions>.appearance-reset{padding-left:0}}
 @media(prefers-reduced-motion:no-preference){.appearance-dialog[open]{animation:booklist-content-enter 180ms ease-out}}
+
+.appearance-motion-options{grid-template-columns:repeat(2,minmax(0,1fr))}
+.appearance-dialog .appearance-heat-option{display:flex;align-items:center;gap:10px;margin:0;font-size:14px;line-height:20px;cursor:pointer}
+.appearance-heat-option input{appearance:none;-webkit-appearance:none;flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;align-self:center;border:1.5px solid var(--strong-line);border-radius:3px;background:var(--field);cursor:pointer}
+.appearance-heat-option input:checked{background:var(--check-bg);border-color:var(--check-bg);background-image:none}
+@media(forced-colors:active){.appearance-heat-option input:checked{forced-color-adjust:none;background:Highlight;border-color:Highlight}}
+.appearance-heat-option>span{position:relative;top:-1px}
+html[data-hide-heat=true] .public-actions :is([data-action-count],.work-stats strong){display:none}
+html[data-hide-heat=true] .combined-actions button[data-action]{width:76px;min-width:76px;max-width:76px;justify-content:center}

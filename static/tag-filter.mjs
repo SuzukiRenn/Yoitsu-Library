@@ -1,3 +1,4 @@
+import {motionPreference} from './motion-preference.mjs?v=20261025-1';
 // Native details keeps tag filtering usable without JavaScript; the panel is out of flow.
 const filters=new WeakMap();
 export function initializeTagFilters(scope=document){
@@ -7,7 +8,7 @@ export function initializeTagFilters(scope=document){
   const list=form.querySelector('#filter-tags'),search=form.querySelector('#tag-search');
   const count=form.querySelector('[data-tag-selection-count]'),empty=form.querySelector('.tag-filter-empty');
   const picked=form.querySelector('[data-picked-tags]'),pickedSection=form.querySelector('[data-picked-section]');
-  const win=form.ownerDocument.defaultView,reduced=win.matchMedia('(prefers-reduced-motion: reduce)');
+  const win=form.ownerDocument.defaultView,reduced=motionPreference(win,form.ownerDocument);
   const animations=new Set();
   let labels=[...list.querySelectorAll('[data-tag-name]')];
   const key=value=>value.normalize('NFKC').toLocaleLowerCase().trim();

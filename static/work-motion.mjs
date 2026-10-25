@@ -1,6 +1,7 @@
+import {motionPreference} from './motion-preference.mjs?v=20261025-1';
 // Native cross-document shared elements: leave links and document loading untouched.
 export function installWorkMotion(doc = document, win = window) {
-  const reduced = win.matchMedia('(prefers-reduced-motion: reduce)');
+  const reduced = motionPreference(win,doc);
   const native = 'CSSViewTransitionRule' in win && 'onpageswap' in win && 'onpagereveal' in win;
   let fallback = null;
   let selected = null;

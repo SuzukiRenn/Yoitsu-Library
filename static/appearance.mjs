@@ -1,22 +1,23 @@
-import {APPEARANCE_KEY,DEFAULT_APPEARANCE,decodeAppearance,applyAppearance,normalizeAppearance} from './appearance-state.mjs?v=20261024-appearance-1';
+import {APPEARANCE_KEY,DEFAULT_APPEARANCE,decodeAppearance,applyAppearance,normalizeAppearance} from './appearance-state.mjs?v=20261025-reading-1';
 
 export function installAppearance(doc=document,win=window){
  const trigger=doc.querySelector('[data-appearance-toggle]'),dialog=doc.querySelector('#appearance-settings');
  if(!trigger || !dialog || typeof dialog.showModal!=='function')return;
- const root=doc.documentElement,media=win.matchMedia('(prefers-color-scheme: dark)');
+ const root=doc.documentElement,media=win.matchMedia('(prefers-color-scheme: dark)'),motionMedia=win.matchMedia('(prefers-reduced-motion: reduce)');
  const status=dialog.querySelector('[data-appearance-status]');
- let committed=normalizeAppearance({mode:root.dataset.appearanceMode,color:root.dataset.colorTheme}),draft={...committed};
- const show=prefs=>applyAppearance(root,prefs,media.matches);
+ let committed=normalizeAppearance({mode:root.dataset.appearanceMode,color:root.dataset.colorTheme,motion:root.dataset.motionPreference,hideHeat:root.dataset.hideHeat==='true'}),draft={...committed};
+ const show=prefs=>{applyAppearance(root,prefs,media.matches,motionMedia.matches);if(win.CustomEvent)doc.dispatchEvent?.(new win.CustomEvent('booklist:preferences'));};
  const choices=()=>[...dialog.querySelectorAll('input[type=radio]')];
- function sync(){for(const input of choices())input.checked=draft[input.name]===input.value;}
- function preview(){draft=normalizeAppearance({mode:choices().find(input=>input.name==='mode' && input.checked)?.value,color:choices().find(input=>input.name==='color' && input.checked)?.value});show(draft);status.textContent='';}
+ const hideHeat=dialog.querySelector('[name=hideHeat]');
+ function sync(){for(const input of choices())input.checked=draft[input.name]===input.value;if(hideHeat)hideHeat.checked=draft.hideHeat;}
+ function preview(){draft=normalizeAppearance({mode:choices().find(input=>input.name==='mode' && input.checked)?.value,color:choices().find(input=>input.name==='color' && input.checked)?.value,motion:choices().find(input=>input.name==='motion' && input.checked)?.value,hideHeat:hideHeat?.checked});show(draft);status.textContent='';}
  trigger.addEventListener('click',()=>{
   if(dialog.open || doc.querySelector('dialog[open]'))return;
   draft={...committed};sync();status.textContent='';
   dialog.showModal();trigger.setAttribute('aria-expanded','true');
   choices().find(input=>input.name==='mode' && input.checked)?.focus({preventScroll:true});
  });
- dialog.addEventListener('change',event=>{if(event.target.matches?.('input[type=radio]'))preview();});
+ dialog.addEventListener('change',event=>{if(event.target.matches?.('input[type=radio],input[name=hideHeat]'))preview();});
  dialog.querySelector('[data-appearance-reset]').addEventListener('click',()=>{draft={...DEFAULT_APPEARANCE};sync();show(draft);status.textContent='';});
  for(const button of dialog.querySelectorAll('[data-appearance-cancel]'))button.addEventListener('click',()=>dialog.close());
  dialog.querySelector('[data-appearance-save]').addEventListener('click',()=>{
@@ -37,6 +38,7 @@ export function installAppearance(doc=document,win=window){
   else show(committed);
  });
  media.addEventListener('change',()=>show(dialog.open?draft:committed));
+ motionMedia.addEventListener('change',()=>show(dialog.open?draft:committed));
  win.addEventListener('pagehide',()=>{show(committed);if(dialog.open)dialog.close();});
  show(committed);trigger.hidden=false;
  if(win.CustomEvent)doc.dispatchEvent?.(new win.CustomEvent('booklist:floating-controls'));
