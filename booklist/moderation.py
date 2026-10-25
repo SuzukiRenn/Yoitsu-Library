@@ -82,10 +82,7 @@ def release_pending(work, actor, note, target_work=None):
             raise services.DomainError('pending_destination_changed', '待核查推荐的归属已变更，请恢复原归属或由读者重新提交后再审核', 409)
         if period.recommendation_destination == 'public':
             books.enroll(work)
-        snap = ActivityWork.objects.filter(work=work, activity=period, archived_at__isnull=True).first()
-        if snap is None:
-            snap = ActivityWork.objects.create(work=work, activity=period, snapshot_title=work.display_title,
-                snapshot_author=work.author_override if work.author_overridden else work.wenku8_author or '')
+        snap = activities.ensure_snapshot(period, work)
         if not Recommendation.objects.filter(work=work, activity=period, anonymous_client=submission.anonymous_client,
                 archived_at__isnull=True, invalidated_at__isnull=True, withdrawn_at__isnull=True).exists():
             rec = Recommendation.objects.create(work=work, activity=period, activity_work=snap, scope='activity',
