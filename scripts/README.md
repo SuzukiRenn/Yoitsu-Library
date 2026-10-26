@@ -62,3 +62,15 @@ node --check scripts/bili_review_ui/app.js
 | `booklist.tests.test_approved_snapshots` | 审核获批/合并完整快照及已有历史保留。 |
 
 Python业务回归通过 `manage.py test` 运行；先设置 `BOOKLIST_ENV=test`、独立 `BOOKLIST_DATA_DIR`，不能连接实际书库。完整命令及身份版旧匿名夹具开关见[首页开发验证](../README.md#开发验证)。Node专项脚本使用本机安装的Node运行；按测试文件说明确认运行条件，不把服务器部署命令当作本地测试。
+
+## 真实 DOM 标签焦点回归
+
+`test_live_shelf.mjs` 是保留卡片与外部控件的快速冒烟检查，不覆盖浏览器锚点断开后的真实焦点。FA-05专项请在当前工作树运行：
+
+```powershell
+python -B scripts/serve_live_shelf_dom.py --port 8984
+```
+
+打开终端给出的本机地址。测试页 `scripts/fixtures/live-shelf-focus.html` 直接调用本工作树的 `createShelfRefresh.apply`，使用浏览器真实元素和 `document.activeElement` 检查44个场景：公共/主题、默认/减少动效、其他标签增删/重排、当前标签删除的邻近回退、无标签回到作品标题、按钮/搜索框焦点、卡片移除与空书架。滚动位置在非零处检查。页面结果为 `failed: 0` 才通过；原Node冒烟全绿不能替代此检查。
+
+该服务器固定回环监听，只提供合成测试页和公开ES模块，不读取数据库或暴露运行目录。完成后关闭终端停止服务。此同步函数测试不替代实际书架的自然轮询浏览器复验，后者须使用独立合成库。

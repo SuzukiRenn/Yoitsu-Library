@@ -12,6 +12,11 @@ const tagSignature = form => JSON.stringify([...form?.querySelectorAll('[data-ta
   .map(label => [label.querySelector('input').value, label.dataset.tagName,
     label.querySelector('.tag-count').textContent]).sort((a,b) => a[0].localeCompare(b[0])));
 
+const tagKey = (link, base) => {
+  try { return new URL(link.getAttribute('href'), base).searchParams.get('tag'); }
+  catch { return null; }
+};
+
 // Fetch the same server-rendered page: permissions, sorting, filters and pagination
 // remain identical to normal navigation. Never execute scripts from that response.
 export function createShelfRefresh({doc = document, win = window, fetcher = fetch} = {}) {
@@ -29,6 +34,11 @@ export function createShelfRefresh({doc = document, win = window, fetcher = fetc
     const newCards = [...next.querySelectorAll('[data-shelf-grid] > [data-shelf-work]')];
     const finishMotion=changed && animateReorder ? motion.capture(grid) : null;
     const focusCard = focused?.closest('[data-shelf-work]');
+    // Tags are rendered as new anchors below. Bookmark identity before the old focus disconnects.
+    const tagLinks = [...focusCard?.querySelectorAll('.book-info .tags a.work-tag') || []];
+    const tagFocus = tagLinks.includes(focused) ? {
+      card: focusCard.dataset.shelfWork, key: tagKey(focused, win.location.href), index: tagLinks.indexOf(focused)
+    } : null;
     const focusRemoved = changed && focusCard && !after.includes(focusCard.dataset.shelfWork);
     const anchor = preserveAnchor && win.scrollY > 60 ? [...existing.values()].find(card =>
       after.includes(card.dataset.shelfWork) && card.getBoundingClientRect().bottom > 0) : null;
@@ -120,6 +130,13 @@ export function createShelfRefresh({doc = document, win = window, fetcher = fetc
       if (sort) for (const input of shelf.querySelectorAll('input[name="sort"]')) input.value=sort;
     }
     if (focused?.isConnected && doc.activeElement !== focused) focused.focus({preventScroll: true});
+    else if (tagFocus && after.includes(tagFocus.card)) {
+      const card = existing.get(tagFocus.card);
+      const links = [...card.querySelectorAll('.book-info .tags a.work-tag')];
+      const target = links.find(link => tagKey(link, win.location.href) === tagFocus.key)
+        || links[Math.min(tagFocus.index, links.length - 1)] || card.querySelector('.book-title');
+      target?.focus({preventScroll: true});
+    }
     else if (focusRemoved) {
       const target = grid.querySelector('.book-title') || shelf.querySelector('h1');
       if (target) {
