@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import {createShelfRefresh} from '../static/live-shelf.mjs';
 
-// Exercise actual refresh.apply on retained cards, including scopes with no membership changes.
+// Fast metadata/control smoke test. Actual anchor disconnect/focus is tested in
+// scripts/fixtures/live-shelf-focus.html using a native browser DOM.
 for (const scope of ['public', 'activity']) {
   const field=html=>({innerHTML:html,get childNodes(){return [{html:this.innerHTML}];},replaceChildren(...nodes){this.innerHTML=nodes.map(n=>n.html).join('');}});
   const tags=field('<a>原标签</a>'), title=field('作品'), author=field('作者');
@@ -23,4 +24,4 @@ for (const scope of ['public', 'activity']) {
     assert.equal(grid.querySelector(),current,scope+': retained card is not replaced');
   }
 }
-console.log('Public/activity retained cards reflect added/removed tags, preserving card and interaction focus.');
+console.log('Retained card metadata and external control smoke test passed; run the native DOM fixture for tag-anchor focus.');
