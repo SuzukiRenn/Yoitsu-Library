@@ -1,6 +1,6 @@
 # 脚本索引
 
-按要完成的任务选择脚本。网站功能修改看[业务目录](../booklist/)，页面修改看[模板](../templates/booklist/)和[静态资源](../static/)。
+按要完成的任务选择脚本。当前功能与版本边界先看[项目现状](../项目文档/项目现状与版本差异.md)，完整使用流程见[使用指南](../项目文档/功能与使用指南.md)。网站功能修改看[业务目录](../booklist/)，页面修改看[模板](../templates/booklist/)和[静态资源](../static/)。
 
 ## 哔哩轻小说采集与审核
 
@@ -49,3 +49,16 @@ node --check scripts/bili_review_ui/app.js
 | `test_*.py` / `test_*.mjs` | 专项离线、交互和部署验证脚本，运行条件依脚本及对应手册。 |
 
 涉及服务器的脚本按[部署手册](../项目文档/服务器预部署操作手册_2026-10-19.md)使用，不是本地启动网站的必要步骤。脚本执行记录属于本机运行数据，源码提交不会自动触发部署。
+
+## 浏览体验与验收回归入口
+
+| 验证 | 覆盖 |
+| --- | --- |
+| `node scripts/test_public_ui.mjs` | 写入、失败重试、轮询及嵌套作品引用。 |
+| `node scripts/test_live_shelf.mjs` | 保留卡片标签的增删/清空及交互节点保留。 |
+| `node scripts/test_shelf_sort.mjs` | 即时搜索、标签/作者链接、筛选及浏览历史。 |
+| `node scripts/test_shelf_view.mjs`、`test_shelf_view_motion.mjs` | 跨板块视图偏好、切换动效及降级。 |
+| `node scripts/test_appearance.mjs`、`test_reading_preferences.mjs` | 明暗、颜色、减少动效和数字显示偏好。 |
+| `booklist.tests.test_approved_snapshots` | 审核获批/合并完整快照及已有历史保留。 |
+
+Python业务回归通过 `manage.py test` 运行；先设置 `BOOKLIST_ENV=test`、独立 `BOOKLIST_DATA_DIR`，不能连接实际书库。完整命令及身份版旧匿名夹具开关见[首页开发验证](../README.md#开发验证)。Node专项脚本使用本机安装的Node运行；按测试文件说明确认运行条件，不把服务器部署命令当作本地测试。
