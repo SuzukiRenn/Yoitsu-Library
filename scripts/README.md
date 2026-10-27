@@ -74,3 +74,9 @@ python -B scripts/serve_live_shelf_dom.py --port 8984
 打开终端给出的本机地址。测试页 `scripts/fixtures/live-shelf-focus.html` 直接调用本工作树的 `createShelfRefresh.apply`，使用浏览器真实元素和 `document.activeElement` 检查44个场景：公共/主题、默认/减少动效、其他标签增删/重排、当前标签删除的邻近回退、无标签回到作品标题、按钮/搜索框焦点、卡片移除与空书架。滚动位置在非零处检查。页面结果为 `failed: 0` 才通过；原Node冒烟全绿不能替代此检查。
 
 该服务器固定回环监听，只提供合成测试页和公开ES模块，不读取数据库或暴露运行目录。完成后关闭终端停止服务。此同步函数测试不替代实际书架的自然轮询浏览器复验，后者须使用独立合成库。
+
+## 本机备份保留策略
+
+`pull_server_backup.ps1` 每次成功完成服务器归档下载和隔离恢复验证后，自动调用 `retain_offsite_backups.py`。最近7天保留全部，其前4个7天窗口各留最新一份，最新有效备份始终保留；异常文件不自动删除。现有Windows计划任务直接调用此脚本，无需重新安装。
+
+预览：`python -B scripts/retain_offsite_backups.py --directory backups/server`。仅在新备份验证后使用 `--apply --after-backup <归档绝对路径>`。离线回归：`python -B scripts/test_offsite_retention.py`，使用专用临时合成库，不接触真实备份。详见[保留策略](../项目文档/本机备份保留策略_2026-10-27.md)。

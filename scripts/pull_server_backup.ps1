@@ -52,3 +52,7 @@ if($IdentityFile){
  & ssh @taskOptions "root@$ServerHost" "ack $($taskReceipt.filename) $($taskReceipt.sha256)"
  if($LASTEXITCODE -ne 0){Write-Warning 'Local backup verified; remote export cleanup needs attention'}
 }
+
+# Retention runs only after the new bundle passed its independent restore drill.
+& (Join-Path $repoRoot ".venv/Scripts/python.exe") -B (Join-Path $repoRoot "scripts/retain_offsite_backups.py") --directory $Destination --after-backup $taskFile --apply
+if($LASTEXITCODE -ne 0){throw "New backup verified, but local retention needs attention; inspect backup logs"}
