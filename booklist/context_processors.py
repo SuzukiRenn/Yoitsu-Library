@@ -13,6 +13,6 @@ def site_legal(request):
     feedback_source = request.get_full_path() if re.fullmatch(r'/(?:works/[1-9][0-9]*/|activities/(?:[1-9][0-9]*/|history/)?|catalog/)?', request.path) else ''
     if len(feedback_source) > 1000:
         feedback_source = request.path
-    return {'icp_record': settings.ICP_RECORD, 'feedback_source': feedback_source,
+    return {'contact_email': settings.CONTACT_EMAIL, 'icp_record': settings.ICP_RECORD, 'feedback_source': feedback_source,
             'has_admin_access': getattr(request, 'admin', None) is not None,
             'admin_navigation_section': section}

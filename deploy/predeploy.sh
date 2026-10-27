@@ -64,6 +64,11 @@ timeout 3600 docker build --target verification -t "shared-booklist-verify:$rele
 docker run --rm --network none --memory 128m --read-only --tmpfs /tmp:size=32m "shared-booklist-verify:$release" python -c "import json,platform,sqlite3,subprocess;from lxml import etree;print(json.dumps({'verification_python':platform.python_version(),'sqlite':sqlite3.sqlite_version,'lxml':etree.LXML_VERSION,'libxml2':etree.LIBXML_VERSION,'node':subprocess.check_output(['node','--version'],text=True).strip()}))"
 docker run --rm --network none --memory 512m --cpus 1 --read-only --tmpfs /tmp:size=128m --tmpfs /app/.runtime:size=16m,uid=10001,gid=10001,mode=0700 "shared-booklist-verify:$release"
 docker run --rm --network none --memory 128m --read-only --tmpfs /tmp:size=32m "shared-booklist-verify:$release" python scripts/test_deploy.py
+echo 'PHASE backup_operations_regression'
+for check in scripts/test_launch_operations.py scripts/test_operational_safety.py scripts/test_offsite_retention.py; do
+  docker run --rm --network none --memory 256m --cpus 1 --read-only --tmpfs /tmp:size=128m "shared-booklist-verify:$release" python "$check"
+done
+
 echo 'PHASE initialize_private_configuration'
 install -d -m 0700 -o 10001 -g 10001 "$state/data" "$state/backups"
 python3 - <<'PY'

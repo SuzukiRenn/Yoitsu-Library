@@ -80,3 +80,12 @@ python -B scripts/serve_live_shelf_dom.py --port 8984
 `pull_server_backup.ps1` 每次成功完成服务器归档下载和隔离恢复验证后，自动调用 `retain_offsite_backups.py`。最近7天保留全部，其前4个7天窗口各留最新一份，最新有效备份始终保留；异常文件不自动删除。现有Windows计划任务直接调用此脚本，无需重新安装。
 
 预览：`python -B scripts/retain_offsite_backups.py --directory backups/server`。仅在新备份验证后使用 `--apply --after-backup <归档绝对路径>`。离线回归：`python -B scripts/test_offsite_retention.py`，使用专用临时合成库，不接触真实备份。详见[保留策略](../项目文档/本机备份保留策略_2026-10-27.md)。
+
+## 两版上线信息与备份监控
+
+- `pull_all_server_backups.ps1`：分别验证两版异地副本，再执行各自本机保留策略。
+- `retain_sqlite_backups.py`：服务器已验证数据库副本轮换，旧无回执文件受保护。
+- `deploy/operations_monitor.py`：私有服务、HTTPS、磁盘、备份与证书状态，不发送邮件。
+- `test_launch_operations.py`：协议隔离、恢复/保留和告警去重的离线安全回归。
+
+详见[上线信息与运维准备](../项目文档/两版上线信息与运维准备_2026-10-27.md)。

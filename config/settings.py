@@ -72,3 +72,12 @@ ADMIN_COOKIE = 'booklist_admin'
 ANONYMOUS_AGE = 365 * 86400
 ADMIN_AGE = 12 * 3600
 IDEMPOTENCY_AGE = 86400
+
+# Public contact only. SMTP credentials belong in private operator configuration.
+CONTACT_EMAIL = os.environ.get('BOOKLIST_CONTACT_EMAIL', 'kuroneko0217@outlook.com').strip()
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
+try:
+    validate_email(CONTACT_EMAIL)
+except ValidationError:
+    raise ImproperlyConfigured('Invalid public contact email') from None

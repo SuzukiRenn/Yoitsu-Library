@@ -1,1 +1,4 @@
-{% if icp_record %}<footer style="text-align:center;padding:1rem;font-size:.85rem"><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">{{ icp_record }}</a></footer>{% endif %}
+<footer class="legal-footer" aria-label="网站信息">
+<nav class="legal-links" aria-label="网站说明"><a href="/privacy/">隐私说明</a><a href="/guidelines/">使用与内容规则</a><a href="/contact/">联系与投诉</a></nav>
+<p class="icp-record">{% if icp_record %}<a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">{{ icp_record }}</a>{% else %}<span data-icp-placeholder>备案信息待补充</span>{% endif %}</p>
+</footer>

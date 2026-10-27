@@ -18,6 +18,7 @@ import sys
 DATA = Path('/var/lib/shared-booklist/predeploy/data')
 CONFIG = Path('/etc/shared-booklist')
 OUTPUT = Path('/var/lib/shared-booklist/offsite-export')
+SHARED_TLS = Path('/etc/shared-booklist/ssh-access/tls')
 
 
 def validate(db):
@@ -34,14 +35,25 @@ def digest(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-def create():
+def scope(edition):
+    if edition == 'anonymous':
+        return (Path('/var/lib/shared-booklist/predeploy/data'), Path('/etc/shared-booklist'),
+                Path('/var/lib/shared-booklist/offsite-export'), Path('/opt/shared-booklist/current'))
+    if edition == 'identity':
+        return (Path('/var/lib/shared-booklist-identity/data'), Path('/etc/shared-booklist-identity'),
+                Path('/var/lib/shared-booklist-identity/offsite-export'), Path('/opt/shared-booklist-identity/current'))
+    raise ValueError('unsupported_backup_edition')
+
+
+def create(edition='anonymous'):
+    DATA, CONFIG, OUTPUT, current = scope(edition)
     if os.geteuid() != 0:
         raise RuntimeError('root_required')
     OUTPUT.mkdir(mode=0o700, exist_ok=True)
     OUTPUT.chmod(0o700)
     if shutil.disk_usage(OUTPUT).free < 2 * 1024**3:
         raise RuntimeError('insufficient_export_space')
-    release = Path('/opt/shared-booklist/current').resolve(strict=True)
+    release = current.resolve(strict=True)
     revision = subprocess.check_output(['git', '-C', str(release), 'rev-parse', 'HEAD'], text=True).strip()
     name = 'booklist-'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ-')+uuid.uuid4().hex[:8]+'.tar'
     final = OUTPUT/name
@@ -78,8 +90,9 @@ def create():
                 add(path, 'data/covers/'+path.relative_to(DATA/'covers').as_posix(), DATA/'covers')
                 if path.suffix.lower() in {'.jpg', '.jpeg', '.png'}: cover_count += 1
             # ACME symlinks are flattened into portable regular files within that tree only.
-            for relative in ['predeploy.env', 'ssh-access/nginx.conf', 'ssh-access/compose.json',
-                             'ssh-access/tls', 'acme-dns-production', 'renewal', 'source-updater']:
+            for relative in (['predeploy.env', 'ssh-access/nginx.conf', 'ssh-access/compose.json',
+                             'ssh-access/tls', 'acme-dns-production', 'renewal', 'source-updater'] if edition == 'anonymous' else
+                             ['production.env', 'compose-' + revision + '.json', 'nginx-' + revision + '.conf']):
                 path = CONFIG/relative
                 if not path.exists():
                     if relative in {'renewal', 'source-updater'}: continue  # Optional before feature setup.
@@ -89,6 +102,13 @@ def create():
                     if item.is_dir(): continue
                     if item.name.endswith('.lock'): continue
                     add(item, 'config/'+item.relative_to(CONFIG).as_posix(), path if path.is_dir() else CONFIG)
+            if edition == 'identity':
+                tls = SHARED_TLS
+                if not tls.is_dir() or not all((tls/name).is_file() for name in ('fullchain.pem','privkey.pem')):
+                    raise RuntimeError('identity_tls_configuration_missing')
+                for item in sorted(tls.rglob('*')):
+                    if not item.is_dir():
+                        add(item, 'shared-tls/' + item.relative_to(tls).as_posix(), tls)
             # Preserve public diagnostic/checkpoint JSON, but never export a live
             # login cookie jar. A restore can authenticate with the private account.
             updates = DATA/'source_updates'
@@ -98,7 +118,7 @@ def create():
             code = staging/'release.tar'
             subprocess.run(['git', '-C', str(release), 'archive', '--format=tar', '-o', str(code), revision], check=True)
             add(code, 'release/source.tar')
-            manifest = {'format': 1, 'created_at': datetime.now(timezone.utc).isoformat(),
+            manifest = {'format': 1, 'edition': edition, 'created_at': datetime.now(timezone.utc).isoformat(),
                         'release': revision, 'works': works, 'cover_files': cover_count,
                         'files': entries, 'database_check': 'ok', 'foreign_key_errors': 0}
             raw = json.dumps(manifest, ensure_ascii=False, sort_keys=True).encode()
@@ -106,7 +126,7 @@ def create():
             tar.addfile(info, io.BytesIO(raw))
         archive.chmod(0o600)
         os.link(archive, final)
-    receipt = {'status': 'snapshot_ready', 'filename': name, 'bytes': final.stat().st_size,
+    receipt = {'status': 'snapshot_ready', 'edition': edition, 'filename': name, 'bytes': final.stat().st_size,
                'sha256': digest(final), 'works': works, 'cover_files': cover_count, 'release': revision}
     with (OUTPUT/(name+'.json')).open('x') as stream:
         json.dump(receipt, stream)
@@ -114,24 +134,47 @@ def create():
 
 
 def dispatch(command):
-    # This is the ONLY command surface exposed to the restricted offsite SSH key.
-    if command == 'snapshot':
-        create()
+    # Only explicit edition names and generated filenames; never arbitrary paths or shell commands.
+    if command == 'operations-status':
+        status=Path('/var/lib/shared-booklist/operations-monitor/status.json')
+        result={'monitor':json.loads(status.read_text()) if status.is_file() and not status.is_symlink() else None,
+                'offsite':{}}
+        for edition in ('anonymous','identity'):
+            report=scope(edition)[2]/'last-verified.json'
+            result['offsite'][edition]=json.loads(report.read_text()) if report.is_file() and not report.is_symlink() else None
+        print(json.dumps(result));return
+    if command in ('snapshot', 'snapshot anonymous', 'snapshot identity'):
+        edition = command.split()[1] if ' ' in command else 'anonymous'
+        if edition == 'identity':
+            import fcntl
+            # Existing forced command holds the anonymous lock first, same order as identity deploy.
+            with open('/opt/shared-booklist-identity/deploy.lock', 'a') as lock:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                create(edition)
+        else:
+            create(edition)
         return
-    match = re.fullmatch(r'(download|ack) (booklist-[0-9TZ]+-[a-f0-9]{8}\.tar)(?: ([a-f0-9]{64}))?', command)
+    match = re.fullmatch(r'(download|ack)(?: (anonymous|identity))? (booklist-[0-9TZ]+-[a-f0-9]{8}\.tar)(?: ([a-f0-9]{64}))?', command)
     if not match:
         raise ValueError('unsupported_backup_command')
-    operation, filename, expected = match.groups()
-    archive = OUTPUT/filename
+    operation, edition, filename, expected = match.groups()
+    edition = edition or 'anonymous'
+    output = scope(edition)[2]
+    archive = output/filename
     if archive.is_symlink() or not archive.is_file():
         raise ValueError('missing_regular_snapshot')
     if operation == 'download' and expected is None:
         with archive.open('rb') as stream:
             shutil.copyfileobj(stream, sys.stdout.buffer)
     elif operation == 'ack' and expected and digest(archive) == expected:
-        # Caller acknowledges ONLY after its independent local restore drill passes.
+        # Caller acknowledges only after independent local restore; preserve offsite freshness for monitoring.
+        status = output/'last-verified.json'
+        if status.is_symlink(): raise ValueError('linked_backup_status')
+        status.write_text(json.dumps({'edition':edition, 'verified_at':datetime.now(timezone.utc).isoformat(),
+                                     'filename':filename, 'sha256':expected}), encoding='utf-8')
+        status.chmod(0o600)
         archive.unlink()
-        (OUTPUT/(filename+'.json')).unlink()
+        (output/(filename+'.json')).unlink()
         print('acknowledged_verified_offsite_copy')
     else:
         raise ValueError('invalid_acknowledgement')

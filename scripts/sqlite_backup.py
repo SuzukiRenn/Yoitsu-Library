@@ -58,8 +58,15 @@ def backup(source, output_dir, verify_restore=False):
     digest=hashlib.sha256()
     with final.open('rb') as stream:
         for chunk in iter(lambda:stream.read(65536),b''): digest.update(chunk)
-    return {'status':'verified','filename':filename,'bytes':final.stat().st_size,
+    result = {'status':'verified','filename':filename,'bytes':final.stat().st_size,
         'sha256':digest.hexdigest(),'restore_drill':bool(verify_restore)}
+    # Publication of a restore-verified receipt makes this copy eligible for retention.
+    if verify_restore:
+        receipt = final.with_suffix('.verified.json')
+        with receipt.open('x', encoding='utf-8') as stream:
+            json.dump(result, stream)
+        os.chmod(receipt, 0o600)
+    return result
 
 
 if __name__ == '__main__':
