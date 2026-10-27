@@ -118,6 +118,8 @@ def main():
                   'shared-booklist-identity-verify:' + release]
         run(*verify, timeout=1800)
         run(*verify, 'sh', '-c', 'set -e; for f in scripts/test_*.mjs; do node "$f"; done; python scripts/test_deploy.py', timeout=600)
+        for check in ('scripts/test_launch_operations.py', 'scripts/test_operational_safety.py', 'scripts/test_offsite_retention.py'):
+            run(*verify, 'python', check, timeout=600)
         for path, uid in ((CONFIG, 0), (STATE, 0), (STATE / 'data', 10001), (STATE / 'backups', 10001)):
             private(path, uid)
         env = CONFIG / 'production.env'

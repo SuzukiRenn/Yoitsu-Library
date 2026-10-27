@@ -1,9 +1,12 @@
-from booklist import reason_likes, activity_export
+from booklist import reason_likes, activity_export, legal_pages
 from booklist import feedback, account_views, account_admin
 from django.urls import path
 from booklist import views, catalog_views, public_views, activity_views, recommend_views, admin_views, metadata_views, cover_cache, live_stats
 
 urlpatterns = [
+    path('privacy/', legal_pages.information, {'section': 'privacy'}),
+    path('guidelines/', legal_pages.information, {'section': 'guidelines'}),
+    path('contact/', legal_pages.information, {'section': 'contact'}),
     path('manage/readers/', account_admin.index),
     path('api/v1/admin/readers/<int:account_id>/status/', account_admin.status),
     path('account/login/', account_views.screen),

@@ -74,3 +74,12 @@ python -B scripts/serve_live_shelf_dom.py --port 8984
 打开终端给出的本机地址。测试页 `scripts/fixtures/live-shelf-focus.html` 直接调用本工作树的 `createShelfRefresh.apply`，使用浏览器真实元素和 `document.activeElement` 检查44个场景：公共/主题、默认/减少动效、其他标签增删/重排、当前标签删除的邻近回退、无标签回到作品标题、按钮/搜索框焦点、卡片移除与空书架。滚动位置在非零处检查。页面结果为 `failed: 0` 才通过；原Node冒烟全绿不能替代此检查。
 
 该服务器固定回环监听，只提供合成测试页和公开ES模块，不读取数据库或暴露运行目录。完成后关闭终端停止服务。此同步函数测试不替代实际书架的自然轮询浏览器复验，后者须使用独立合成库。
+
+## 两版上线信息与备份监控
+
+- `pull_all_server_backups.ps1`：分别验证两版异地副本，再执行各自本机保留策略。
+- `retain_sqlite_backups.py`：服务器已验证数据库副本轮换，旧无回执文件受保护。
+- `deploy/operations_monitor.py`：私有服务、HTTPS、磁盘、备份与证书状态，不发送邮件。
+- `test_launch_operations.py`：协议隔离、恢复/保留和告警去重的离线安全回归。
+
+详见[上线信息与运维准备](../项目文档/两版上线信息与运维准备_2026-10-27.md)。

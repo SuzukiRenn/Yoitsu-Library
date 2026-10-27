@@ -10,7 +10,7 @@ $ErrorActionPreference='Stop'
 Set-Location 'REPO_PLACEHOLDER'
 $taskLog='.runtime/operations_20261021/scheduled-backup.log'
 try {
- & ./scripts/pull_server_backup.ps1 -ServerHost 'HOST_PLACEHOLDER' -IdentityFile '.runtime/operations_20261021/offsite_ed25519' *>&1 | Tee-Object -FilePath $taskLog
+ & ./scripts/pull_all_server_backups.ps1 -ServerHost 'HOST_PLACEHOLDER' -IdentityFile '.runtime/operations_20261021/offsite_ed25519' *>&1 | Tee-Object -FilePath $taskLog
 } catch {
  [pscustomobject]@{time=(Get-Date).ToUniversalTime().ToString('o');status='needs_attention';reason=$_.Exception.Message}|ConvertTo-Json|Set-Content .runtime/operations_20261021/pc-backup-status.json
  $_.Exception.Message | Add-Content $taskLog

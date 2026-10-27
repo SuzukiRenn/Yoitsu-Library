@@ -83,3 +83,12 @@ ACCOUNT_COOKIE = 'identity_booklist_account'
 ACCOUNT_AGE = 30 * 86400
 # Only the legacy regression suite may opt into anonymous writes.
 REQUIRE_ACCOUNT = not (ENV == 'test' and os.environ.get('BOOKLIST_LEGACY_TESTS') == '1')
+
+# Public contact only. SMTP credentials belong in private operator configuration.
+CONTACT_EMAIL = os.environ.get('BOOKLIST_CONTACT_EMAIL', 'kuroneko0217@outlook.com').strip()
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
+try:
+    validate_email(CONTACT_EMAIL)
+except ValidationError:
+    raise ImproperlyConfigured('Invalid public contact email') from None

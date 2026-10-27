@@ -1,4 +1,5 @@
 """Small independent workers: no scheduler is started inside the WSGI processes."""
+from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
@@ -26,10 +27,24 @@ def main():
             time.sleep(30)
     elif mode == 'backup':
         from scripts.sqlite_backup import backup
+        from scripts.retain_sqlite_backups import retain
         while True:
-            result=backup(Path(os.environ['BOOKLIST_DATA_DIR'])/'booklist.sqlite3','/backups',verify_restore=True)
-            print(json.dumps(result),flush=True)
-            time.sleep(21600)
+            try:
+                result=backup(Path(os.environ['BOOKLIST_DATA_DIR'])/'booklist.sqlite3','/backups',verify_restore=True)
+                retention=retain('/backups',Path('/backups')/result['filename'])
+                health={'status':'verified','checked_at':datetime.now(timezone.utc).isoformat(),
+                        'backup':result,'retention':retention}
+                delay=21600
+            except Exception as exc:
+                health={'status':'needs_attention','checked_at':datetime.now(timezone.utc).isoformat(),
+                        'error_type':type(exc).__name__}
+                delay=300
+            # A private host-side monitor reads this file; no secrets or database rows are exported.
+            pending=Path('/backups/.backup-health.tmp')
+            pending.write_text(json.dumps(health),encoding='utf-8')
+            os.replace(pending,Path('/backups/backup-health.json'))
+            print(json.dumps(health),flush=True)
+            time.sleep(delay)
     else:
         raise ValueError('unknown_worker')
 

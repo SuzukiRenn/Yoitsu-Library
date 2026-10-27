@@ -27,6 +27,8 @@ def verify(archive, receipt):
             if not entry.isfile() or name.is_absolute() or '..' in name.parts or '\\' in entry.name:
                 raise ValueError('unsafe_archive_member')
         manifest = json.load(tar.extractfile('manifest.json'))
+        if receipt.get('edition') != manifest.get('edition'):
+            raise ValueError('backup_edition_mismatch')
         if set(names) != set(manifest['files']) | {'manifest.json'}:
             raise ValueError('manifest_inventory_mismatch')
         for name, expected in manifest['files'].items():
