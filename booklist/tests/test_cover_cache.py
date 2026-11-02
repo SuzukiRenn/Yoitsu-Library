@@ -4,6 +4,9 @@ import struct
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 import zlib
+import subprocess
+import sys
+import sqlite3
 from django.test import SimpleTestCase, TestCase, override_settings
 from booklist import catalog, cover_cache
 from scripts import cache_wenku8_covers as worker
@@ -19,6 +22,42 @@ def png(width=1, height=1, rgba=b'\xff\x00\x00\xff'):
 
 
 class CoverCacheTests(SimpleTestCase):
+    def test_external_cover_command_resumes_existing_cache_without_touching_catalog(self):
+        from contextlib import closing
+        from django.conf import settings
+        with TemporaryDirectory() as directory:
+            root=Path(directory); database=root/'catalog.sqlite3';cache=root/'covers';checkpoint=root/'progress/state.json'
+            url='https://www.bilinovel.com/files/article/image/2/2865/2865s.png'
+            with closing(sqlite3.connect(database)) as db:
+                db.execute('CREATE TABLE booklist_work(id INTEGER,public_added_at TEXT,cover_url_overridden INTEGER,cover_url_override TEXT,wenku8_cover_url TEXT)')
+                db.execute('INSERT INTO booklist_work VALUES(1,NULL,1,?,NULL)',(url,))
+                db.execute('CREATE TABLE booklist_activitywork(id INTEGER,snapshot_cover_url TEXT)');db.commit()
+            with override_settings(COVER_CACHE_DIR=cache):cover_cache.store(url,png(),'image/png')
+            original=database.read_bytes()
+            command=[sys.executable,str(settings.BASE_DIR/'scripts/cache_external_covers.py'),'--database',str(database),'--cache-dir',str(cache),'--checkpoint',str(checkpoint)]
+            for _ in range(2):
+                result=subprocess.run(command,capture_output=True,text=True,timeout=20)
+                self.assertEqual(result.returncode,0,result.stderr)
+                state=json.loads(checkpoint.read_text(encoding='utf-8'))
+                self.assertEqual(state['status'],'completed');self.assertEqual(state['counts'],{'cached':1})
+                self.assertEqual(database.read_bytes(),original)
+
+    def test_bili_cache_is_local_and_strictly_limited_to_known_cover_paths(self):
+        url = 'https://www.bilinovel.com/files/article/image/2/2865/2865s.png'
+        self.assertEqual(cover_cache.source_url(url), url)
+        for invalid in (url.replace('www.bilinovel.com', 'www.bilinovel.com.evil.test'),
+                        url.replace('/2/', '/1/'), url+'?redirect=evil',
+                        url.replace('https:', 'http:'), url.replace('2865s.png', 'other.png'),
+                        url.replace('www.bilinovel.com', 'user@www.bilinovel.com')):
+            self.assertIsNone(cover_cache.source_url(invalid))
+        with TemporaryDirectory() as directory, override_settings(COVER_CACHE_DIR=Path(directory)):
+            cover_cache.store(url, png(), 'image/png')
+            local = catalog.cover_url(url)
+            self.assertTrue(local.startswith('/media/covers/'))
+            response = self.client.get(local)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(b''.join(response.streaming_content), png())
+
     def test_same_url_refresh_keeps_old_cover_and_exposes_immutable_new_revision(self):
         with TemporaryDirectory() as directory, override_settings(COVER_CACHE_DIR=Path(directory)):
             old = png(); new = png(2, 1)

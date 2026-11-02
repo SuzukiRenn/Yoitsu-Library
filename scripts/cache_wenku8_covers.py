@@ -63,7 +63,8 @@ def observed_urls(database):
         for first, second in db.execute('select wenku8_cover_url,cover_url_override from booklist_work order by public_added_at is null,id'):
             values.extend((first, second))
         values += [r[0] for r in db.execute('select snapshot_cover_url from booklist_activitywork order by id')]
-    return list(dict.fromkeys(url for value in values if (url := source_url(value))))
+    return list(dict.fromkeys(url for value in values if (url := source_url(value))
+                              and url.startswith('https://img.wenku8.com/')))
 
 
 def main():
