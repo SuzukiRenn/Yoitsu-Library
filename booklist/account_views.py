@@ -1,3 +1,4 @@
+from urllib.parse import urlencode
 from django.conf import settings
 from django.http import JsonResponse
 from django.middleware.csrf import rotate_token
@@ -31,6 +32,8 @@ def authenticated(request, result):
 
 @endpoint('POST', fields=('username', 'display_name', 'password'))
 def register(request, data):
+    if settings.QQ_EMAIL_LOGIN:
+        raise services.DomainError('email_login_required', '请使用 QQ 邮箱验证码登录', 409)
     auth_limit(request, registration=True)
     return authenticated(request, accounts.register(data['username'], data['display_name'], data['password']))
 
@@ -38,7 +41,11 @@ def register(request, data):
 @endpoint('POST', fields=('username', 'password'))
 def login(request, data):
     auth_limit(request, data['username'])
-    return authenticated(request, accounts.login(data['username'], data['password']))
+    result = accounts.login(data['username'], data['password'])
+    if settings.QQ_EMAIL_LOGIN and result[1].account.qq_email:
+        result[1].delete()
+        raise services.DomainError('email_login_required', '已绑定邮箱，请使用验证码登录', 409)
+    return authenticated(request, result)
 
 
 @endpoint('POST')
@@ -70,6 +77,8 @@ def profile(request, data):
 @endpoint('POST', fields=('current_password', 'new_password'))
 def password(request, data):
     account = accounts.require(request)
+    if settings.QQ_EMAIL_LOGIN and account.qq_email:
+        raise services.DomainError('email_login_required', '邮箱账户使用验证码登录', 409)
     services.rate_limit('account_password', str(account.pk), 10, 900)
     accounts.change_password(request, data['current_password'], data['new_password'])
     rotate_token(request)
@@ -81,9 +90,17 @@ def password(request, data):
 @endpoint('GET')
 def screen(request, data, mode='login'):
     parameters(request, ('tab', 'page') if mode == 'profile' else ('next',))
-    if mode in ('profile', 'settings', 'notifications') and not request.account:
+    if mode in ('profile', 'settings', 'notifications', 'bind') and not request.account:
         return redirect('/account/login/?next=' + request.path)
-    context = {'mode': mode}
+    if mode == 'bind' and not settings.QQ_EMAIL_LOGIN:
+        return redirect('/account/settings/')
+    if mode == 'legacy' and request.account:
+        return redirect('/account/bind/')
+    if mode == 'bind' and request.account.qq_email:
+        return redirect('/account/settings/')
+    if mode == 'register' and settings.QQ_EMAIL_LOGIN:
+        return redirect('/account/login/?' + urlencode({'next': request.GET.get('next','/')}))
+    context = {'mode': mode, 'qq_email_login': settings.QQ_EMAIL_LOGIN}
     if mode == 'profile':
         from .account_home import context as home_context
         context.update(home_context(request))

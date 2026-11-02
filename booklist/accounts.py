@@ -93,6 +93,9 @@ def require(request):
         expires_at__gt=timezone.now(), account__is_active=True,
         account__session_version=current_session.session_version).exists():
         raise DomainError('login_required', '请先登录', 401)
+    if (settings.QQ_EMAIL_LOGIN and not account.qq_email and not request.path.startswith('/account/')
+            and request.path not in ('/api/v1/account/email/code/', '/api/v1/account/email/bind/', '/api/v1/account/me/', '/api/v1/account/profile/')):
+        raise DomainError('email_binding_required', '请先在个人主页绑定 QQ 邮箱', 403)
     return account
 
 

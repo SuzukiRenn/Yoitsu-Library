@@ -1,5 +1,5 @@
 from booklist import reason_likes, activity_export, legal_pages
-from booklist import feedback, account_views, account_admin
+from booklist import feedback, account_views, account_admin, email_views
 from django.urls import path
 from booklist import views, catalog_views, public_views, activity_views, recommend_views, admin_views, metadata_views, cover_cache, live_stats
 
@@ -9,6 +9,11 @@ urlpatterns = [
     path('contact/', legal_pages.information, {'section': 'contact'}),
     path('manage/readers/', account_admin.index),
     path('api/v1/admin/readers/<int:account_id>/status/', account_admin.status),
+    path('api/v1/account/email/code/', email_views.code),
+    path('api/v1/account/email/login/', email_views.login),
+    path('api/v1/account/email/bind/', email_views.bind),
+    path('account/bind/', account_views.screen, {'mode': 'bind'}),
+    path('account/legacy-login/', account_views.screen, {'mode': 'legacy'}),
     path('account/login/', account_views.screen),
     path('account/register/', account_views.screen, {'mode': 'register'}),
     path('account/', account_views.screen, {'mode': 'profile'}),

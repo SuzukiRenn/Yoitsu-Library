@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from booklist.models import RateLimitBucket, AdminSession, IdempotencyRecord, AccountSession
+from booklist.models import RateLimitBucket, AdminSession, IdempotencyRecord, AccountSession, EmailChallenge
 
 
 class Command(BaseCommand):
@@ -8,6 +8,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         now = timezone.now()
-        for model in (RateLimitBucket, AdminSession, AccountSession, IdempotencyRecord):
+        for model in (RateLimitBucket, AdminSession, AccountSession, IdempotencyRecord, EmailChallenge):
             count, _ = model.objects.filter(expires_at__lte=now).delete()
             self.stdout.write(f'{model.__name__}: {count}')

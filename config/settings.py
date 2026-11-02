@@ -92,3 +92,17 @@ try:
     validate_email(CONTACT_EMAIL)
 except ValidationError:
     raise ImproperlyConfigured('Invalid public contact email') from None
+
+# Disabled until the operator has tested the sender credentials and delivery.
+QQ_EMAIL_LOGIN = os.environ.get('BOOKLIST_QQ_EMAIL_LOGIN', '0') == '1'
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.environ.get('BOOKLIST_SMTP_HOST', 'smtp.qq.com')
+EMAIL_PORT = int(os.environ.get('BOOKLIST_SMTP_PORT', '465'))
+EMAIL_USE_SSL = True
+EMAIL_USE_TLS = False
+EMAIL_TIMEOUT = 10
+EMAIL_HOST_USER = os.environ.get('BOOKLIST_SMTP_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('BOOKLIST_SMTP_PASSWORD', '')
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+if ENV == 'production' and QQ_EMAIL_LOGIN and not (EMAIL_HOST_USER and EMAIL_HOST_PASSWORD):
+    raise ImproperlyConfigured('QQ email login requires private SMTP configuration')

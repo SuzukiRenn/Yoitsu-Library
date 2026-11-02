@@ -1,0 +1,7 @@
+<h1>{% if mode == 'bind' %}绑定 QQ 邮箱{% else %}QQ 邮箱登录{% endif %}</h1>
+<form method="post" data-email-login="{% if mode == 'bind' %}bind{% else %}login{% endif %}">
+<label>QQ 邮箱<input type="email" name="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="你的邮箱@qq.com" required maxlength="254" pattern="[a-zA-Z0-9][a-zA-Z0-9._+\-]*@[qQ][qQ]\.[cC][oO][mM]"></label>
+<div class="email-code-field"><label>验证码<input name="code" inputmode="numeric" autocomplete="one-time-code" required pattern="[0-9]{6}" maxlength="6" placeholder="6 位数字"></label><button type="button" data-send-code>获取验证码</button></div>
+<div class="auth-actions"><button type="submit" class="primary">{% if mode == 'bind' %}验证并绑定{% else %}验证并登录{% endif %}</button></div><p role="status" aria-live="polite"></p>
+</form>
+{% if mode == 'bind' %}<p class="section-note">绑定后使用邮箱验证码登录，保留原账户的推荐、点赞和消息。</p>{% else %}<p class="section-note">首次验证会创建账户，昵称可在个人主页修改。登录表示已阅读<a href="/privacy/">隐私说明</a>和<a href="/guidelines/">使用规则</a>。</p><a class="reason-link" data-auth-switch href="/account/legacy-login/">已有旧账户？先登录并绑定邮箱</a>{% endif %}

@@ -1,3 +1,4 @@
+import {installEmailLogin} from './email-login.mjs?v=20261102-qq-1';
 export function safeNext(value, origin) {
   try {const url = new URL(value || '/', origin); return url.origin === origin && url.pathname.startsWith('/') ? url.pathname + url.search + url.hash : '/';}
   catch {return '/';}
@@ -69,6 +70,7 @@ if (typeof document !== 'undefined') {
     window.addEventListener('pageshow',()=>{if(unreadStopped){unreadStopped=false;refreshUnread();}});
   }
   const next = safeNext(new URLSearchParams(location.search).get('next'), location.origin);
+  installEmailLogin(accountPost,next);
   const switchLink=document.querySelector('[data-auth-switch]');
   if(switchLink)switchLink.href += `?next=${encodeURIComponent(next)}`;
   for (const form of document.querySelectorAll('[data-account-form]')) form.addEventListener('submit', async event => {
@@ -79,6 +81,7 @@ if (typeof document !== 'undefined') {
     try {
       await accountPost(`/api/v1/account/${form.dataset.accountForm}/`, data);
       if(form.dataset.accountForm==='password') location.assign('/account/login/');
+      else if(form.hasAttribute('data-legacy-login')) location.assign('/account/bind/');
       else if(form.dataset.accountForm==='profile') location.reload();
       else location.assign(next);
     } catch(error) {status.textContent=error.message;} finally {button.disabled=false;}

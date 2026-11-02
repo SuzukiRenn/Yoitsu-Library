@@ -1,5 +1,5 @@
 {% extends 'booklist/base.html' %}
-{% block title %}{% if mode == 'notifications' %}消息{% elif mode == 'settings' %}修改信息{% elif mode == 'register' %}注册{% else %}登录{% endif %} · {% endblock %}
+{% block title %}{% if mode == 'notifications' %}消息{% elif mode == 'bind' %}绑定 QQ 邮箱{% elif mode == 'settings' %}修改信息{% elif mode == 'register' %}注册{% else %}登录{% endif %} · {% endblock %}
 {% block content %}<section class="account-panel">
 {% if mode == 'notifications' %}
 <div class="section-heading"><h1>消息</h1><div class="notification-actions"><a class="reason-link notification-action" href="/">← 返回书单</a><button type="button" class="primary notification-action" data-read-all>全部已读</button></div></div>
@@ -9,16 +9,22 @@
 <div class="notification-actions"><a class="primary notification-action" href="/notifications/{{ item.id }}/work/">查看作品</a>
 {% if not item.read_at %}<button type="button" class="reason-link notification-action" data-read="{{ item.id }}">标为已读</button>{% endif %}</div></li>{% empty %}<li class="empty-state">暂无消息</li>{% endfor %}</ol>
 <button type="button" class="reason-link notification-action" data-more-notifications hidden>加载更多</button>
+{% elif mode == 'bind' %}
+{% include 'booklist/email_form.html' %}
 {% elif mode == 'settings' %}
-<div class="section-heading"><h1>修改信息</h1><a class="reason-link" href="/account/">← 返回个人主页</a></div><p>账号 <strong>{{ current_account.username }}</strong></p>
+<div class="section-heading"><h1>修改信息</h1><a class="reason-link" href="/account/">← 返回个人主页</a></div>{% if not qq_email_login or not current_account.qq_email %}<p>账号 <strong>{{ current_account.username }}</strong></p>{% endif %}
 <form method="post" data-account-form="profile"><label>昵称<input name="display_name" required maxlength="40" value="{{ current_account.display_name }}" autocomplete="nickname"></label><button class="primary">保存昵称</button><p role="status"></p></form>
-<h2>修改密码</h2><form method="post" data-account-form="password"><label>当前密码<input name="current_password" type="password" required maxlength="1024" autocomplete="current-password"></label><label>新密码<input name="new_password" type="password" required minlength="9" maxlength="1024" autocomplete="new-password"></label><label>确认新密码<input name="confirmation" type="password" required minlength="9" maxlength="1024" autocomplete="new-password"></label><button>修改并重新登录</button><p role="status"></p></form>
+{% if qq_email_login %}<h2>QQ 邮箱</h2>{% if current_account.qq_email %}<p>{{ current_account.qq_email }}</p><p class="section-note">使用邮箱验证码登录。如需更换绑定邮箱，请联系管理员核实处理。</p>{% else %}<a class="reason-link" href="/account/bind/">绑定 QQ 邮箱</a>{% endif %}{% else %}<h2>修改密码</h2><form method="post" data-account-form="password"><label>当前密码<input name="current_password" type="password" required maxlength="1024" autocomplete="current-password"></label><label>新密码<input name="new_password" type="password" required minlength="9" maxlength="1024" autocomplete="new-password"></label><label>确认新密码<input name="confirmation" type="password" required minlength="9" maxlength="1024" autocomplete="new-password"></label><button>修改并重新登录</button><p role="status"></p></form>
+{% endif %}
+{% elif qq_email_login and mode != 'legacy' %}
+{% include 'booklist/email_form.html' %}
 {% else %}
-<h1>{% if mode == 'register' %}注册{% else %}登录{% endif %}</h1>
-<form method="post" data-account-form="{{ mode }}">
+<h1>{% if mode == 'legacy' %}绑定原账户 · {% endif %}{% if mode == 'register' %}注册{% else %}登录{% endif %}</h1>
+<form method="post" {% if mode == 'legacy' %}data-legacy-login{% endif %} data-account-form="{% if mode == 'legacy' %}login{% else %}{{ mode }}{% endif %}">
 <label>账号<input name="username" required minlength="3" maxlength="32" pattern="[A-Za-z0-9_]{3,32}" autocomplete="username" autocapitalize="none" spellcheck="false"><span class="section-note">3–32 位字母、数字或下划线</span></label>
 {% if mode == 'register' %}<label>昵称<input name="display_name" required maxlength="40" autocomplete="nickname"></label>{% endif %}
 <label>密码<input name="password" type="password" required {% if mode == 'register' %}minlength="9" autocomplete="new-password"{% else %}autocomplete="current-password"{% endif %} maxlength="1024"></label>
 {% if mode == 'register' %}<label>确认密码<input name="confirmation" type="password" required minlength="9" maxlength="1024" autocomplete="new-password"></label><p class="section-note">密码至少 9 位，不能是常见密码或纯数字。</p>{% endif %}
+{% if mode == 'legacy' %}<p class="section-note">仅供未绑定邮箱的旧账户迁移，登录后请在修改信息中绑定 QQ 邮箱。</p>{% endif %}
 <div class="auth-actions"><button class="primary" type="submit">{% if mode == 'register' %}创建账户{% else %}登录{% endif %}</button>{% if mode == 'register' %}<a class="reason-link" data-auth-switch href="/account/login/">已有账户，登录</a>{% else %}<a class="reason-link" data-auth-switch href="/account/register/">注册账户</a>{% endif %}</div><p role="status"></p></form>
 {% endif %}</section>{% endblock %}

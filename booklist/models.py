@@ -41,6 +41,8 @@ class AnonymousClient(Timestamped):
 
 
 class Account(Timestamped):
+    qq_email = models.EmailField(null=True, blank=True, unique=True)
+    email_verified_at = models.DateTimeField(null=True)
     username = models.CharField(max_length=32, unique=True)
     display_name = models.CharField(max_length=40)
     password_hash = models.CharField(max_length=256)
@@ -57,6 +59,19 @@ class AccountSession(models.Model):
     session_version = models.PositiveIntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField(db_index=True)
+
+
+class EmailChallenge(models.Model):
+    token = models.CharField(max_length=43, unique=True)
+    email = models.EmailField(db_index=True)
+    purpose = models.CharField(max_length=8)
+    account = models.ForeignKey(Account, null=True, on_delete=models.CASCADE)
+    code_hash = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(db_index=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    delivered = models.BooleanField(default=False)
+    consumed_at = models.DateTimeField(null=True)
 
 
 class WorkLikeEvent(models.Model):
