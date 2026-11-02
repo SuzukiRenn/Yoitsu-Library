@@ -25,7 +25,7 @@ def source_url(value):
             return None
         if url.netloc == 'img.wenku8.com':
             prefix = '/image/'
-        elif url.scheme == 'https' and url.netloc == 'www.bilinovel.com':
+        elif url.scheme == 'https' and url.netloc in ('www.bilinovel.com', 'www.bilinovel.net'):
             prefix = '/files/article/image/'
         else:
             return None

@@ -66,6 +66,12 @@ def policy_for(origin, opener, fetch=transport.fetch, sleeper=time.sleep):
     return (policy,delay), {'status':'available','attempts':attempts}
 
 
+def download_url(source):
+    # The original host declares this exact HTTPS, same-path 301 destination.
+    # Keep source identity/cache filenames unchanged; never follow arbitrary redirects.
+    return source.replace('https://www.bilinovel.com/','https://www.bilinovel.net/',1)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--database', type=Path, required=True)
@@ -94,7 +100,8 @@ def main():
             pending.write_text(json.dumps(state,ensure_ascii=False,indent=2),encoding='utf-8')
             pending.replace(args.checkpoint)
         save()
-        opener = build_opener(ProxyHandler({}),transport.NoRedirect())
+        # Respect the operator's normal system network/proxy, as the browser does.
+        opener = build_opener(transport.NoRedirect())
         transport.AGENT = 'YoitsuLibrary-CoverCache/1.0'
         policies = {}
         for original in urls:
@@ -110,25 +117,26 @@ def main():
                 continue
             if not url:
                 state['items'][original]={'status':'unsupported'};save();continue
-            origin='https://'+urlsplit(url).netloc
+            target=download_url(url)
+            origin='https://'+urlsplit(target).netloc
             if origin not in policies:
                 policies[origin],diagnostic=policy_for(origin,opener)
                 state.setdefault('policies',{})[origin]=diagnostic;save()
             rules=policies[origin]
             if not rules:
                 state['items'][original]={'status':'policy_unavailable','reason':'robots_unavailable'};save();continue
-            if rules[1]>60 or not rules[0].can_fetch(transport.AGENT,url):
+            if rules[1]>60 or not rules[0].can_fetch(transport.AGENT,target):
                 state['items'][original]={'status':'restricted','reason':'robots_disallowed_or_delay_requires_review'};save();continue
             state['current_url']=url;save()
             time.sleep(rules[1])
-            record, raw=transport.fetch(url,cover_cache.MAX_BYTES,opener)
+            record, raw=transport.fetch(target,cover_cache.MAX_BYTES,opener)
             item={'status':'failed','request':record}
             if record.get('status') in (401,403,429):
                 item['status']='restricted'
             elif raw is not None:
                 try:
                     info=cover_cache.store(url,raw,record['media_type'])
-                    item={'status':'downloaded','name':cover_cache.filename(url),'bytes':info['bytes']}
+                    item={'status':'downloaded','name':cover_cache.filename(url),'bytes':info['bytes'],'retrieved_url':target}
                 except ValueError as error:
                     item['reason']=str(error)
             state['items'][original]=item;save()

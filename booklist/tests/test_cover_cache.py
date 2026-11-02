@@ -58,6 +58,12 @@ class CoverCacheTests(SimpleTestCase):
     def test_bili_cache_is_local_and_strictly_limited_to_known_cover_paths(self):
         url = 'https://www.bilinovel.com/files/article/image/2/2865/2865s.png'
         self.assertEqual(cover_cache.source_url(url), url)
+        from scripts.cache_external_covers import download_url
+        target=url.replace('.com/','.net/')
+        self.assertEqual(cover_cache.source_url(target),target)
+        self.assertEqual(download_url(url),target)
+        self.assertEqual(download_url(URL),URL)
+        self.assertIsNone(cover_cache.source_url(target.replace('.net/','.net.evil/')))
         for invalid in (url.replace('www.bilinovel.com', 'www.bilinovel.com.evil.test'),
                         url.replace('/2/', '/1/'), url+'?redirect=evil',
                         url.replace('https:', 'http:'), url.replace('2865s.png', 'other.png'),
