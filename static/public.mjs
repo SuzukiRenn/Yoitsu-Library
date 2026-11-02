@@ -14,7 +14,7 @@ import {installShelfView} from './shelf-view.mjs?v=20261025-reading-1';
 installShelfView();
 import {installWorkSequence} from './work-sequence.mjs?v=20261024-sequence-1';
 installWorkSequence();
-import './back-to-top.mjs?v=20261025-reading-1';
+import './back-to-top.mjs?v=20261102-group-1';
 import {installSpoilerReveal} from './spoiler-reveal.mjs?v=20261024-inline-spoiler-4';
 installSpoilerReveal();
 const status = document.querySelector('#action-status');

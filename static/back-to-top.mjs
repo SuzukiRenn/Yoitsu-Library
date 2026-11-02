@@ -1,7 +1,7 @@
 import {motionPreference} from './motion-preference.mjs?v=20261025-1';
 const button=document.querySelector('[data-back-to-top]');
 if(button){
-  const controls=[button,document.querySelector('[data-random-book]'),document.querySelector('[data-shelf-view-toggle]'),document.querySelector('[data-appearance-toggle]')].filter(Boolean);
+  const group=button.closest('[data-floating-controls]');
   const header=document.querySelector('.site-header');
   const reduced=motionPreference(window,document);
   let frame;
@@ -13,7 +13,7 @@ if(button){
     button.inert=!visible;
     button.setAttribute('aria-hidden',String(!visible));
     // All pages share the header edge, even when their article widths differ.
-    for(const control of controls){
+    for(const control of group?[group]:[]){
       if(window.innerWidth<=700 || !header){
         control.style.removeProperty('left');control.style.removeProperty('right');
       }else{
