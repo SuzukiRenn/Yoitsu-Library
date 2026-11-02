@@ -24,7 +24,7 @@ try:
     TRUSTED_PROXY_IPS = trusted_proxy_ips(os.environ.get('BOOKLIST_TRUSTED_PROXY_IPS', ''))
 except ValueError:
     raise ImproperlyConfigured('Trusted proxies must be exact IP addresses') from None
-ICP_RECORD = os.environ.get('BOOKLIST_ICP_RECORD', '').strip()
+ICP_RECORD = os.environ.get('BOOKLIST_ICP_RECORD', '鲁ICP备2026066257号-1').strip()
 if ICP_RECORD and not re.fullmatch(r'[\u4e00-\u9fff]ICP备[0-9]{6,20}号(?:-[0-9]+)?', ICP_RECORD):
     raise ImproperlyConfigured('Invalid ICP record format')
 DATA_DIR = Path(os.environ.get('BOOKLIST_DATA_DIR') or BASE_DIR / '.runtime')

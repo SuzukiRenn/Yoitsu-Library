@@ -1,7 +1,7 @@
 {% extends 'booklist/base.html' %}
 {% block title %}{% if legal_section == 'privacy' %}隐私说明{% elif legal_section == 'guidelines' %}使用与内容规则{% else %}联系与投诉{% endif %} · {% endblock %}
 {% block content %}<article class="legal-page">
-<a href="/">← 返回公共书架</a>
+<a class="back-link" href="/">← 返回公共书架</a>
 {% if legal_section == 'privacy' %}
 <h1>隐私说明</h1><p class="legal-meta">更新日期：2026年10月27日 · {% if account_edition %}账户版{% else %}匿名版{% endif %}</p>
 <p class="legal-intro">ヨイツ図書館用于共同荐书和发现作品。本说明介绍本站实际使用的数据、公开范围和处理申请方式。</p>

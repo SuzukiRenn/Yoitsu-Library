@@ -30,7 +30,7 @@ def main():
         secret.write_text(secrets.token_urlsafe(64), encoding='ascii')
     os.environ.update({'BOOKLIST_ENV': 'development', 'BOOKLIST_DATA_DIR': str(data),
         'BOOKLIST_SECRET_KEY': secret.read_text(encoding='ascii'), 'BOOKLIST_ALLOWED_HOSTS': 'localhost,127.0.0.1',
-        'BOOKLIST_TRUSTED_PROXY_IPS': '', 'BOOKLIST_ICP_RECORD': '', 'TEMP': str(temp), 'TMP': str(temp),
+        'BOOKLIST_TRUSTED_PROXY_IPS': '', 'TEMP': str(temp), 'TMP': str(temp),
         'DJANGO_SETTINGS_MODULE': 'config.settings', 'PYTHONDONTWRITEBYTECODE': '1'})
     sys.dont_write_bytecode = True
     sys.path.insert(0, str(ROOT))
