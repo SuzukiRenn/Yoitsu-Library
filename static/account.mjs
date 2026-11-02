@@ -3,6 +3,10 @@ export function safeNext(value, origin) {
   try {const url = new URL(value || '/', origin); return url.origin === origin && url.pathname.startsWith('/') ? url.pathname + url.search + url.hash : '/';}
   catch {return '/';}
 }
+export function notificationText(item) {
+  const action = {reason_like:'赞同了你为', co_recommendation:'也推荐了你推荐的'}[item.kind] || '赞了你推荐的';
+  return `${item.actor.display_name} ${action}《${item.work_title}》${item.kind === 'reason_like' ? '写的推荐理由' : ''}`;
+}
 export async function accountPost(url, payload = {}) {
   const tokenResponse = await fetch('/api/v1/csrf/', {credentials:'same-origin'});
   const {csrf_token} = await tokenResponse.json();
@@ -114,7 +118,7 @@ if (typeof document !== 'undefined') {
       const data=await response.json();
       if(append)for(const item of data.results) {
         const li=document.createElement('li');li.className=`notification${item.read ? '' : ' unread'}`;
-        const p=document.createElement('p');p.textContent=`${item.actor.display_name} 赞了你推荐的《${item.work_title}》`;
+        const p=document.createElement('p');p.textContent=notificationText(item);
         const note=document.createElement('p');note.className='section-note';note.textContent=`${item.activity_title || '公共书架'} · ${new Date(item.created_at).toLocaleString()}`;
         const actions=document.createElement('div');actions.className='notification-actions';
         const a=document.createElement('a');a.className='primary notification-action';a.textContent='查看作品';a.href=item.url;

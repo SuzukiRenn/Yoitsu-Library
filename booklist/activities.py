@@ -130,6 +130,7 @@ def ensure_snapshot(activity, work):
     return snap
 
 
+@transaction.atomic
 def submit(activity_id, client, data):
     activity = require_open(activity_id)
     reason = normalize(data['reason'], 'reason')
@@ -153,6 +154,8 @@ def submit(activity_id, client, data):
         hidden = history.filter(text_hidden_at__isnull=False).order_by('-id').first()
         row=Recommendation.objects.create(scope='activity', activity=activity, activity_work=snap, work=work,
             anonymous_client=client, reason=reason, reason_references=refs, contains_spoilers=bool(reason) and data.get('contains_spoilers', False), text_hidden_at=hidden.text_hidden_at if hidden else None)
+        from .notifications import co_recommended
+        co_recommended(work, client, activity)
     books.set_relation(work, client, 'recommend', True, origin='activity')
     if data['copy_public_reason'] and reason and not books.reasons().filter(work=work, anonymous_client=client).exists():
         books.set_reason(work, client, reason, data.get('contains_spoilers'), refs, reference_source=row)

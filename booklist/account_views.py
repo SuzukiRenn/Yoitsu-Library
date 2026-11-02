@@ -134,7 +134,8 @@ def notification_target(request, data, notification_id):
     from . import catalog
     catalog.work_detail(work.pk, include_retired=note.event.scope_key != 'public')
     suffix = '?activity=' + note.event.scope_key.split(':')[1] if note.event.scope_key.startswith('activity:') else ''
-    return redirect(f'/works/{work.pk}/{suffix}')
+    anchor = '#reasons' if note.event.kind == 'reason_like' else ''
+    return redirect(f'/works/{work.pk}/{suffix}{anchor}')
 
 
 @endpoint('GET')
@@ -144,6 +145,7 @@ def inbox(request, data):
     query = inbox_query(request)
     return JsonResponse({'unread_count': query.filter(read_at__isnull=True).count(), 'total': query.count(),
         'results': [{'id': row.pk, 'actor': accounts.public(row.event.actor), 'work_title': row.work_title,
+            'kind': row.event.kind,
             'scope': row.event.scope_key, 'work_id': row.event.work_id, 'url': f'/notifications/{row.pk}/work/', 'read': row.read_at is not None,
             'activity_title': row.activity_title, 'created_at': row.created_at.isoformat()}
             for row in query.select_related('event__actor').order_by('-id')[offset:offset+size]]})

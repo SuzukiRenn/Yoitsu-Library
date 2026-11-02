@@ -50,6 +50,9 @@ def like(request, data, work_id, reason_id, activity_id=None):
             defaults={'cancelled_at': None if data['enabled'] else timezone.now()})
         row.cancelled_at = None if data['enabled'] else timezone.now()
         row.save(update_fields=['cancelled_at', 'updated_at'])
+        if data['enabled']:
+            from .notifications import reason_liked
+            reason_liked(reason, request.anonymous_client)
         from .live_stats import snapshot
         return {'reason': entries(query, request.anonymous_client)[0],
                 'work': snapshot([work_id], request.anonymous_client, activity_id)['results'][0]}

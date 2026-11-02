@@ -1,37 +1,69 @@
-"""Work likes notify current recommenders in the same scope, once per actor/work/scope."""
+"""Account interaction notices, deduplicated independently by kind and scope."""
 from django.db import transaction
-from .models import Account, WorkLikeEvent, Notification
+from .models import Account, WorkLikeEvent, Notification, Work
 
 
-@transaction.atomic
-def work_liked(work, client, activity=None):
-    actor = Account.objects.filter(principal=client, is_active=True).first()
-    if actor is None:
-        return
-    key = f'activity:{activity.pk}' if activity else 'public'
-    # Keep ledgers on their original works for reversible merges; inspect the
-    # entire currently merged family so merging cannot reset notification limits.
-    from .models import Work
+def merged_family(work):
     family = {work.pk}
     while True:
         expanded = family | set(Work.objects.filter(merged_into_id__in=family).values_list('id', flat=True))
         if expanded == family:
-            break
+            return family
         family = expanded
-    if WorkLikeEvent.objects.filter(work_id__in=family, actor=actor, scope_key=key).exists():
-        return
-    event, created = WorkLikeEvent.objects.get_or_create(work=work, actor=actor, scope_key=key)
-    if not created:
-        return
+
+
+def current_recommenders(work, activity=None):
     if activity:
         from .activities import recs
         query = recs(activity.pk)
     else:
         from .public_booklist import recommendations
         query = recommendations()
-    recipients = Account.objects.filter(is_active=True, principal_id__in=query.filter(work=work).values('anonymous_client_id')).exclude(pk=actor.pk)
+    return Account.objects.filter(is_active=True, principal__revoked_at__isnull=True,
+        principal_id__in=query.filter(work=work).values('anonymous_client_id'))
+
+
+@transaction.atomic
+def notify(work, client, kind, recipients, activity=None, subject_id=0):
+    actor = Account.objects.filter(principal=client, is_active=True, principal__revoked_at__isnull=True).first()
+    if actor is None:
+        return
+    key = f'activity:{activity.pk}' if activity else 'public'
+    # Merges never reset dedup history; retain original work and reason IDs for undo.
+    events = WorkLikeEvent.objects.filter(work_id__in=merged_family(work), actor=actor,
+        scope_key=key, kind=kind, subject_id=subject_id)
+    if events.exists():
+        return
+    event, created = WorkLikeEvent.objects.get_or_create(work=work, actor=actor,
+        scope_key=key, kind=kind, subject_id=subject_id)
+    if not created:
+        return
+    title = work.display_title
+    if activity:
+        from .models import ActivityWork
+        title = ActivityWork.objects.filter(activity=activity, work=work,
+            archived_at__isnull=True, merged_into__isnull=True).values_list('snapshot_title', flat=True).first() or title
     Notification.objects.bulk_create([Notification(event=event, recipient=recipient,
-        work_title=work.display_title, activity_title=activity.title if activity else '') for recipient in recipients])
+        work_title=title, activity_title=activity.title if activity else '')
+        for recipient in recipients.exclude(pk=actor.pk)])
+
+
+def work_liked(work, client, activity=None):
+    notify(work, client, 'work_like', current_recommenders(work, activity), activity)
+
+
+def co_recommended(work, client, activity=None):
+    # Pending, hidden and retired catalog records do not generate public messages.
+    from .catalog import visible_works
+    if not visible_works().filter(pk=work.pk).exists():
+        return
+    notify(work, client, 'co_recommendation', current_recommenders(work, activity), activity)
+
+
+def reason_liked(reason, client):
+    recipients = Account.objects.filter(principal_id=reason.anonymous_client_id,
+        is_active=True, principal__revoked_at__isnull=True)
+    notify(reason.work, client, 'reason_like', recipients, reason.activity, subject_id=reason.pk)
 
 
 def attribution(query, work_ids):

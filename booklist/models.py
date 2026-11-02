@@ -61,6 +61,15 @@ class AccountSession(models.Model):
     expires_at = models.DateTimeField(db_index=True)
 
 
+class ActivityNoticeSeen(models.Model):
+    account = models.ForeignKey(Account, on_delete=models.CASCADE)
+    activity = models.ForeignKey('Activity', on_delete=models.CASCADE)
+    seen_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['account', 'activity'], name='activity_notice_seen_unique')]
+
+
 class EmailChallenge(models.Model):
     token = models.CharField(max_length=43, unique=True)
     email = models.EmailField(db_index=True)
@@ -79,10 +88,15 @@ class WorkLikeEvent(models.Model):
     work = models.ForeignKey('Work', on_delete=P)
     actor = models.ForeignKey(Account, on_delete=P)
     scope_key = models.CharField(max_length=40)
+    # Keep the existing ledger and its IDs; older rows remain work-like events.
+    kind = models.CharField(max_length=20, default='work_like', choices=[
+        ('work_like', '作品点赞'), ('reason_like', '理由赞同'), ('co_recommendation', '共同推荐')])
+    # Permanent reason ID, intentionally not a cascading FK when a reason is removed.
+    subject_id = models.PositiveBigIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=['work', 'actor', 'scope_key'], name='work_like_event_unique')]
+        constraints = [models.UniqueConstraint(fields=['work', 'actor', 'scope_key', 'kind', 'subject_id'], name='interaction_event_unique')]
 
 
 class Notification(models.Model):
@@ -92,6 +106,15 @@ class Notification(models.Model):
     activity_title = models.CharField(max_length=100, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     read_at = models.DateTimeField(null=True)
+
+    @property
+    def action_label(self):
+        return {'reason_like': '赞同了你为',
+                'co_recommendation': '也推荐了你推荐的'}.get(self.event.kind, '赞了你推荐的')
+
+    @property
+    def action_suffix(self):
+        return '写的推荐理由' if self.event.kind == 'reason_like' else ''
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['event', 'recipient'], name='notification_recipient_event_unique')]

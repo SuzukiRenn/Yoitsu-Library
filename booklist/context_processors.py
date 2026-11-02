@@ -15,7 +15,8 @@ def site_legal(request):
     feedback_source = request.get_full_path() if re.fullmatch(r'/(?:works/[1-9][0-9]*/|activities/(?:[1-9][0-9]*/|history/)?|catalog/)?', request.path) else ''
     if len(feedback_source) > 1000:
         feedback_source = request.path
-    return {'qq_email_login': settings.QQ_EMAIL_LOGIN, 'contact_email': settings.CONTACT_EMAIL, 'icp_record': settings.ICP_RECORD, 'feedback_source': feedback_source,
+    from .activity_notices import header_state
+    return {'activity_notice_state': header_state(request), 'qq_email_login': settings.QQ_EMAIL_LOGIN, 'contact_email': settings.CONTACT_EMAIL, 'icp_record': settings.ICP_RECORD, 'feedback_source': feedback_source,
             'current_account': account,
             'unread_notifications': Notification.objects.filter(recipient=account, read_at__isnull=True).count() if account else 0,
             'has_admin_access': getattr(request, 'admin', None) is not None,

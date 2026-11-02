@@ -1,5 +1,5 @@
 from booklist import reason_likes, activity_export, legal_pages
-from booklist import feedback, account_views, account_admin, email_views
+from booklist import feedback, account_views, account_admin, email_views, activity_notices
 from django.urls import path
 from booklist import views, catalog_views, public_views, activity_views, recommend_views, admin_views, metadata_views, cover_cache, live_stats
 
@@ -54,6 +54,8 @@ urlpatterns = [
     path('random-book/', public_views.random_book),
     path('recommend/', recommend_views.recommend),
     path('api/v1/recommend/candidates/', recommend_views.candidates),
+    path('api/v1/activities/notices/', activity_notices.listing),
+    path('api/v1/activities/notices/seen/', activity_notices.seen),
     path('activities/', activity_views.index),
     path('activities/history/', activity_views.index, {'archive': True}),
     path('activities/<int:activity_id>/', activity_views.detail),

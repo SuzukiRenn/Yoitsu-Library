@@ -167,6 +167,9 @@ def set_relation(work, client, kind, enabled, origin='plus_one'):
         if kind == 'like':
             from .notifications import work_liked
             work_liked(work, client)
+        else:
+            from .notifications import co_recommended
+            co_recommended(work, client)
     elif not enabled and row:
         field = 'withdrawn_at' if kind == 'recommend' else 'cancelled_at'
         setattr(row, field, timezone.now())
