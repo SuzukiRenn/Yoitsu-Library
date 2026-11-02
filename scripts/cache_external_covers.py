@@ -47,6 +47,25 @@ def observed(database):
     return list(dict.fromkeys(v for v in values if isinstance(v, str) and v.startswith(('http://','https://'))))
 
 
+def policy_for(origin, opener, fetch=transport.fetch, sleeper=time.sleep):
+    attempts=[]
+    for attempt in range(2):
+        if attempt:sleeper(10)
+        record,raw=fetch(origin+'/robots.txt',65536,opener)
+        attempts.append(record)
+        if raw is not None or record.get('status') is not None:break
+    if record.get('status')==404:
+        text=''
+    elif raw is not None and record.get('media_type')=='text/plain':
+        text=raw.decode('utf-8-sig')
+    else:
+        return None, {'status':'policy_unavailable','attempts':attempts}
+    policy=RobotFileParser();policy.parse(text.splitlines())
+    rate=policy.request_rate(transport.AGENT)
+    delay=max(2,policy.crawl_delay(transport.AGENT) or 0,rate.seconds/rate.requests if rate else 0)
+    return (policy,delay), {'status':'available','attempts':attempts}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--database', type=Path, required=True)
@@ -87,27 +106,19 @@ def main():
                 state['items'][original]={'status':'cached'}
                 if len(state['items'])%20==0:save()
                 continue
-            if previous and previous['status'] in ('failed','restricted','unsupported'):
+            if previous and previous['status'] in ('failed','restricted','unsupported') and previous.get('reason')!='robots_not_available_or_disallowed':
                 continue
             if not url:
                 state['items'][original]={'status':'unsupported'};save();continue
             origin='https://'+urlsplit(url).netloc
             if origin not in policies:
-                record, raw=transport.fetch(origin+'/robots.txt',65536,opener)
-                policy=RobotFileParser()
-                if record['status']==404:
-                    policy.parse([])
-                elif raw is not None and record.get('media_type')=='text/plain':
-                    policy.parse(raw.decode('utf-8-sig').splitlines())
-                else:
-                    policies[origin]=None
-                if origin not in policies:
-                    rate=policy.request_rate(transport.AGENT)
-                    delay=max(2,policy.crawl_delay(transport.AGENT) or 0,rate.seconds/rate.requests if rate else 0)
-                    policies[origin]=(policy,delay)
+                policies[origin],diagnostic=policy_for(origin,opener)
+                state.setdefault('policies',{})[origin]=diagnostic;save()
             rules=policies[origin]
-            if not rules or rules[1]>60 or not rules[0].can_fetch(transport.AGENT,url):
-                state['items'][original]={'status':'restricted','reason':'robots_not_available_or_disallowed'};save();continue
+            if not rules:
+                state['items'][original]={'status':'policy_unavailable','reason':'robots_unavailable'};save();continue
+            if rules[1]>60 or not rules[0].can_fetch(transport.AGENT,url):
+                state['items'][original]={'status':'restricted','reason':'robots_disallowed_or_delay_requires_review'};save();continue
             state['current_url']=url;save()
             time.sleep(rules[1])
             record, raw=transport.fetch(url,cover_cache.MAX_BYTES,opener)
@@ -122,7 +133,7 @@ def main():
                     item['reason']=str(error)
             state['items'][original]=item;save()
             print(json.dumps({'status':item['status'],'processed':state['processed'],'remaining':state['remaining']}),flush=True)
-        state['status']='completed_with_errors' if any(k in state['counts'] for k in ('failed','restricted','unsupported')) else 'completed'
+        state['status']='completed_with_errors' if any(k in state['counts'] for k in ('failed','restricted','unsupported','policy_unavailable')) else 'completed'
         state.pop('current_url',None);save()
         print(json.dumps({'status':state['status'],'counts':state['counts']}),flush=True)
     return 0

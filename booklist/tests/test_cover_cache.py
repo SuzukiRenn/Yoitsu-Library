@@ -22,6 +22,19 @@ def png(width=1, height=1, rgba=b'\xff\x00\x00\xff'):
 
 
 class CoverCacheTests(SimpleTestCase):
+    def test_policy_transport_failure_is_bounded_and_not_an_image_restriction(self):
+        from scripts.cache_external_covers import policy_for
+        transient={'status':None,'result':'transport_failed','cause_class':'SSLEOFError'}
+        ok={'status':200,'media_type':'text/plain'}
+        with patch('scripts.cache_external_covers.transport.fetch',side_effect=[(transient,None),(ok,b'User-agent: *\nAllow: /\n')]) as fetch:
+            rules,diagnostic=policy_for('https://www.bilinovel.com',None,fetch,lambda delay:None)
+            self.assertEqual(fetch.call_count,2);self.assertTrue(rules[0].can_fetch('test','https://www.bilinovel.com/files/a.jpg'))
+            self.assertEqual(diagnostic['status'],'available')
+        with patch('scripts.cache_external_covers.transport.fetch',return_value=({'status':403},None)) as fetch:
+            rules,diagnostic=policy_for('https://www.bilinovel.com',None,fetch,lambda delay:None)
+            self.assertEqual(fetch.call_count,1);self.assertIsNone(rules)
+            self.assertEqual(diagnostic['status'],'policy_unavailable')
+
     def test_external_cover_command_resumes_existing_cache_without_touching_catalog(self):
         from contextlib import closing
         from django.conf import settings
