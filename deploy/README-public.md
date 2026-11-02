@@ -29,3 +29,12 @@
 如需回退入口，先备份标记和当前反代配置，再移走标记，针对当前固定提交重新
 执行 `prepare`、Compose `up -d proxy` 和 `verify`，关闭云安全组 80/443。
 不恢复旧数据库覆盖用户贡献。证书、配置备份和业务备份不得提交 Git。
+
+## 身份版子域名入口
+
+`account.sharedbooklist.xyz` 通过现有 HTTPS 边缘代理分流到身份版独立内部网络。
+`/etc/shared-booklist-identity/public-domain.json` 只接受固定域名与 `challenge` 或 `enabled` 模式；未配置时保持原来的私有部署。
+启用前需要 A 记录、独立受信任证书和身份版更新；不能仅开放 8444 或应用端口代替 HTTPS 域名入口。
+身份版静态资源使用其独立目录的 `public-current` 指针。身份版更新成功后自动切换指针；账户 Cookie 保持主机作用域。
+证书由 `yoitsu-identity-certificate.timer` 定期续期，成功后测试并重载边缘代理。
+回退公网接入应删除身份版公网标记并用当前匿名版 `ssh_access.py prepare` 重新生成代理配置；不要回滚业务数据库。

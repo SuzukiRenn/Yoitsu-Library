@@ -3,6 +3,7 @@ import ipaddress,json,os,re,shutil,subprocess,sys,time
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parent.parent))
 from scripts.prepare_https import render
+from deploy.identity_public import extend as identity_ingress, mode as identity_public_mode
 DOMAIN='sharedbooklist.xyz'
 DIRECTORY=Path('/etc/shared-booklist/ssh-access')
 SUBNET='172.30.29.0/28'
@@ -31,7 +32,7 @@ def configuration(release,public=False):
         proxy['ports']+=['0.0.0.0:80:8080','0.0.0.0:443:8443']
     proxy['volumes']=[str(DIRECTORY)+'/nginx.conf:/etc/nginx/nginx.conf:ro',str(DIRECTORY)+'/tls:/etc/nginx/tls:ro','/var/lib/shared-booklist/predeploy/static/${BOOKLIST_RELEASE}:/srv/static:ro']
     nginx=rendered['nginx.https.conf'].replace('proxy_set_header Host '+DOMAIN+';','proxy_set_header Host $http_host;')
-    return overlay,nginx
+    return identity_ingress(overlay,nginx,identity_public_mode() if public else None)
 
 def compose(release,overlay=True):
     command=['docker','compose','-p','shared-booklist-predeploy','--env-file','/etc/shared-booklist/predeploy.env','-f','/opt/shared-booklist/releases/'+release+'/deploy/compose.yaml']
