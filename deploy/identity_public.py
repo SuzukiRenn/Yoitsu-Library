@@ -29,6 +29,9 @@ def extend(overlay, nginx, state):
     start = source.index('  server { listen 8080; server_name ' + DOMAIN)
     addition = source[start:source.rfind('}')]
     if state == 'enabled':
+        # Both Compose projects name their application service "app". Once the
+        # edge joins both networks, use exact addresses to prevent alias mixing.
+        nginx = nginx.replace('proxy_pass http://app:8000;', 'proxy_pass http://172.30.29.3:8000;')
         overlay['networks']['identity_edge'] = {'external': True, 'name': 'shared-booklist-identity_edge'}
         proxy['networks']['identity_edge'] = {'ipv4_address': '172.30.30.4'}
         proxy['volumes'] += [

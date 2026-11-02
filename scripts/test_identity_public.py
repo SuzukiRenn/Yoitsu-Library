@@ -34,7 +34,8 @@ class IdentityPublicTests(unittest.TestCase):
         self.assertIn('proxy_set_header X-Forwarded-For $remote_addr;', nginx)
         self.assertIn('/srv/identity-static/public-current/', nginx)
         self.assertIn('/etc/nginx/identity-tls/fullchain.pem', nginx)
-        self.assertIn('proxy_pass http://app:8000;', nginx)
+        self.assertIn('proxy_pass http://172.30.29.3:8000;', nginx)
+        self.assertNotIn('proxy_pass http://app:8000;', nginx)
 
 
 if __name__ == '__main__':
