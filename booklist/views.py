@@ -60,10 +60,14 @@ def endpoint(method, admin=False, fields=(), optional_fields=None):
                         return error('invalid_request', '字段缺失、类型错误或含未知字段', 400)
                 return fn(request, data, *args, **kwargs)
             except services.DomainError as exc:
-                response = (JsonResponse({'error': {'code':exc.code, 'message':exc.message, 'confirmation':exc.confirmation}}, status=exc.status)
-                            if hasattr(exc, 'confirmation') else error(exc.code, exc.message, exc.status))
+                detail = {'code': exc.code, 'message': exc.message}
+                if hasattr(exc, 'confirmation'):
+                    detail['confirmation'] = exc.confirmation
+                if exc.status == 429 and hasattr(exc, 'retry_after'):
+                    detail.update(retry_after=exc.retry_after, retry_at=exc.retry_at)
+                response = JsonResponse({'error': detail}, status=exc.status)
                 if exc.status == 429:
-                    response['Retry-After'] = '60'
+                    response['Retry-After'] = str(getattr(exc, 'retry_after', 60))
                 return response
             except (ValueError, UnicodeError, ValidationError):
                 return error('invalid_request', '输入不符合协议或校验未通过', 400)

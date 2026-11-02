@@ -106,3 +106,18 @@ EMAIL_HOST_PASSWORD = os.environ.get('BOOKLIST_SMTP_PASSWORD', '')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 if ENV == 'production' and QQ_EMAIL_LOGIN and not (EMAIL_HOST_USER and EMAIL_HOST_PASSWORD):
     raise ImproperlyConfigured('QQ email login requires private SMTP configuration')
+
+# Shared campus/NAT addresses are broad abuse guards; mailbox cooldown is primary.
+def qq_limit(name, default):
+    try:
+        value = int(os.environ.get(name, str(default)))
+    except ValueError:
+        raise ImproperlyConfigured(name + ' must be a positive integer') from None
+    if not 1 <= value <= 100000:
+        raise ImproperlyConfigured(name + ' must be between 1 and 100000')
+    return value
+
+QQ_CODE_EMAIL_DAILY_LIMIT = qq_limit('BOOKLIST_QQ_CODE_EMAIL_DAILY_LIMIT', 30)
+QQ_CODE_IP_HOURLY_LIMIT = qq_limit('BOOKLIST_QQ_CODE_IP_HOURLY_LIMIT', 1000)
+QQ_CODE_GLOBAL_DAILY_LIMIT = qq_limit('BOOKLIST_QQ_CODE_GLOBAL_DAILY_LIMIT', 3000)
+QQ_VERIFY_IP_LIMIT = qq_limit('BOOKLIST_QQ_VERIFY_IP_LIMIT', 1000)

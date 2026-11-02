@@ -13,12 +13,14 @@ def code(request, data):
 
 @endpoint('POST', fields=('email', 'challenge', 'code'))
 def login(request, data):
-    services.rate_limit('qq_verify_ip', request.META.get('REMOTE_ADDR', ''), 30, 900)
+    qq_login.rate_limit('qq_verify_ip', request.META.get('REMOTE_ADDR', ''), settings.QQ_VERIFY_IP_LIMIT, 900,
+        f'当前网络每 15 分钟验证请求已达 {settings.QQ_VERIFY_IP_LIMIT} 次上限')
     return authenticated(request, qq_login.verify(data['email'], data['challenge'], data['code'], 'login'))
 
 
 @endpoint('POST', fields=('email', 'challenge', 'code'))
 def bind(request, data):
     account = accounts.require(request)
-    services.rate_limit('qq_verify_ip', request.META.get('REMOTE_ADDR', ''), 30, 900)
+    qq_login.rate_limit('qq_verify_ip', request.META.get('REMOTE_ADDR', ''), settings.QQ_VERIFY_IP_LIMIT, 900,
+        f'当前网络每 15 分钟验证请求已达 {settings.QQ_VERIFY_IP_LIMIT} 次上限')
     return authenticated(request, qq_login.verify(data['email'], data['challenge'], data['code'], 'bind', account))

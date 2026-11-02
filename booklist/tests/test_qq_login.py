@@ -117,6 +117,7 @@ class QQLoginTests(TestCase):
         legacy.account.refresh_from_db();self.assertIsNone(legacy.account.qq_email)
         with self.assertRaises(services.DomainError):self.issue('888888@qq.com','bind',owner.account)
 
+    @override_settings(QQ_CODE_IP_HOURLY_LIMIT=30)
     def test_rate_limits_bound_cost_and_cleanup_removes_expired_codes(self):
         self.issue()
         for _ in range(29):services.rate_limit('qq_code_ip','192.0.2.10',30,3600)
@@ -168,3 +169,48 @@ class QQLoginTests(TestCase):
         EmailChallenge.objects.update(created_at=timezone.now()-timedelta(seconds=61))
         self.issue()
         self.assertEqual(len(mail.outbox),2)
+
+
+    def test_shared_ip_allows_more_than_old_limit_and_mailbox_reuses_old_counter(self):
+        for _ in range(30):services.rate_limit('qq_code_ip','192.0.2.10',1000,3600)
+        for _ in range(8):services.rate_limit('qq_code_email','123456@qq.com',30,86400)
+        self.issue()
+        self.assertEqual(len(mail.outbox),1)
+
+    @override_settings(QQ_CODE_EMAIL_DAILY_LIMIT=1)
+    def test_email_daily_limit_returns_real_reset_time_and_header(self):
+        client=Client()
+        with patch('booklist.services.time.time',return_value=1700000100.0):
+            self.issue()
+            EmailChallenge.objects.update(created_at=timezone.now()-timedelta(seconds=61))
+            response=client.post('/api/v1/account/email/code/',json.dumps({'email':'123456@qq.com','purpose':'login'}),content_type='application/json',REMOTE_ADDR='192.0.2.10')
+        self.assertEqual(response.status_code,429)
+        error=response.json()['error']
+        self.assertEqual(error['code'],'qq_code_email_limit')
+        self.assertEqual(error['retry_after'],(1700000100//86400+1)*86400-1700000100)
+        self.assertEqual(int(response['Retry-After']),error['retry_after'])
+        self.assertIn('北京时间',error['message'])
+        self.assertTrue(error['retry_at'].endswith('08:00:00+08:00'))
+
+    @override_settings(QQ_CODE_IP_HOURLY_LIMIT=1)
+    def test_ip_limit_has_distinct_message_and_mailbox_cooldown_is_remaining_time(self):
+        client=Client()
+        self.issue()
+        response=client.post('/api/v1/account/email/code/',json.dumps({'email':'another@qq.com','purpose':'login'}),content_type='application/json',REMOTE_ADDR='192.0.2.10')
+        self.assertEqual(response.json()['error']['code'],'qq_code_ip_limit')
+        with override_settings(QQ_CODE_IP_HOURLY_LIMIT=1000):
+            EmailChallenge.objects.update(created_at=timezone.now()-timedelta(seconds=30))
+            with self.assertRaises(services.DomainError) as caught:self.issue()
+        self.assertEqual(caught.exception.code,'code_cooldown')
+        self.assertTrue(29<=caught.exception.retry_after<=31)
+
+    @override_settings(QQ_CODE_GLOBAL_DAILY_LIMIT=1)
+    def test_global_quota_and_verification_limit_are_specific_and_do_not_send(self):
+        self.issue()
+        with self.assertRaises(services.DomainError) as caught:self.issue('777777@qq.com')
+        self.assertEqual(caught.exception.code,'qq_code_global_limit')
+        with override_settings(QQ_VERIFY_IP_LIMIT=1):
+            services.rate_limit('qq_verify_ip','127.0.0.1',1,900)
+            response=Client().post('/api/v1/account/email/login/',json.dumps({'email':'123456@qq.com','challenge':'a'*43,'code':'000000'}),content_type='application/json')
+        self.assertEqual(response.json()['error']['code'],'qq_verify_ip_limit')
+        self.assertEqual(len(mail.outbox),1)

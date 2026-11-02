@@ -1,9 +1,10 @@
 """QQ email possession login; delivery happens outside database write locks."""
 import hashlib
 import hmac
+import math
 import re
 import secrets
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone as datetime_timezone
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from django.core.mail import send_mail
@@ -36,6 +37,28 @@ def digest(challenge, code):
     return hmac.new(settings.SECRET_KEY.encode(), text.encode(), hashlib.sha256).hexdigest()
 
 
+def rate_error(code, message, retry_after, now):
+    retry_after = max(1, math.ceil(retry_after))
+    reset = timezone.localtime(now + timedelta(seconds=retry_after))
+    error = services.DomainError(code,
+        message + f'，请在北京时间 {reset:%m月%d日 %H:%M:%S} 后重试', 429)
+    error.retry_after = retry_after
+    error.retry_at = reset.isoformat()
+    return error
+
+
+def rate_limit(scope, identifier, limit, seconds, description):
+    stamp = services.time.time()
+    try:
+        services.rate_limit(scope, identifier, limit, seconds)
+    except services.DomainError as error:
+        if error.code != 'rate_limited':
+            raise
+        wait = (int(stamp) // seconds + 1) * seconds - stamp
+        raise rate_error(scope + '_limit', description, wait,
+            datetime.fromtimestamp(stamp, datetime_timezone.utc)) from None
+
+
 def request_code(email, purpose, ip, account=None):
     enabled()
     email = normalize(email)
@@ -43,14 +66,19 @@ def request_code(email, purpose, ip, account=None):
         raise services.DomainError('invalid_purpose', '验证用途无效')
     if purpose == 'bind' and (not account or not account.is_active or account.qq_email):
         raise services.DomainError('binding_unavailable', '请登录未绑定邮箱的原账户后操作', 409)
-    services.rate_limit('qq_code_ip', ip, 30, 3600)
+    rate_limit('qq_code_ip', ip, settings.QQ_CODE_IP_HOURLY_LIMIT, 3600,
+        f'当前网络每小时获取验证码已达 {settings.QQ_CODE_IP_HOURLY_LIMIT} 次上限')
     now = timezone.now()
     code = f'{secrets.randbelow(1000000):06d}'
     with transaction.atomic():
-        if EmailChallenge.objects.filter(email=email, created_at__gt=now-timedelta(seconds=60)).exists():
-            raise services.DomainError('code_cooldown', '请等待 60 秒后再获取验证码', 429)
-        services.rate_limit('qq_code_email', email, 8, 86400)
-        services.rate_limit('qq_code_global', 'all', 300, 86400)
+        recent = EmailChallenge.objects.filter(email=email, created_at__gt=now-timedelta(seconds=60)).order_by('-created_at').first()
+        if recent:
+            raise rate_error('code_cooldown', '该邮箱发送间隔为 60 秒',
+                60 - (now-recent.created_at).total_seconds(), now)
+        rate_limit('qq_code_email', email, settings.QQ_CODE_EMAIL_DAILY_LIMIT, 86400,
+            f'该邮箱本日获取验证码已达 {settings.QQ_CODE_EMAIL_DAILY_LIMIT} 次上限')
+        rate_limit('qq_code_global', 'all', settings.QQ_CODE_GLOBAL_DAILY_LIMIT, 86400,
+            '全站本日验证码发送额度已用完')
         EmailChallenge.objects.filter(email=email, consumed_at__isnull=True).update(consumed_at=now)
         challenge = EmailChallenge(token=secrets.token_urlsafe(32), email=email, purpose=purpose,
             account=account if purpose == 'bind' else None, expires_at=now+timedelta(minutes=5))
