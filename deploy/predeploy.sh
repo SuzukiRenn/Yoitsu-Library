@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Explicit commit, separate persistent data, private containers only. No password arguments.
+# Explicit commit and persistent data. Public entry requires an existing operator marker.
 set -euo pipefail
 umask 077
 release=${1:?full_commit_required}
@@ -116,7 +116,7 @@ if [[ -f "$config/ssh-access/active" ]]; then
   python3 deploy/ssh_access.py verify "$release"
 fi
 "${compose_base[@]}" run -T --rm --no-deps backup python scripts/sqlite_backup.py --source /var/lib/shared-booklist/booklist.sqlite3 --output-dir /backups --verify-restore </dev/null
-"${compose[@]}" exec -T app python -c "import json,sqlite3,platform;print(json.dumps({'python':platform.python_version(),'sqlite':sqlite3.sqlite_version,'ports_published':False,'mode':'private_predeploy'}))" </dev/null
+"${compose[@]}" exec -T app python -c "import json,sqlite3,platform;print(json.dumps({'python':platform.python_version(),'sqlite':sqlite3.sqlite_version,'runtime_verified':True}))" </dev/null
 ln -s "$checkout" "$root/current.$$.new"
 mv -Tf "$root/current.$$.new" "$root/current"
 printf '%s\n' "$release" > "$state/release.txt"

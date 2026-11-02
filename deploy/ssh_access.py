@@ -1,4 +1,4 @@
-"""Loopback-only HTTPS entry for SSH forwarding; never open public web ports."""
+"""HTTPS entry: private by default; public mode requires an explicit operator marker."""
 import ipaddress,json,os,re,shutil,subprocess,sys,time
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parent.parent))
@@ -10,13 +10,25 @@ SUBNET='172.30.29.0/28'
 def run(*args):
     return subprocess.check_output(args,text=True).strip()
 
-def configuration(release):
+def public_enabled():
+    marker=DIRECTORY/'public-domain.json'
+    if marker.is_symlink():raise ValueError('Linked public configuration')
+    if not marker.exists():return False
+    value=json.loads(marker.read_text(encoding='utf-8'))
+    if value!={'domain':DOMAIN,'icp_record':'鲁ICP备2026066257号-1'}:
+        raise ValueError('Unexpected public configuration')
+    return True
+
+
+def configuration(release,public=False):
     rendered=render(DOMAIN,release)
     overlay=json.loads(rendered['compose.https.json'])
     overlay['services']['app']['networks']['edge_backend']={'ipv4_address':'172.30.29.3'}
     overlay['services'].pop('certbot')
     proxy=overlay['services']['proxy']
     proxy['ports']=['127.0.0.1:8443:8443']
+    if public:
+        proxy['ports']+=['0.0.0.0:80:8080','0.0.0.0:443:8443']
     proxy['volumes']=[str(DIRECTORY)+'/nginx.conf:/etc/nginx/nginx.conf:ro',str(DIRECTORY)+'/tls:/etc/nginx/tls:ro','/var/lib/shared-booklist/predeploy/static/${BOOKLIST_RELEASE}:/srv/static:ro']
     nginx=rendered['nginx.https.conf'].replace('proxy_set_header Host '+DOMAIN+';','proxy_set_header Host $http_host;')
     return overlay,nginx
@@ -54,7 +66,7 @@ def prepare(release):
     run('openssl','x509','-in',str(cert/'fullchain.pem'),'-noout','-checkend','1209600')
     for name in ['fullchain.pem','privkey.pem']:
         target=tls/name;assert not target.is_symlink();shutil.copyfile(cert/name,target);os.chown(target,0,10001);target.chmod(0o640)
-    overlay,nginx=configuration(release)
+    overlay,nginx=configuration(release,public_enabled())
     for name,content in [('compose.json',json.dumps(overlay,indent=2)),('nginx.conf',nginx)]:
         target=DIRECTORY/name;assert not target.is_symlink();target.write_text(content,encoding='utf-8');os.chown(target,0,10001);target.chmod(0o640)
     static=Path('/var/lib/shared-booklist/predeploy/static')/release
@@ -80,9 +92,16 @@ def verify(release):
         assert output=='200 '+kind,output
     ids=run(*compose(release),'ps','-q','proxy').split();assert len(ids)==1
     info=json.loads(run('docker','inspect',ids[0]))[0]
-    assert info['HostConfig']['PortBindings']=={'8443/tcp':[{'HostIp':'127.0.0.1','HostPort':'8443'}]}
+    public=public_enabled()
+    expected={'8443/tcp':[{'HostIp':'127.0.0.1','HostPort':'8443'}]}
+    if public:
+        expected['8443/tcp'].append({'HostIp':'0.0.0.0','HostPort':'443'})
+        expected['8080/tcp']=[{'HostIp':'0.0.0.0','HostPort':'80'}]
+    bindings=info['HostConfig']['PortBindings']
+    assert set(bindings)==set(expected)
+    assert all(sorted(bindings[k],key=lambda x:(x['HostIp'],x['HostPort']))==sorted(v,key=lambda x:(x['HostIp'],x['HostPort'])) for k,v in expected.items())
     assert not json.loads(run('docker','inspect',run(*compose(release),'ps','-q','app')))[0]['HostConfig']['PortBindings']
-    receipt={'success':True,'release':release,'bind':'127.0.0.1:8443','public_ports_opened':False,'tls_system_ca_verified':True,'health_and_static_mime_verified':True}
+    receipt={'success':True,'release':release,'bind':'127.0.0.1:8443','public_ports_opened':public,'tls_system_ca_verified':True,'health_and_static_mime_verified':True}
     (DIRECTORY/'receipt.json').write_text(json.dumps(receipt,indent=2),encoding='utf-8')
     return receipt
 
@@ -93,7 +112,7 @@ def activate(release):
         subprocess.run(compose(release)+['up','-d','--no-build','--wait','--wait-timeout','120','app','proxy'],check=True)
         time.sleep(1)
         receipt=verify(release)
-        (DIRECTORY/'active').write_text('loopback HTTPS for SSH only\n')
+        (DIRECTORY/'active').write_text('public HTTPS with retained SSH entry\n' if public_enabled() else 'loopback HTTPS for SSH only\n')
         print('SSH_ENTRY_SUCCESS '+json.dumps(receipt),flush=True)
     except BaseException:
         if not was_active:
