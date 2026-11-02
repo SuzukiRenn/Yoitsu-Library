@@ -32,6 +32,16 @@ class IdentityDeploymentTests(unittest.TestCase):
         self.assertEqual(config['services']['proxy']['volumes'][1],
                          '/etc/shared-booklist/ssh-access/tls:/etc/nginx/tls:ro')
 
+    def test_only_web_app_gets_dedicated_outbound_network_without_published_ports(self):
+        config, _ = configuration('b' * 40)
+        self.assertFalse(config['networks']['mail_egress'].get('internal', False))
+        self.assertFalse(config['networks']['mail_egress'].get('external', False))
+        for name, service in config['services'].items():
+            self.assertEqual('mail_egress' in service['networks'], name == 'app')
+        self.assertNotIn('ports', config['services']['app'])
+        self.assertTrue(config['networks']['private']['internal'])
+        self.assertTrue(config['networks']['edge']['internal'])
+
     def make_databases(self, root):
         source = root / 'source'; source.mkdir()
         original = source / 'booklist.sqlite3'; target = root / 'target.sqlite3'

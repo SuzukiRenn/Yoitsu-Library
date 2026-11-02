@@ -209,6 +209,8 @@ def main():
                 print('PREEXISTING_IDENTITY_DATA_VERIFIED', flush=True)
             run(*command, 'up', '-d', '--no-build', '--wait', '--wait-timeout', '120')
             run(*command, 'exec', '-T', 'app', 'python', 'scripts/predeploy_health.py')
+            # Verify from the actual app container, not the host's different network.
+            run(*command, 'exec', '-T', 'app', 'python', 'scripts/check_identity_smtp.py')
             for path in ('/health/', '/account/login/', '/account/register/', '/static/account.mjs', '/static/account.css', '/static/appearance.css', '/static/appearance.mjs',
                          '/static/shelf-view-motion.mjs', '/static/reason-reference-editor.mjs', '/static/edition-badge.mjs'):
                 run('curl', '--noproxy', '*', '--fail', '--silent', '--show-error', '--resolve',

@@ -30,7 +30,8 @@ def configuration(release):
         common['environment'] = {'BOOKLIST_ALLOWED_HOSTS': DOMAIN + ',' + PUBLIC_DOMAIN + ',localhost,127.0.0.1',
                                  'BOOKLIST_TRUSTED_PROXY_IPS': PROXY + ',172.30.30.4'}
     app = {**common, 'mem_limit': '256m', 'cpus': 0.75,
-           'networks': {'private': {}, 'edge': {'ipv4_address': '172.30.30.3'}},
+           # Only the web process needs outbound SMTP; no host ports are published.
+           'networks': {'private': {}, 'edge': {'ipv4_address': '172.30.30.3'}, 'mail_egress': {}},
            'healthcheck': {'test': ['CMD', 'python', 'scripts/predeploy_health.py'],
                            'interval': '15s', 'timeout': '10s', 'retries': 4, 'start_period': '15s'}}
     tools = {**common, 'mem_limit': '256m', 'restart': 'no', 'profiles': ['tools']}
@@ -48,6 +49,7 @@ def configuration(release):
                  depends_on={'app': {'condition': 'service_healthy'}})
     compose = {'name': PROJECT, 'services': {'app': app, 'scheduler': scheduler, 'backup': backup, 'proxy': proxy, 'tools': tools},
                'networks': {'private': {'internal': True},
-                            'edge': {'internal': True, 'ipam': {'config': [{'subnet': SUBNET}]}}, 'front': {}}}
+                            'edge': {'internal': True, 'ipam': {'config': [{'subnet': SUBNET}]}},
+                            'mail_egress': {}, 'front': {}}}
     nginx = nginx_config(DOMAIN, True).replace('proxy_set_header Host ' + DOMAIN + ';', 'proxy_set_header Host $http_host;')
     return compose, nginx
