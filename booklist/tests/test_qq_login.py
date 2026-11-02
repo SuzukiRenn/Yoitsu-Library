@@ -32,6 +32,16 @@ class QQLoginTests(TestCase):
         with self.assertRaises(services.DomainError):self.verify(result,code)
         self.assertEqual(Account.objects.count(),1)
 
+    def test_mail_preview_keeps_six_digit_code_separate_when_line_breaks_are_removed(self):
+        with patch('booklist.qq_login.secrets.randbelow', return_value=7):
+            result, code = self.issue()
+        self.assertEqual(code, '000007')
+        preview = re.sub(r'\s+', '', mail.outbox[-1].body)
+        self.assertIn('【000007】', preview)
+        self.assertEqual(re.findall(r'[0-9]+', preview), ['000007'])
+        self.assertIn('有效期：五分钟', preview)
+        self.verify(result, code)
+
     def test_existing_email_login_does_not_create_or_rewrite_profile(self):
         result,code=self.issue();_,session=self.verify(result,code)
         account=session.account;account.display_name='原昵称';account.save()

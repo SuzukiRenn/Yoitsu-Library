@@ -58,7 +58,7 @@ def request_code(email, purpose, ip, account=None):
         challenge.save()
     try:
         sent = send_mail('ヨイツ図書館 · 邮箱验证码',
-            f'你的验证码为：{code}\n5 分钟内有效，仅可使用一次。\n如非本人操作，请忽略本邮件。请勿向他人提供验证码。',
+            f'你的验证码为：【{code}】（六位数字）。\n有效期：五分钟，仅可使用一次。\n如非本人操作，请忽略本邮件。请勿向他人提供验证码。',
             settings.DEFAULT_FROM_EMAIL, [email], fail_silently=False)
         if sent != 1:
             raise RuntimeError('Delivery not accepted')
