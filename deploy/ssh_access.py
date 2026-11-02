@@ -81,7 +81,11 @@ def prepare(release):
     os.environ['BOOKLIST_RELEASE']=release
     subprocess.run(compose(release)+['config','--quiet'],check=True)
     # Syntax and matching certificate/key are checked before touching the application.
-    subprocess.run(['docker','run','--rm','--network','none','--read-only','--user','10001:10001','--cap-drop','ALL','--security-opt','no-new-privileges:true','--tmpfs','/tmp:size=32m','--add-host','app:127.0.0.1','-v',str(DIRECTORY/'nginx.conf')+':/etc/nginx/nginx.conf:ro','-v',str(tls)+':/etc/nginx/tls:ro','--entrypoint','nginx',overlay['services']['proxy']['image'],'-t'],check=True)
+    validation_mounts=[]
+    for volume in overlay['services']['proxy']['volumes']:
+        if volume.endswith(':/etc/nginx/identity-tls:ro'):
+            validation_mounts+=['-v',volume]
+    subprocess.run(['docker','run','--rm','--network','none','--read-only','--user','10001:10001','--cap-drop','ALL','--security-opt','no-new-privileges:true','--tmpfs','/tmp:size=32m','--add-host','app:127.0.0.1','-v',str(DIRECTORY/'nginx.conf')+':/etc/nginx/nginx.conf:ro','-v',str(tls)+':/etc/nginx/tls:ro',*validation_mounts,'--entrypoint','nginx',overlay['services']['proxy']['image'],'-t'],check=True)
 
 def verify(release):
     output=run('curl','--noproxy','*','--fail','--silent','--show-error','--resolve',DOMAIN+':8443:127.0.0.1','https://'+DOMAIN+':8443/health/')
