@@ -3,6 +3,7 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scripts.prepare_https import NGINX_IMAGE, nginx_config
+from deploy.identity_public import mode as public_mode, DOMAIN as PUBLIC_DOMAIN
 
 ROOT = Path('/opt/shared-booklist-identity')
 CONFIG = Path('/etc/shared-booklist-identity')
@@ -25,6 +26,9 @@ def configuration(release):
               'volumes': [posix(STATE / 'data') + ':/var/lib/shared-booklist-identity'],
               'networks': ['private'], 'mem_limit': '128m', 'cpus': 0.25,
               'logging': {'driver': 'json-file', 'options': {'max-size': '5m', 'max-file': '2'}}}
+    if public_mode() == 'enabled':
+        common['environment'] = {'BOOKLIST_ALLOWED_HOSTS': DOMAIN + ',' + PUBLIC_DOMAIN + ',localhost,127.0.0.1',
+                                 'BOOKLIST_TRUSTED_PROXY_IPS': PROXY + ',172.30.30.4'}
     app = {**common, 'mem_limit': '256m', 'cpus': 0.75,
            'networks': {'private': {}, 'edge': {'ipv4_address': '172.30.30.3'}},
            'healthcheck': {'test': ['CMD', 'python', 'scripts/predeploy_health.py'],

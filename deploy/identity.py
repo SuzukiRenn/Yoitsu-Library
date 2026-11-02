@@ -232,6 +232,13 @@ def main():
                        'catalog_increment': increment_receipt}
             (STATE / 'receipt.json').write_text(json.dumps(receipt, indent=2))
             (STATE / 'release.txt').write_text(release + '\n')
+            from deploy.identity_public import mode as public_mode
+            if public_mode() == 'enabled':
+                pointer = STATE / 'static/public-current.new'
+                if pointer.exists() or pointer.is_symlink():
+                    raise RuntimeError('Unexpected identity static pointer')
+                pointer.symlink_to(release)
+                os.replace(pointer, STATE / 'static/public-current')
             new = ROOT / 'current.new'
             if new.exists() or new.is_symlink():
                 raise RuntimeError('Unexpected pending release pointer')
