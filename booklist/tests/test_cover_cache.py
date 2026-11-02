@@ -19,6 +19,25 @@ def png(width=1, height=1, rgba=b'\xff\x00\x00\xff'):
 
 
 class CoverCacheTests(SimpleTestCase):
+
+    def test_bili_cover_whitelist_and_local_serving_without_external_fetch(self):
+        for host in ('www.bilinovel.com','www.bilinovel.net'):
+            url='https://'+host+'/files/article/image/2/2865/2865s.png'
+            self.assertEqual(cover_cache.source_url(url),url)
+            for invalid in (url+'?x=1',url+'#x',url.replace(host,host+'.evil.test'),
+                            url.replace('/2/','/1/'),url.replace('https:','http:'),
+                            url.replace(host,'user@'+host),url.replace('2865s.png','different.png')):
+                self.assertIsNone(cover_cache.source_url(invalid))
+            with TemporaryDirectory() as directory, override_settings(COVER_CACHE_DIR=Path(directory)):
+                raw=png();cover_cache.store(url,raw,'image/png')
+                with patch('scripts.probe_wenku8.fetch',side_effect=AssertionError('No external request')):
+                    local=catalog.cover_url(url)
+                    self.assertTrue(local.startswith('/media/covers/'))
+                    response=self.client.get(local)
+                    self.assertEqual(response.status_code,200)
+                    self.assertEqual(b''.join(response.streaming_content),raw)
+                    self.assertEqual(self.client.get(local,HTTP_IF_NONE_MATCH=response['ETag']).status_code,304)
+
     def test_same_url_refresh_keeps_old_cover_and_exposes_immutable_new_revision(self):
         with TemporaryDirectory() as directory, override_settings(COVER_CACHE_DIR=Path(directory)):
             old = png(); new = png(2, 1)
@@ -152,3 +171,27 @@ class CachedActivityCoverTests(TestCase):
             activities.submit(period.pk, person, {'work_id': work.pk, 'title': work.display_title, 'reason': '', 'copy_public_reason': False})
             self.assertEqual(ActivityWork.objects.get().snapshot_cover_url, URL.replace('http:', 'https:'))
             self.assertEqual(activities.listing(period.pk)['results'][0]['cover_url'], cover_cache.local_url(URL))
+
+    def test_bili_catalog_and_theme_snapshot_switch_to_local_after_cache_arrives(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from booklist import activities,services
+        from booklist.models import Activity,ActivityWork,Work,Recommendation
+        url='https://www.bilinovel.com/files/article/image/2/2865/2865s.png'
+        with TemporaryDirectory() as directory,override_settings(COVER_CACHE_DIR=Path(directory)):
+            actor=services.initialize_admin('coverowner','Bili-Cover!Testing-Password-49')
+            _,person=services.issue_anonymous();now=timezone.now()
+            period=Activity.objects.create(title='主题',start_at=now-timedelta(hours=1),started_at=now-timedelta(hours=1),
+                scheduled_end_at=now+timedelta(hours=1),status='active',created_by=actor)
+            work=Work.objects.create(original_submitted_title='Bili作品',cover_url_override=url,cover_url_overridden=True,
+                source_metadata={'source_provider':'bilinovel','bili_id':2865,'edition':'book'})
+            snap=ActivityWork.objects.create(activity=period,work=work,snapshot_title=work.display_title,snapshot_cover_url=url,snapshot_tags=[])
+            Recommendation.objects.create(scope='activity',activity=period,activity_work=snap,work=work,anonymous_client=person)
+            self.assertEqual(catalog.work_detail(work.pk)['cover_url'],url)
+            cover_cache.store(url,png(),'image/png')
+            local=cover_cache.local_url(url)
+            self.assertEqual(catalog.work_detail(work.pk)['cover_url'],local)
+            self.assertEqual(activities.listing(period.pk)['results'][0]['cover_url'],local)
+            snap.refresh_from_db();work.refresh_from_db()
+            self.assertEqual(snap.snapshot_cover_url,url)
+            self.assertEqual(work.cover_url_override,url)

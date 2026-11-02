@@ -21,11 +21,17 @@ def source_url(value):
         return None
     try:
         url = urlsplit(value)
-        if url.scheme not in ('http', 'https') or url.netloc != 'img.wenku8.com' or url.query or url.fragment:
+        if url.scheme not in ('http', 'https') or url.query or url.fragment:
             return None
-        match = re.fullmatch(r'/image/([0-9]+)/([1-9][0-9]*)/\2s\.(jpg|jpeg|png)', url.path)
+        if url.netloc == 'img.wenku8.com':
+            prefix = '/image/'
+        elif url.scheme == 'https' and url.netloc in ('www.bilinovel.com', 'www.bilinovel.net'):
+            prefix = '/files/article/image/'
+        else:
+            return None
+        match = re.fullmatch(re.escape(prefix)+r'([0-9]+)/([1-9][0-9]*)/\2s\.(jpg|jpeg|png)', url.path)
         if match and int(match[1]) == int(match[2]) // 1000:
-            return 'https://img.wenku8.com'+url.path
+            return 'https://'+url.netloc+url.path
     except ValueError:
         pass
     return None
