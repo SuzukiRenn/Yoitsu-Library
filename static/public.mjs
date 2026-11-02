@@ -12,6 +12,8 @@ import {installShelfReturn} from './shelf-return.mjs?v=20261024-references-1';
 installShelfReturn();
 import {installShelfView} from './shelf-view.mjs?v=20261025-reading-1';
 installShelfView();
+import {installTouchTooltip} from './touch-tooltip.mjs?v=20261102-1';
+installTouchTooltip();
 import {installWorkSequence} from './work-sequence.mjs?v=20261024-sequence-1';
 installWorkSequence();
 import './back-to-top.mjs?v=20261102-group-1';
