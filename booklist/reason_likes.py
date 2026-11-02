@@ -20,13 +20,15 @@ def entries(query, client=None, *, limit=None, offset=0, popular=False, writable
     query = query.annotate(liked=Exists(own) if own is not None else Value(False, output_field=BooleanField()))
     query = query[offset:offset+limit] if limit is not None else query[offset:]
     from .reason_references import decorate
-    from .models import Account
+    from .models import Account, ImportedPrincipal
     rows = list(query)
+    imported = set(ImportedPrincipal.objects.filter(principal_id__in=[row.anonymous_client_id for row in rows]).values_list('principal_id', flat=True))
     owners = {account.principal_id: account for account in Account.objects.filter(principal_id__in=[row.anonymous_client_id for row in rows])}
     return decorate([{'id': row.pk, 'reason': row.reason, 'reason_references': row.reason_references,
         'contains_spoilers': row.contains_spoilers, 'like_count': row.like_count, 'liked': row.liked,
-        'author': {'display_name': owners[row.anonymous_client_id].display_name} if row.anonymous_client_id in owners
-                   else {'display_name': '历史匿名推荐者'}, 'writable': writable} for row in rows])
+        'author': None if row.anonymous_client_id in imported else (
+            {'display_name': owners[row.anonymous_client_id].display_name} if row.anonymous_client_id in owners
+            else {'display_name': '历史匿名推荐者'}), 'writable': writable} for row in rows])
 
 
 @endpoint('POST', fields={'enabled': bool})

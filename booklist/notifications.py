@@ -77,7 +77,7 @@ def attribution(query, work_ids):
         history = Recommendation.objects.filter(scope='activity', activity_id__in=activity_ids,
             archived_at__isnull=True, invalidated_at__isnull=True,
             activity_work__archived_at__isnull=True, activity_work__merged_into__isnull=True)
-    rows = list(history.filter(work_id__in=work_ids).order_by('created_at', 'id'))
+    rows = list(history.filter(work_id__in=work_ids, anonymous_client__imported_attribution__isnull=True).order_by('created_at', 'id'))
     owners = {account.principal_id: account for account in Account.objects.filter(
         principal_id__in={row.anonymous_client_id for row in rows})}
     firsts = {}

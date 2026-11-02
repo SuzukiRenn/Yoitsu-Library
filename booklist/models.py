@@ -40,6 +40,13 @@ class AnonymousClient(Timestamped):
     revoked_at = models.DateTimeField(null=True)
 
 
+class ImportedPrincipal(models.Model):
+    """Unclaimable import attribution, separate from reader accounts and browser identities."""
+    principal = models.OneToOneField(AnonymousClient, on_delete=models.CASCADE, related_name='imported_attribution')
+    batch_key = models.CharField(max_length=64, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
 class Account(Timestamped):
     qq_email = models.EmailField(null=True, blank=True, unique=True)
     email_verified_at = models.DateTimeField(null=True)
