@@ -4,7 +4,7 @@ import re
 
 def site_legal(request):
     account = getattr(request, 'account', None)
-    from .models import Notification
+    from .notifications import visible_inbox
     section = request.GET.get('section', 'works')
     for prefix, value in (('/manage/readers/', 'readers'), ('/manage/works/', 'works'), ('/manage/activities/', 'activities'),
                           ('/manage/feedback/', 'feedback'),
@@ -23,6 +23,6 @@ def site_legal(request):
     from .activity_notices import header_state
     return {'login_url':login_url(source),'notification_url':notification_url,'activity_notice_state': header_state(request), 'qq_email_login': settings.QQ_EMAIL_LOGIN, 'contact_email': settings.CONTACT_EMAIL, 'icp_record': settings.ICP_RECORD, 'feedback_source': feedback_source,
             'current_account': account,
-            'unread_notifications': Notification.objects.filter(recipient=account, read_at__isnull=True).count() if account else 0,
+            'unread_notifications': visible_inbox(account).filter(read_at__isnull=True).count() if account else 0,
             'has_admin_access': getattr(request, 'admin', None) is not None,
             'admin_navigation_section': section}

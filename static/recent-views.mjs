@@ -1,5 +1,5 @@
-import {accountPost} from './account.mjs?v=20261103-message-3';
-import {returnTo} from './navigation-context.mjs?v=20261103-message-3';
+import {accountPost} from './account.mjs?v=20261103-retract-1';
+import {returnTo} from './navigation-context.mjs?v=20261103-retract-1';
 
 export function installRecentViews(doc=document,win=window,post=accountPost){
  const owner=Number(doc.body?.dataset.readerId);if(!Number.isSafeInteger(owner)||owner<=0)return;

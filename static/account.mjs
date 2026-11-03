@@ -1,5 +1,5 @@
-import {returnTo} from './navigation-context.mjs?v=20261103-message-3';
-import {installEmailLogin} from './email-login.mjs?v=20261103-message-3';
+import {returnTo} from './navigation-context.mjs?v=20261103-retract-1';
+import {installEmailLogin} from './email-login.mjs?v=20261103-retract-1';
 export function safeNext(value, origin) {
   try {const url = new URL(value || '/', origin); return url.origin === origin && url.pathname.startsWith('/') ? url.pathname + url.search + url.hash : '/';}
   catch {return '/';}
@@ -113,12 +113,16 @@ if (typeof document !== 'undefined' && !document.documentElement.hasAttribute('d
   });
   const restorePage=Math.min(100,Math.max(1,Number(new URLSearchParams(location.search).get('page'))||1));
   let page=1;
+  const loadedIds=[...document.querySelectorAll('[data-notification]')].map(row=>Number(row.dataset.notification));
+  let before=loadedIds.length ? Math.min(...loadedIds) : null;
   const more=document.querySelector('[data-more-notifications]');
   if(more) {
     const load=async append => {
-      const response=await fetch(`/api/v1/notifications/?page=${page}`,{credentials:'same-origin',cache:'no-store'});
+      const query=append && before ? `before=${before}` : `page=${page}`;
+      const response=await fetch(`/api/v1/notifications/?${query}`,{credentials:'same-origin',cache:'no-store'});
       if(!response.ok)throw Error('消息加载失败，请重试');
       const data=await response.json();
+      if(append && data.results.length)document.querySelector('[data-notifications] .empty-state')?.remove();
       if(append)for(const item of data.results) {
         const li=document.createElement('li');li.dataset.notification=String(item.id);li.className=`notification${item.read ? '' : ' unread'}`;
         const p=document.createElement('p');p.textContent=notificationText(item);
@@ -129,7 +133,8 @@ if (typeof document !== 'undefined' && !document.documentElement.hasAttribute('d
         if(!item.read){const b=document.createElement('button');b.type='button';b.dataset.read=String(item.id);b.className='reason-link notification-action';b.textContent='标为已读';actions.append(b);}
         document.querySelector('[data-notifications]').append(li);
       }
-      more.hidden=page*50>=data.total;
+      if(append && data.results.length)before=data.results.at(-1).id;
+      more.hidden=append ? !data.has_more : !before || document.querySelectorAll('[data-notification]').length>=data.total;
       const current=new URL(location.href);
       if(page>1){current.searchParams.set('page',String(page));history.replaceState(history.state,'',current.href);}
     };

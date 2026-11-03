@@ -1,4 +1,6 @@
 {% extends 'booklist/base.html' %}
+{% load static %}
+{% block scripts %}{% if mode == 'notifications' %}<script type="module" src="{% static 'notification-retractions.mjs' %}?v=20261103-retract-1"></script>{% endif %}{% endblock %}
 {% block title %}{% if mode == 'notifications' %}消息{% elif mode == 'bind' %}绑定 QQ 邮箱{% elif mode == 'settings' %}修改信息{% elif mode == 'register' %}注册{% else %}登录{% endif %} · {% endblock %}
 {% block content %}<section class="account-panel">
 {% if mode == 'notifications' %}

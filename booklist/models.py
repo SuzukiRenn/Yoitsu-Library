@@ -125,6 +125,7 @@ class Notification(models.Model):
     activity_title = models.CharField(max_length=100, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     read_at = models.DateTimeField(null=True)
+    retracted_at = models.DateTimeField(null=True)
 
     @property
     def action_label(self):

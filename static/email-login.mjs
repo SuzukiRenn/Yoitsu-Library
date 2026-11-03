@@ -1,4 +1,4 @@
-import {returnTo} from './navigation-context.mjs?v=20261103-message-3';
+import {returnTo} from './navigation-context.mjs?v=20261103-retract-1';
 export function installEmailLogin(post, next, doc=document, win=window){
  const form=doc.querySelector('[data-email-login]');if(!form)return;
  const email=form.querySelector('[name=email]'),code=form.querySelector('[name=code]');

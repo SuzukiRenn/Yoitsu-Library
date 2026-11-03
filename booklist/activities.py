@@ -191,8 +191,11 @@ def edit_reason(row, text, contains_spoilers=None, references=None):
 
 @transaction.atomic
 def withdraw(activity_id, work_id, client):
-    require_open(activity_id); work = books.require_work(work_id, public=False)
+    activity = require_open(activity_id); work = books.require_work(work_id, public=False)
     changed = recs(activity_id).filter(work_id=work_id, anonymous_client=client).update(withdrawn_at=timezone.now(), updated_at=timezone.now())
+    if changed:
+        from .notifications import retract_co_recommendation
+        retract_co_recommendation(work, client, activity)
     if changed and not recs(activity_id).filter(work_id=work_id).exists():
         from .lifecycle import finish_activity_cycle
         finish_activity_cycle(activity_id, work)

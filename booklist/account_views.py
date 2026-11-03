@@ -118,13 +118,22 @@ def screen(request, data, mode='login'):
 
 
 def inbox_query(request):
-    return Notification.objects.filter(recipient=accounts.require(request))
+    from .notifications import visible_inbox
+    return visible_inbox(accounts.require(request))
 
 
 @endpoint('GET')
 def unread(request, data):
-    parameters(request, ())
-    return JsonResponse({'unread_count': inbox_query(request).filter(read_at__isnull=True).count()})
+    parameters(request, ('since',))
+    account = accounts.require(request)
+    result = {'unread_count': inbox_query(request).filter(read_at__isnull=True).count()}
+    if 'since' in request.GET:
+        value = request.GET['since']
+        if not value.isascii() or not value.isdecimal() or len(value) > 19 or not 0 < int(value) < 2**63:
+            raise services.DomainError('invalid_request', '消息编号无效')
+        result['retracted_ids'] = list(Notification.objects.filter(recipient=account,
+            retracted_at__isnull=False, pk__gte=int(value)).order_by('-pk').values_list('pk', flat=True)[:5000])
+    return JsonResponse(result)
 
 
 @endpoint('GET')
@@ -149,15 +158,23 @@ def notification_target(request, data, notification_id):
 
 @endpoint('GET')
 def inbox(request, data):
-    parameters(request, ('page',))
+    parameters(request, ('page', 'before'))
     offset, size = pagination(request.GET.get('page', '1'), 50)
     query = inbox_query(request)
-    return JsonResponse({'unread_count': query.filter(read_at__isnull=True).count(), 'total': query.count(),
+    selected = query
+    if 'before' in request.GET:
+        value = request.GET['before']
+        if 'page' in request.GET or not value.isascii() or not value.isdecimal() or len(value) > 19 or not 0 < int(value) < 2**63:
+            raise services.DomainError('invalid_request', '消息分页编号无效')
+        selected = selected.filter(pk__lt=int(value))
+    rows = list(selected.select_related('event__actor').order_by('-id')[offset:offset+size])
+    has_more = bool(rows) and query.filter(pk__lt=rows[-1].pk).exists()
+    return JsonResponse({'unread_count': query.filter(read_at__isnull=True).count(), 'total': query.count(), 'has_more': has_more,
         'results': [{'id': row.pk, 'actor': accounts.public(row.event.actor), 'work_title': row.work_title,
             'kind': row.event.kind,
             'scope': row.event.scope_key, 'work_id': row.event.work_id, 'url': f'/notifications/{row.pk}/work/', 'read': row.read_at is not None,
             'activity_title': row.activity_title, 'created_at': row.created_at.isoformat()}
-            for row in query.select_related('event__actor').order_by('-id')[offset:offset+size]]})
+            for row in rows]})
 
 
 @endpoint('POST', fields={'ids': list})

@@ -174,6 +174,9 @@ def set_relation(work, client, kind, enabled, origin='plus_one'):
         field = 'withdrawn_at' if kind == 'recommend' else 'cancelled_at'
         setattr(row, field, timezone.now())
         row.save(update_fields=[field, 'updated_at'])
+        if kind == 'recommend':
+            from .notifications import retract_co_recommendation
+            retract_co_recommendation(work, client)
         if kind == 'recommend' and not recommendations().filter(work=work).exists():
             from .lifecycle import finish_public_cycle
             finish_public_cycle(work)

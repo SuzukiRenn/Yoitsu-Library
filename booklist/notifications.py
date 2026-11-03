@@ -1,5 +1,6 @@
 """Account interaction notices, deduplicated independently by kind and scope."""
 from django.db import transaction
+from django.utils import timezone
 from .models import Account, WorkLikeEvent, Notification, Work
 
 
@@ -10,6 +11,19 @@ def merged_family(work):
         if expanded == family:
             return family
         family = expanded
+
+
+def visible_inbox(account):
+    return Notification.objects.filter(recipient=account, retracted_at__isnull=True)
+
+
+def retract_co_recommendation(work, client, activity=None):
+    # Preserve the permanent event ledger: rejoining must not create repeat notices.
+    key = f'activity:{activity.pk}' if activity else 'public'
+    return Notification.objects.filter(retracted_at__isnull=True,
+        event__kind='co_recommendation', event__scope_key=key,
+        event__actor__principal=client, event__work_id__in=merged_family(work)
+    ).update(retracted_at=timezone.now())
 
 
 def current_recommenders(work, activity=None):
