@@ -1,11 +1,13 @@
 /* A small anchored cue, never a modal, backdrop or layout spacer. */
-.activity-notice{position:absolute;z-index:21;top:calc(100% - 12px);right:0;max-width:calc(100vw - 40px);padding-top:5px;isolation:isolate}
+.main-nav{position:relative}
+.activity-notice{position:absolute;z-index:21;top:calc(100% - 8px);right:0;max-width:calc(100vw - 40px);padding-top:5px;isolation:isolate}
 .activity-notice[hidden]{display:none!important}
 .activity-notice>a{position:relative;display:block;padding:5px 12px;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--ink);box-shadow:0 5px 16px #00000012;font-size:12px;font-weight:500;line-height:18px;text-decoration:none;white-space:nowrap}
 .activity-notice>a::before{content:"";position:absolute;top:-5px;left:calc(var(--activity-notice-pointer,50%) - 4px);width:8px;height:8px;background:var(--surface);border-top:1px solid var(--line);border-left:1px solid var(--line);transform:rotate(45deg)}
 .activity-notice>a:hover{background:var(--wash)}
 .activity-notice>a:hover::before{background:var(--wash)}
 .activity-notice>a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media(max-width:700px){.site-header.has-admin-tools{row-gap:16px}.activity-notice>a{padding:1px 10px;font-size:11px;line-height:16px}}
 body:has(.first-visit) .activity-notice{visibility:hidden}
 @media(prefers-reduced-motion:no-preference){html:not([data-motion=reduce]) .activity-notice:not([hidden]){animation:activity-notice-enter 180ms ease-out}}
 @keyframes activity-notice-enter{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
