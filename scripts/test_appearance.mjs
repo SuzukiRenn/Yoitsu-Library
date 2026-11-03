@@ -52,9 +52,37 @@ assert.equal(decodeAppearance('{"mode":"dark","color":"blue"}').hideHeat,false,'
 const luminance=hex=>{const c=hex.match(/\w\w/g).map(n=>parseInt(n,16)/255).map(n=>n<=.04045?n/12.92:((n+.055)/1.055)**2.4);return c[0]*.2126+c[1]*.7152+c[2]*.0722;};
 const contrast=(a,b)=>{const x=luminance(a),y=luminance(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
 for(const color of ['222222','4e6653','50677e','805c6b','796347'])assert(contrast(color,'ffffff')>=4.5,color);
-for(const color of ['b8c5d6','abc3a9','acc2d8','d6b3c1','d3c0a2'])assert(contrast(color,'0f172a')>=4.5,color);
+// Check actual stylesheet tokens rather than a second, easily stale palette table.
+const css=fs.readFileSync(new URL('../static/appearance.css',import.meta.url),'utf8');
+const declarations=selector=>{
+ const start=css.indexOf(`${selector}{`);assert(start>=0,selector);
+ return Object.fromEntries(css.slice(start+selector.length+1,css.indexOf('}',start)).split(';').filter(part=>part.startsWith('--')).map(part=>{const i=part.indexOf(':');return [part.slice(0,i),part.slice(i+1)];}));
+};
+const dark=declarations(':root[data-theme=dark]');
+const resolve=(name,values)=>{
+ const value=values[name];assert(value,name);
+ const variable=value.match(/^var\((--[\w-]+)(?:,(#[a-f0-9]{6}))?\)$/i);
+ if(variable)return values[variable[1]]?resolve(variable[1],values):variable[2];
+ assert.match(value,/^#[a-f0-9]{6}$/i,name);return value;
+};
+const mix=(a,b,weight)=>'#'+[1,3,5].map(i=>Math.round(parseInt(a.slice(i,i+2),16)*weight+parseInt(b.slice(i,i+2),16)*(1-weight)).toString(16).padStart(2,'0')).join('');
+const mixture=(name,values)=>{
+ const parts=values[name].match(/^color-mix\(in srgb,var\((--[\w-]+)\) (\d+)%,var\((--[\w-]+)\)\)$/);assert(parts,name);
+ return mix(resolve(parts[1],values),resolve(parts[3],values),Number(parts[2])/100);
+};
+for(const theme of COLORS){
+ const values={...(theme==='original'?{}:declarations(`:root[data-color-theme=${theme}]`)),...dark};
+ for(const bg of ['--paper','--surface','--field','--wash','--tag-bg']){
+  for(const fg of ['--ink','--muted','--prose','--accent'])assert(contrast(resolve(fg,values),resolve(bg,values))>=4.5,`${theme} ${fg} on ${bg}`);
+ }
+ assert(contrast(resolve('--on-solid',values),resolve('--solid',values))>=4.5,`${theme} primary button`);
+ assert(contrast(resolve('--on-solid',values),mixture('--solid-hover',values))>=4.5,`${theme} primary hover`);
+ assert(contrast(resolve('--muted',values),mixture('--wash-hover',values))>=4.5,`${theme} muted hover text`);
+ assert(contrast(resolve('--check-bg',values),resolve('--field',values))>=3,`${theme} checked control`);
+ assert(contrast(resolve('--strong-line',values),resolve('--field',values))>=3,`${theme} control outline`);
+}
 for(const bg of ['f7f6ef','e9eddf','e5ede3','e3eaf1','f0e4e8','eee7dc'])assert(contrast('626a5e',bg)>=4.5);
-for(const bg of ['1e293b','243247','2b384d','2d3b30','2b3845','42313a','3d362b'])assert(contrast('94a3b8',bg)>=4.5);
+
 console.log('Appearance: safe boot, all modes/colors, preview/cancel/save/reset, system/cross-tab updates, storage failure, leave cleanup and text contrast passed.');
 
 h.motionMedia.matches=false;h.events.motion();
