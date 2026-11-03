@@ -18,7 +18,7 @@ def recommend(request, data, activity_id=None):
         from django.shortcuts import redirect
         from urllib.parse import urlencode
         return redirect('/account/login/?' + urlencode({'next': request.get_full_path()}))
-    parameters(request, ('work','edit')); read_limit(request)
+    parameters(request, ('work','edit','from')); read_limit(request)
     editing = request.GET.get('edit') == '1'
     if 'edit' in request.GET and not editing:
         raise ValidationError('编辑参数无效')
@@ -55,8 +55,13 @@ def recommend(request, data, activity_id=None):
             work['in_scope'] = work['is_public']
     prefix = f'/api/v1/activities/{activity_id}' if activity_id else '/api/v1/public'
     target = f'{prefix}/works/{work_id}/reason/' if editing else f'{prefix}/recommendations/'
+    from .navigation import safe_return
+    success_url=safe_return(request.GET.get('from',''),f'/activities/{activity_id}/' if activity_id else '/')
+    # Do not return to a second editor, even when the URL is otherwise local.
+    if success_url.split('?',1)[0].endswith('/recommend/'):
+        success_url=f'/activities/{activity_id}/' if activity_id else '/'
     return page(request,'booklist/recommend.html', {'activity':period, 'work':work, 'editing':editing,
-        'target':target, 'success_url':f'/activities/{activity_id}/' if activity_id else '/',
+        'target':target, 'success_url':success_url,
         'readonly':period is not None and not period['writable']})
 
 

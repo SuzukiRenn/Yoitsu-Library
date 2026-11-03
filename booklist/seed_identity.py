@@ -9,11 +9,11 @@ from . import catalog,services
 from .models import (Work,WorkAlias,Tag,WorkTag,Activity,ActivityWork,AnonymousClient,ImportedPrincipal,
     Recommendation,PublicRecommendation,PublicLike,Vote,ReasonLike,Notification,WorkLikeEvent,
     PendingActivitySubmission,IdempotencyRecord,Admin,Account,AccountSession,AdminSession,EmailChallenge,ActivityNoticeSeen,
-    Feedback,RateLimitBucket,UserWorkMetadata,SourceFieldState,TagSuppression,SourceIdentityReview)
+    Feedback,RateLimitBucket,UserWorkMetadata,SourceFieldState,TagSuppression,SourceIdentityReview,RecentWorkView)
 from .user_metadata import tag_key
 
 RESET=(Notification,WorkLikeEvent,ReasonLike,Recommendation,PublicLike,PublicRecommendation,Vote,PendingActivitySubmission)
-PROTECTED=(Admin,Account,AccountSession,AdminSession,EmailChallenge,ActivityNoticeSeen,Feedback,RateLimitBucket,UserWorkMetadata,SourceFieldState,TagSuppression,SourceIdentityReview)
+PROTECTED=(Admin,Account,AccountSession,AdminSession,EmailChallenge,ActivityNoticeSeen,Feedback,RateLimitBucket,UserWorkMetadata,SourceFieldState,TagSuppression,SourceIdentityReview,RecentWorkView)
 
 def digest(rows):return hashlib.sha256(json.dumps(rows,ensure_ascii=False,sort_keys=True,default=str).encode()).hexdigest()
 def fingerprints(models):

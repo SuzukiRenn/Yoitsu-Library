@@ -50,6 +50,7 @@ class ImportedPrincipal(models.Model):
 class Account(Timestamped):
     qq_email = models.EmailField(null=True, blank=True, unique=True)
     email_verified_at = models.DateTimeField(null=True)
+    track_recent_views = models.BooleanField(default=True)
     username = models.CharField(max_length=32, unique=True)
     display_name = models.CharField(max_length=40)
     password_hash = models.CharField(max_length=256)
@@ -58,6 +59,17 @@ class Account(Timestamped):
     principal = models.OneToOneField(AnonymousClient, on_delete=P, related_name='account')
     is_active = models.BooleanField(default=True)
     session_version = models.PositiveIntegerField(default=1)
+
+
+class RecentWorkView(models.Model):
+    account = models.ForeignKey(Account, on_delete=models.CASCADE)
+    work = models.ForeignKey('Work', on_delete=P)
+    activity = models.ForeignKey('Activity', null=True, on_delete=P)
+    viewed_at = models.DateTimeField()
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['account','work'], name='recent_view_account_work')]
+        indexes = [models.Index(fields=['account','-viewed_at','-id'], name='recent_view_account_time')]
 
 
 class AccountSession(models.Model):
@@ -267,6 +279,8 @@ class Activity(Timestamped):
     cancel_reason = models.TextField(default='')
     created_by = models.ForeignKey(Admin, on_delete=P)
     corrected_at = models.DateTimeField(null=True)
+    sync_public = models.BooleanField(default=True)
+    participation_locked_at = models.DateTimeField(null=True)
 
     class Meta:
         constraints = [models.CheckConstraint(condition=Q(start_at__lt=F('scheduled_end_at')), name='activity_time_order'),
@@ -380,6 +394,7 @@ class PendingActivitySubmission(Timestamped):
     anonymous_client = models.ForeignKey(AnonymousClient, on_delete=P)
     reason = models.TextField(default='')
     copy_public_reason = models.BooleanField(default=False)
+    sync_public = models.BooleanField(default=True)
     contains_spoilers = models.BooleanField(default=False)
     reason_references = models.JSONField(default=list)
 

@@ -28,16 +28,29 @@ def contributions(principal, kind):
 
 
 def context(request):
-    principal = accounts.require(request).principal
+    owner=accounts.require(request)
+    principal = owner.principal
     tab = request.GET.get('tab','recommendations')
-    if tab not in ('recommendations','likes'):
+    if tab not in ('recommendations','likes','recent','activities'):
         raise ValidationError('个人主页分类无效')
+    if 'activity' in request.GET and tab!='activities':raise ValidationError('活动参数只用于参与记录')
     offset, size = pagination(request.GET.get('page','1'), 12)
     queries = {key:contributions(principal,key) for key in ('recommendations','likes')}
     counts = {key:query.count() for key,query in queries.items()}
-    result = {'tab':tab, 'page':offset//size+1, 'page_size':size, 'total':counts[tab],
+    result = {'tab':tab, 'page':offset//size+1, 'page_size':size, 'total':counts.get(tab,0),
               'recommended_total':counts['recommendations'], 'liked_total':counts['likes']}
+    from .account_activities import periods,context as participation
+    from .models import RecentWorkView
+    participated=periods(principal)
+    result.update(activities_total=participated.count(),recent_total=RecentWorkView.objects.filter(account=owner).count(),track_recent_views=owner.track_recent_views)
+    if tab=='activities':
+        result.update(participation(request,principal,participated));return result
+    if tab=='recent':
+        from .recent_views import entries
+        result['total']=result['recent_total']
+        result['contributions']=entries(owner,offset,size,request.get_full_path())
     result['paging'] = navigation(result, lambda number:'?'+urlencode({'tab':tab,'page':number}))
+    if tab=='recent':return result
     rows = list(queries[tab][offset:offset+size])
     works = {work['id']:work for work in catalog.serialize_works(rows)}
     snapshots = {snap.pk:snap for snap in ActivityWork.objects.filter(

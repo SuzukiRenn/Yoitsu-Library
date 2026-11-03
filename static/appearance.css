@@ -44,9 +44,18 @@ body:has([data-shelf-view-toggle]) .appearance-toggle{bottom:calc(33.333vh + 174
 
 .appearance-motion-options{grid-template-columns:repeat(2,minmax(0,1fr))}
 .appearance-dialog .appearance-heat-option{display:flex;align-items:center;gap:10px;margin:0;font-size:14px;line-height:20px;cursor:pointer}
-.appearance-heat-option input{appearance:none;-webkit-appearance:none;flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;align-self:center;border:1.5px solid var(--strong-line);border-radius:3px;background:var(--field);cursor:pointer}
-.appearance-heat-option input:checked{background:var(--check-bg);border-color:var(--check-bg);background-image:none}
-@media(forced-colors:active){.appearance-heat-option input:checked{forced-color-adjust:none;background:Highlight;border-color:Highlight}}
+:is(.appearance-heat-option,.recent-tracking) input{appearance:none;-webkit-appearance:none;flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;align-self:center;border:1.5px solid var(--strong-line);border-radius:3px;background:var(--field);cursor:pointer}
+:is(.appearance-heat-option,.recent-tracking) input:checked{background:var(--check-bg);border-color:var(--check-bg);background-image:none}
+@media(forced-colors:active){:is(.appearance-heat-option,.recent-tracking) input:checked{forced-color-adjust:none;background:Highlight;border-color:Highlight}}
 .appearance-heat-option>span{position:relative;top:-1px}
 html[data-hide-heat=true] .public-actions :is([data-action-count],.work-stats strong){display:none}
 html[data-hide-heat=true] .combined-actions button[data-action]{width:76px;min-width:76px;max-width:76px;justify-content:center}
+
+/* Reading size changes detail prose only; shelf previews retain fixed geometry. */
+html[data-reading-size=large]{--reading-font:17px;--reading-prose-line:2;--reading-reason-line:1.95}
+html[data-reading-size=larger]{--reading-font:20px;--reading-prose-line:2;--reading-reason-line:2}
+.work-detail .introduction .prose{font-size:var(--reading-font,14px);line-height:var(--reading-prose-line,2.1)}
+.work-detail :is(.reason-body,.spoiler-reason){font-size:var(--reading-font,14px);line-height:var(--reading-reason-line,1.8)}
+.work-detail .reason-fold-ready>.reason-clip{height:calc(2em * var(--reading-reason-line,1.8))}
+.work-detail .reason-fold-ready.reason-fold-expanded>.reason-clip{height:auto}
+.work-detail .reason-body.reason-fold-ready{min-height:calc(2em * var(--reading-reason-line,1.8) + 26px)}

@@ -1,4 +1,5 @@
-import {installEmailLogin} from './email-login.mjs?v=20261102-qq-1';
+import {returnTo} from './navigation-context.mjs?v=20261103-message-3';
+import {installEmailLogin} from './email-login.mjs?v=20261103-message-3';
 export function safeNext(value, origin) {
   try {const url = new URL(value || '/', origin); return url.origin === origin && url.pathname.startsWith('/') ? url.pathname + url.search + url.hash : '/';}
   catch {return '/';}
@@ -53,7 +54,8 @@ export function installAccountMenu(doc=document, win=window) {
   });
 }
 
-if (typeof document !== 'undefined') {
+if (typeof document !== 'undefined' && !document.documentElement.hasAttribute('data-account-installed')) {
+  document.documentElement.setAttribute('data-account-installed','');
   installAccountMenu();
   const unread = document.querySelector('[data-unread-count]');
   let unreadTimer, unreadStopped=false, unreadDelay=30000;
@@ -73,7 +75,7 @@ if (typeof document !== 'undefined') {
     window.addEventListener('pagehide',()=>{unreadStopped=true;clearTimeout(unreadTimer);});
     window.addEventListener('pageshow',()=>{if(unreadStopped){unreadStopped=false;refreshUnread();}});
   }
-  const next = safeNext(new URLSearchParams(location.search).get('next'), location.origin);
+  const next = safeNext(new URLSearchParams(location.search).get('next') || (location.pathname==='/account/bind/'?'/account/settings/':'/'), location.origin);
   installEmailLogin(accountPost,next);
   const switchLink=document.querySelector('[data-auth-switch]');
   if(switchLink)switchLink.href += `?next=${encodeURIComponent(next)}`;
@@ -85,9 +87,9 @@ if (typeof document !== 'undefined') {
     try {
       await accountPost(`/api/v1/account/${form.dataset.accountForm}/`, data);
       if(form.dataset.accountForm==='password') location.assign('/account/login/');
-      else if(form.hasAttribute('data-legacy-login')) location.assign('/account/bind/');
+      else if(form.hasAttribute('data-legacy-login')) location.assign('/account/bind/?next='+encodeURIComponent(next));
       else if(form.dataset.accountForm==='profile') location.reload();
-      else location.assign(next);
+      else returnTo(next);
     } catch(error) {status.textContent=error.message;} finally {button.disabled=false;}
   });
   const status = document.querySelector('#action-status');
@@ -109,6 +111,7 @@ if (typeof document !== 'undefined') {
       else {await accountPost(button.hasAttribute('data-read-all') ? '/api/v1/notifications/read-all/' : '/api/v1/notifications/read/', button.dataset.read ? {ids:[Number(button.dataset.read)]}:{});location.reload();}
     } catch(error) {if(status)status.textContent=error.message;} finally {button.disabled=false;}
   });
+  const restorePage=Math.min(100,Math.max(1,Number(new URLSearchParams(location.search).get('page'))||1));
   let page=1;
   const more=document.querySelector('[data-more-notifications]');
   if(more) {
@@ -117,18 +120,25 @@ if (typeof document !== 'undefined') {
       if(!response.ok)throw Error('消息加载失败，请重试');
       const data=await response.json();
       if(append)for(const item of data.results) {
-        const li=document.createElement('li');li.className=`notification${item.read ? '' : ' unread'}`;
+        const li=document.createElement('li');li.dataset.notification=String(item.id);li.className=`notification${item.read ? '' : ' unread'}`;
         const p=document.createElement('p');p.textContent=notificationText(item);
         const note=document.createElement('p');note.className='section-note';note.textContent=`${item.activity_title || '公共书架'} · ${new Date(item.created_at).toLocaleString()}`;
         const actions=document.createElement('div');actions.className='notification-actions';
-        const a=document.createElement('a');a.className='primary notification-action';a.textContent='查看作品';a.href=item.url;
+        const a=document.createElement('a');a.className='primary notification-action';a.textContent='查看作品';a.href=item.url;a.setAttribute('data-notification-work','');
         actions.append(a);li.append(p,note,actions);
         if(!item.read){const b=document.createElement('button');b.type='button';b.dataset.read=String(item.id);b.className='reason-link notification-action';b.textContent='标为已读';actions.append(b);}
         document.querySelector('[data-notifications]').append(li);
       }
       more.hidden=page*50>=data.total;
+      const current=new URL(location.href);
+      if(page>1){current.searchParams.set('page',String(page));history.replaceState(history.state,'',current.href);}
     };
-    load(false).catch(error=>{status.textContent=error.message;more.hidden=false;});
+    more.disabled=true;
+    (async()=>{
+      try {await load(false);while(page<restorePage && !more.hidden){page++;try{await load(true);}catch(error){page--;throw error;}}}
+      catch(error){status.textContent=error.message;more.hidden=false;}
+      finally {more.disabled=false;document.querySelector('[data-notifications]').removeAttribute('data-navigation-loading');document.dispatchEvent(new CustomEvent('booklist:navigation-ready'));}
+    })();
     more.addEventListener('click',async()=>{more.disabled=true;page++;try{await load(true);}catch(error){page--;status.textContent=error.message;}finally{more.disabled=false;}});
   }
 }

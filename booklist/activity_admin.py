@@ -16,7 +16,8 @@ def timestamp(value):
 
 def state(row):
     return {'title': row.title, 'theme': row.theme, 'status': row.status,
-        'start_at': utc_milliseconds(row.start_at), 'end_at': utc_milliseconds(row.scheduled_end_at)}
+        'start_at': utc_milliseconds(row.start_at), 'end_at': utc_milliseconds(row.scheduled_end_at),
+        'sync_public': row.sync_public, 'participation_locked': activities.participation_locked(row)}
 
 
 @transaction.atomic
@@ -26,7 +27,7 @@ def create(actor, data):
     if start >= end:
         raise services.DomainError('invalid_time', '开始时间须早于结束时间')
     row = Activity.objects.create(title=normalize(data['title'], 'activity_title', required=True),
-        theme=normalize(data['theme'], 'theme'), start_at=start, scheduled_end_at=end, created_by=actor)
+        theme=normalize(data['theme'], 'theme'), start_at=start, scheduled_end_at=end, created_by=actor, sync_public=data.get('sync_public',True))
     services.audit(actor, 'activity.create', row, after=state(row))
     return {'id': row.pk, **state(row)}
 
@@ -39,8 +40,13 @@ def update(actor, activity_id, data):
         raise services.DomainError('not_found', '活动不存在', 404)
     if row.status in ('ended', 'cancelled') or (row.status in ('active', 'paused') and timezone.now() >= row.scheduled_end_at):
         raise services.DomainError('activity_readonly', '活动已结束或取消', 409)
+    before = state(row)
+    sync_public=data.get('sync_public',row.sync_public)
+    if sync_public != row.sync_public and activities.participation_locked(row):
+        raise services.DomainError('activity_policy_locked', '已有参与提交，推荐归属不可修改', 409)
+    row.sync_public=sync_public
     reason = normalize(data['reason'], 'activity_title', required=True)
-    before = state(row); start, end = timestamp(data['start_at']), timestamp(data['end_at'])
+    start, end = timestamp(data['start_at']), timestamp(data['end_at'])
     if start >= end:
         raise services.DomainError('invalid_time', '开始时间须早于结束时间')
     if row.status in ('active', 'paused'):

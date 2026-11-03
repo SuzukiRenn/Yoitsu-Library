@@ -3,7 +3,23 @@
 {% block feedback_footer %}{% endblock %}
 {% block content %}<section class="account-home">
 <div class="section-heading"><div><h1>{{ current_account.display_name }}</h1><p class="section-note">个人主页</p></div><div class="notification-actions"><a class="reason-link notification-action" href="/">← 返回书单</a><a class="primary notification-action" href="/account/settings/">修改信息</a></div></div>
-<nav class="account-tabs" aria-label="个人主页分类"><a href="?tab=recommendations"{% if tab == 'recommendations' %} aria-current="page"{% endif %}>我的推荐 <span>{{ recommended_total }}</span></a><a href="?tab=likes"{% if tab == 'likes' %} aria-current="page"{% endif %}>最近点赞 <span>{{ liked_total }}</span></a></nav>
-<div class="account-work-list">{% for item in contributions %}<article class="account-work"><a class="book-cover" href="{{ item.url }}" aria-label="{{ item.work.title }}">{% include 'booklist/cover_image.html' with work=item.work %}</a><div class="account-work-info"><a class="book-title" href="{{ item.url }}">{{ item.work.title }}{% include 'booklist/web_badge.html' with work=item.work %}</a>{% if item.work.author %}<p class="book-author">{{ item.work.author }}</p>{% endif %}<p class="section-note">{{ item.scope }} · {{ item.at|date:'Y-m-d H:i' }}</p></div><a class="reason-link" href="{{ item.url }}">查看作品</a></article>{% empty %}<div class="empty-state"><h2>{% if tab == 'likes' %}暂无点赞{% else %}暂无推荐{% endif %}</h2><a class="reason-link" href="/">去看看书单</a></div>{% endfor %}</div>
-{% include 'booklist/list_pagination.html' %}
+<nav class="account-tabs" aria-label="个人主页分类">
+<a href="?tab=recommendations"{% if tab == 'recommendations' %} aria-current="page"{% endif %}>我的推荐 <span>{{ recommended_total }}</span></a>
+<a href="?tab=likes"{% if tab == 'likes' %} aria-current="page"{% endif %}>最近点赞 <span>{{ liked_total }}</span></a>
+<a href="?tab=recent"{% if tab == 'recent' %} aria-current="page"{% endif %}>最近浏览 <span>{{ recent_total }}</span></a>
+<a href="?tab=activities"{% if tab == 'activities' %} aria-current="page"{% endif %}>我参与的活动 <span>{{ activities_total }}</span></a>
+</nav>
+{% if tab == 'recent' %}<div class="recent-controls"><label class="recent-tracking"><input type="checkbox" data-recent-tracking{% if track_recent_views %} checked{% endif %}><span>记录最近浏览</span></label><p class="section-note">最近50部作品</p><button type="button" class="reason-link" data-recent-clear{% if not recent_total %} disabled{% endif %}>清空最近浏览</button></div>{% endif %}
+{% if participation_activity %}<div class="participation-heading"><a class="back-link" href="?tab=activities">← 返回活动列表</a><h2>{{ participation_activity.title }}</h2><p class="section-note">我的推荐 {{ participation_activity.recommended_count }} 部 · 我的点赞 {{ participation_activity.liked_count }} 部</p><a class="reason-link" href="/activities/{{ participation_activity.id }}/">进入活动</a></div>{% endif %}
+<div class="account-work-list">
+{% if tab == 'activities' and not participation_activity %}
+{% for item in participated_activities %}<article class="participation-card"><div><h2><a class="book-title" href="/activities/{{ item.id }}/">{{ item.title }}</a></h2><p class="section-note">{{ item.status_label }} · {{ item.start_label }} — {{ item.end_label }}</p><p class="participation-counts">我的推荐 {{ item.recommended_count }} 部 · 我的点赞 {{ item.liked_count }} 部</p></div><a class="reason-link" href="?tab=activities&amp;activity={{ item.id }}">查看参与记录</a></article>{% empty %}<div class="empty-state"><h2>暂无活动参与记录</h2><a class="reason-link" href="/activities/">去看看主题推荐</a></div>{% endfor %}
+{% else %}
+{% for item in contributions %}<article class="account-work">
+{% if item.available != False %}<a class="book-cover" href="{{ item.url }}" aria-label="{{ item.work.title }}">{% include 'booklist/cover_image.html' with work=item.work %}</a><div class="account-work-info"><a class="book-title" href="{{ item.url }}">{{ item.work.title }}{% include 'booklist/web_badge.html' with work=item.work %}</a>{% if item.work.author %}<p class="book-author">{{ item.work.author }}</p>{% endif %}<p class="section-note">{{ item.scope }} · {{ item.at|date:'Y-m-d H:i' }}{% if participation_activity %} · {% if item.recommended %}推荐过{% endif %}{% if item.recommended and item.liked %} / {% endif %}{% if item.liked %}点赞过{% endif %}{% endif %}</p></div><a class="reason-link" href="{{ item.url }}">查看作品</a>
+{% else %}<div class="account-work-info"><p>作品或活动暂不可访问</p><p class="section-note">{{ item.at|date:'Y-m-d H:i' }}</p></div>{% endif %}
+{% if tab == 'recent' %}<button type="button" class="recent-remove" data-recent-remove="{{ item.work.id }}" aria-label="移除此条浏览记录">移除</button>{% endif %}
+</article>{% empty %}<div class="empty-state"><h2>{% if tab == 'recent' %}暂无浏览记录{% elif tab == 'likes' %}暂无点赞{% else %}暂无推荐{% endif %}</h2><a class="reason-link" href="/">去看看书单</a></div>{% endfor %}
+{% endif %}</div>
+{% if tab == 'activities' and not participation_activity %}{% include 'booklist/list_pagination.html' with page_unit='个活动' %}{% else %}{% include 'booklist/list_pagination.html' %}{% endif %}
 </section>{% endblock %}

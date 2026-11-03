@@ -67,9 +67,9 @@ def moderate_reason(actor, pk, action, note):
         {'hidden': row.text_hidden_at is not None, 'invalidated': row.invalidated_at is not None}, note)
 
 
+@transaction.atomic
 def release_pending(work, actor, note, target_work=None):
-    """Approval creates activity participation and its unique public recommendation."""
-    books.enroll(work)
+    """Approval creates participation under the period's immutable policy."""
     created = {}; seen = set()
     for submission in PendingActivitySubmission.objects.filter(work=work).order_by('-created_at', '-id'):
         key = (submission.activity_id, submission.anonymous_client_id)
@@ -78,6 +78,11 @@ def release_pending(work, actor, note, target_work=None):
         period = submission.activity
         if period.status in ('draft', 'cancelled'):
             continue
+        if submission.sync_public != period.sync_public:
+            raise services.DomainError('pending_policy_changed','待核查推荐的归属已变更，请恢复原归属或由读者重新提交后再审核',409)
+        if period.sync_public:
+            books.enroll(work)
+        activities.lock_participation(period)
         snap = activities.ensure_snapshot(period, work)
         if not Recommendation.objects.filter(work=work, activity=period, anonymous_client=submission.anonymous_client,
                 archived_at__isnull=True, invalidated_at__isnull=True, withdrawn_at__isnull=True).exists():
@@ -86,8 +91,9 @@ def release_pending(work, actor, note, target_work=None):
             Recommendation.objects.filter(pk=rec.pk).update(created_at=submission.created_at, updated_at=submission.created_at)
             created[rec.pk] = 'pending:'+str(submission.pk)
         has_target_reason = target_work and books.reasons().filter(work=target_work, anonymous_client=submission.anonymous_client).exists()
-        books.set_relation(work, submission.anonymous_client, 'recommend', True, origin='activity')
-        if submission.copy_public_reason and submission.reason and not has_target_reason and not books.reasons().filter(work=work, anonymous_client=submission.anonymous_client).exists():
+        if period.sync_public:
+            books.set_relation(work, submission.anonymous_client, 'recommend', True, origin='activity')
+        if period.sync_public and submission.copy_public_reason and submission.reason and not has_target_reason and not books.reasons().filter(work=work, anonymous_client=submission.anonymous_client).exists():
             books.set_reason(work, submission.anonymous_client, submission.reason, submission.contains_spoilers, submission.reason_references, reference_source=submission)
         corrected(activity_id=period.pk)
         services.audit(actor, 'pending.activity.approve', submission, after={'work_id': work.pk}, reason=note)

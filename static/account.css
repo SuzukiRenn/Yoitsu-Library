@@ -25,3 +25,23 @@ main{position:relative;z-index:0}
 .reason-content:has(>.reason-author){display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 16px}.reason-content>.reason-author{grid-column:1;grid-row:1;margin:0}.reason-content:has(>.reason-author)>.reason-body,.reason-content:has(>.reason-author)>.spoiler-reason{grid-column:1;grid-row:2}.reason-content:has(>.reason-author)>.reason-like{grid-column:2;grid-row:1 / span 2}
 
 .email-code-field{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:12px}.email-code-field>button{min-height:46px;white-space:nowrap}.account-panel .section-note>a{text-decoration:none;color:var(--ink)}
+
+.account-tabs{flex-wrap:wrap}
+.recent-controls{display:flex;align-items:center;flex-wrap:wrap;gap:12px 20px;margin-bottom:20px}
+.recent-tracking{display:inline-flex;align-items:center;gap:8px;font-size:14px;line-height:22px}
+.recent-tracking input{width:18px;height:18px;margin:0}
+.recent-controls .section-note{margin:0}.recent-controls>[data-recent-clear]{margin-left:auto}
+.recent-remove{flex-shrink:0;padding:6px 9px;font-size:12px;color:var(--muted);background:transparent}
+.participation-card{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:20px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.participation-card>div{min-width:0}.participation-card h2{margin:0;font-size:16px;overflow-wrap:anywhere}
+.participation-counts{font-size:14px;margin:12px 0 0}.participation-card>.reason-link{flex-shrink:0}
+.participation-heading{margin-bottom:20px}.participation-heading>.back-link{margin-bottom:16px}.participation-heading h2{overflow-wrap:anywhere}
+@media(max-width:600px){.account-tabs{gap:6px}.account-tabs>a{font-size:12px;gap:6px}.participation-card{flex-wrap:wrap;padding:16px}.participation-card>.reason-link{margin-left:auto}.recent-controls>[data-recent-clear]{margin-left:0}}
+
+.participation-card .book-title{display:inline-block;text-decoration:none;transition:opacity .15s ease,transform .15s ease}
+.participation-card .book-title:hover{opacity:.72;transform:translateY(-1px)}
+@media(max-width:600px){.account-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.account-tabs>a{justify-content:center}}
+@media(prefers-reduced-motion:reduce){.participation-card .book-title{transition:none}.participation-card .book-title:hover{transform:none}}
+html[data-motion="reduce"] .participation-card .book-title{transition:none;transform:none}
+
+@media(max-width:600px){.participation-card>.reason-link,.account-work>.recent-remove{margin-inline-end:44px}}

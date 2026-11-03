@@ -1,13 +1,15 @@
-import {installAppearance} from './appearance.mjs?v=20261025-reading-1';
+import {installAppearance} from './appearance.mjs?v=20261103-profile-1';
 installAppearance();
 import {installHeatDisplay} from './heat-display.mjs?v=20261025-1';
 installHeatDisplay();
 import {installShelfSort} from './shelf-sort.mjs?v=20261025-keyboard-1';
-import {startReasonLikes} from './reason-likes.mjs?v=20261025-identity-reading-1';
-import {startLiveInteractions} from './live-interactions.mjs?v=20261025-reading-1';
+import {startReasonLikes} from './reason-likes.mjs?v=20261103-message-3';
+import {startLiveInteractions} from './live-interactions.mjs?v=20261103-message-3';
 import {createShelfRefresh} from './live-shelf.mjs?v=20261026-tag-focus-1';
 import './navigation-motion.mjs?v=20261025-reading-1';
 import './work-motion.mjs?v=20261025-reading-1';
+import {installNavigationContext} from './navigation-context.mjs?v=20261103-message-3';
+installNavigationContext();
 import {installShelfReturn} from './shelf-return.mjs?v=20261024-references-1';
 installShelfReturn();
 import {installShelfView} from './shelf-view.mjs?v=20261025-reading-1';

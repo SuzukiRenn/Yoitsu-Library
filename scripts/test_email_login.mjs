@@ -9,7 +9,7 @@ function fixture(post,purpose='login'){
  const submit={disabled:false},status={textContent:''},redirects=[];
  const fields={'[name=email]':email,'[name=code]':code,'[data-send-code]':send,'[type=submit]':submit,'[role=status]':status};
  const form={dataset:{emailLogin:purpose},querySelector:s=>fields[s],addEventListener:(n,f)=>events[n]=f};
- const win={setInterval:f=>{intervals.set(++id,f);return id;},clearInterval:n=>intervals.delete(n),location:{assign:u=>redirects.push(u)},addEventListener:(n,f)=>windowEvents[n]=f};
+ const win={setInterval:f=>{intervals.set(++id,f);return id;},clearInterval:n=>intervals.delete(n),location:{origin:'http://local',assign:u=>redirects.push(u)},addEventListener:(n,f)=>windowEvents[n]=f};
  installEmailLogin(post,'/?tag=2',{querySelector:()=>form},win);
  return {email,code,send,submit,status,redirects,intervals,events,windowEvents};
 }
@@ -41,7 +41,7 @@ try{
 
  const binding=fixture(async()=>({challenge:'token',retry_after:60}),'bind');
  await binding.events['send:click']();await binding.events.submit({preventDefault(){}});
- assert.deepEqual(binding.redirects,['/account/settings/']);binding.windowEvents.pagehide();
+ assert.deepEqual(binding.redirects,['/?tag=2']);binding.windowEvents.pagehide();
  assert.doesNotThrow(()=>installEmailLogin(()=>{},'/',{querySelector:()=>null},{}));
  console.log('Email login: countdown, missing challenge, edit/send race, migration redirect and cleanup passed.');
 }finally{Date.now=oldNow;}

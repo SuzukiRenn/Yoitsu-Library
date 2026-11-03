@@ -8,4 +8,5 @@
  root.dataset.motionPreference=prefs?.motion==='reduce'?'reduce':'system';
  root.dataset.motion=root.dataset.motionPreference==='reduce'||window.matchMedia('(prefers-reduced-motion: reduce)').matches?'reduce':'full';
  root.dataset.hideHeat=String(prefs?.hideHeat===true);
+ root.dataset.readingSize=['normal','large','larger'].includes(prefs?.reading)?prefs.reading:'normal';
 })();

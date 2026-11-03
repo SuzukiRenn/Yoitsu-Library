@@ -62,6 +62,10 @@ def work_page(request, data, work_id):
     from . import user_metadata, activities
     from .recommend_views import positive
     return_url = shelf_return_url(request.GET.get('from', ''), request.GET.get('activity'))
+    from .navigation import safe_return
+    source=safe_return(request.GET.get('from',''),'')
+    if source.split('?',1)[0] in ('/notifications/','/account/'):
+        return_url=source
     period = activities.get(positive(request.GET['activity'])) if 'activity' in request.GET else None
     if period: activities.advance_due(); period.refresh_from_db()
     historical = period is not None and period.status == 'ended'

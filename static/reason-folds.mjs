@@ -43,6 +43,7 @@ export function installReasonFolds(doc=document, win=window) {
   });
   reduced.addEventListener?.('change',()=>{if(reduced.matches)for(const clip of doc.querySelectorAll('.reason-clip'))clip.getAnimations?.().forEach(animation=>animation.cancel());});
   win.addEventListener('resize',()=>initialize());
+  doc.addEventListener('booklist:preferences',()=>initialize());
   doc.fonts?.ready.then(()=>initialize());
   initialize();
   return initialize;

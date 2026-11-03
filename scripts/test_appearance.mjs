@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {APPEARANCE_KEY,DEFAULT_APPEARANCE,decodeAppearance,normalizeAppearance,applyAppearance,MODES,COLORS,MOTIONS} from '../static/appearance-state.mjs';
+import {APPEARANCE_KEY,DEFAULT_APPEARANCE,decodeAppearance,normalizeAppearance,applyAppearance,MODES,COLORS,MOTIONS,READING_SIZES} from '../static/appearance-state.mjs';
 import {installAppearance} from '../static/appearance.mjs';
 const boot=fs.readFileSync(new URL('../static/appearance-boot.js',import.meta.url),'utf8');
 for(const raw of [null,'null','false','{}','[]','bad','{"mode":"evil","color":"#bad"}',...MODES.flatMap(mode=>COLORS.flatMap(color=>MOTIONS.flatMap(motion=>[false,true].map(hideHeat=>JSON.stringify({mode,color,motion,hideHeat})))))]){
@@ -15,7 +15,7 @@ function harness(){
  const events={},map=new Map(),root={dataset:{}},controls={};let blocked=false;
  function node(){return {events:{},setAttribute(k,v){this[k]=v;},addEventListener(k,v){this.events[k]=v;},focus(){this.focused=true;}};}
  const trigger=node(),status={textContent:''};
- const inputs=[...MODES.map(value=>({name:'mode',value})),...COLORS.map(value=>({name:'color',value})),...MOTIONS.map(value=>({name:'motion',value}))].map(v=>({...node(),...v,matches:()=>true}));
+ const inputs=[...MODES.map(value=>({name:'mode',value})),...COLORS.map(value=>({name:'color',value})),...MOTIONS.map(value=>({name:'motion',value})),...READING_SIZES.map(value=>({name:'reading',value}))].map(v=>({...node(),...v,matches:()=>true}));
  for(const name of ['reset','cancel','save'])controls[name]=node();
  const heat={...node(),checked:false,matches:()=>true};
  const dialog={...node(),open:false,showModal(){this.open=true;},close(){this.open=false;this.events.close();},querySelector:s=>s==='[name=hideHeat]'?heat:s.includes('status')?status:controls[s.match(/appearance-(\w+)/)[1]],querySelectorAll:s=>s.includes('radio')?inputs:[controls.cancel]};
@@ -56,3 +56,17 @@ for(const color of ['b8c5d6','abc3a9','acc2d8','d6b3c1','d3c0a2'])assert(contras
 for(const bg of ['f7f6ef','e9eddf','e5ede3','e3eaf1','f0e4e8','eee7dc'])assert(contrast('626a5e',bg)>=4.5);
 for(const bg of ['1e293b','243247','2b384d','2d3b30','2b3845','42313a','3d362b'])assert(contrast('94a3b8',bg)>=4.5);
 console.log('Appearance: safe boot, all modes/colors, preview/cancel/save/reset, system/cross-tab updates, storage failure, leave cleanup and text contrast passed.');
+
+h.motionMedia.matches=false;h.events.motion();
+h.trigger.events.click();h.choose('reading','larger');assert.equal(h.root.dataset.readingSize,'larger');
+h.controls.cancel.events.click();assert.equal(h.root.dataset.readingSize,'normal');
+h.trigger.events.click();h.choose('reading','large');h.controls.save.events.click();
+assert.equal(JSON.parse(h.map.get(APPEARANCE_KEY)).reading,'large');
+assert.equal(h.app.preferences.reading,'large');
+h.events.storage({key:APPEARANCE_KEY,newValue:'{"reading":"larger"}'});assert.equal(h.root.dataset.readingSize,'larger');
+for(const reading of READING_SIZES){
+ const root={dataset:{}};vm.runInNewContext(boot,{document:{documentElement:root},localStorage:{getItem:()=>JSON.stringify({reading})},window:{matchMedia:()=>({matches:false})}});
+ assert.equal(root.dataset.readingSize,reading);
+}
+assert.equal(decodeAppearance('{"reading":"999px"}').reading,'normal');
+console.log('Reading sizes: pre-paint defaults, preview/cancel/save and cross-tab persistence passed.');

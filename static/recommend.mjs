@@ -8,6 +8,8 @@ import {readMetadata} from './manual-metadata.mjs?v=20261025-keyboard-1';
 
 import {installCandidateKeyboard} from './candidate-keyboard.mjs?v=20261025-1';
 
+import {returnTo} from './navigation-context.mjs?v=20261103-message-3';
+
 const form = document.querySelector('#recommend-form');
 if (form) {
   const preview = createCandidatePreview();
@@ -204,11 +206,11 @@ if (form) {
         try { payload.metadata = readMetadata(form); }
         catch (error) { status.textContent = error.message || '简介最多 2000 字'; return; }
       }
-      if(activity && !editing)payload.copy_public_reason=document.querySelector('#copy-public-reason').checked;
+      if(activity && !editing){payload.copy_public_reason=Boolean(document.querySelector('#copy-public-reason')?.checked);payload.expected_sync_public=form.dataset.syncPublic==='true';}
       if (manual) manual.disabled = true;
       const result=await write(form.dataset.target,payload);
       if(result.status==='pending'){status.textContent='待核查'; submit.hidden=true;}
-      else location.assign(form.dataset.success);
+      else returnTo(form.dataset.success);
     } catch(error){
       status.textContent=error.message;
       if(error.code==='existing_candidate' || error.code==='resubmission_required'){selected=null; searchState='pending'; await search.run(query.value);}

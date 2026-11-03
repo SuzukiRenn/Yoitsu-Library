@@ -1,4 +1,5 @@
 from booklist import reason_likes, activity_export, legal_pages
+from booklist import recent_views
 from booklist import feedback, account_views, account_admin, email_views, activity_notices
 from django.urls import path
 from booklist import views, catalog_views, public_views, activity_views, recommend_views, admin_views, metadata_views, cover_cache, live_stats
@@ -16,6 +17,8 @@ urlpatterns = [
     path('account/legacy-login/', account_views.screen, {'mode': 'legacy'}),
     path('account/login/', account_views.screen),
     path('account/register/', account_views.screen, {'mode': 'register'}),
+    path('api/v1/account/recent/visit/',recent_views.visit),
+    path('api/v1/account/recent/manage/',recent_views.manage),
     path('account/', account_views.screen, {'mode': 'profile'}),
     path('account/settings/', account_views.screen, {'mode': 'settings'}),
     path('notifications/', account_views.screen, {'mode': 'notifications'}),

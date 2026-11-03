@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 
 def context(request, work_id, source):
     raw = request.GET.get('from', '')
-    if not raw or source != raw:
+    if not raw or source != raw or urlsplit(source).path != (f'/activities/{request.GET["activity"]}/' if request.GET.get('activity') else '/'):
         return None
     activity = request.GET.get('activity')
     token = request.GET.get('browse')

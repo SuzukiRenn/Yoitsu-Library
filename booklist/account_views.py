@@ -10,6 +10,7 @@ from .catalog_views import page, parameters
 from .models import Notification
 from .views import endpoint, set_cookie
 from .protocol import pagination
+from .navigation import safe_return, login_url
 
 
 def auth_limit(request, name='', registration=False):
@@ -89,15 +90,15 @@ def password(request, data):
 
 @endpoint('GET')
 def screen(request, data, mode='login'):
-    parameters(request, ('tab', 'page') if mode == 'profile' else ('next',))
+    parameters(request, ('tab', 'page','activity') if mode == 'profile' else ('from','page') if mode == 'notifications' else ('next',))
     if mode in ('profile', 'settings', 'notifications', 'bind') and not request.account:
-        return redirect('/account/login/?next=' + request.path)
+        return redirect(login_url(request.get_full_path()))
     if mode == 'bind' and not settings.QQ_EMAIL_LOGIN:
-        return redirect('/account/settings/')
+        return redirect(safe_return(request.GET.get('next','/account/settings/')))
     if mode == 'legacy' and request.account:
-        return redirect('/account/bind/')
+        return redirect('/account/bind/?'+urlencode({'next':safe_return(request.GET.get('next','/account/'))}))
     if mode == 'bind' and request.account.qq_email:
-        return redirect('/account/settings/')
+        return redirect(safe_return(request.GET.get('next','/account/settings/')))
     if mode == 'register' and settings.QQ_EMAIL_LOGIN:
         return redirect('/account/login/?' + urlencode({'next': request.GET.get('next','/')}))
     context = {'mode': mode, 'qq_email_login': settings.QQ_EMAIL_LOGIN}
@@ -108,6 +109,10 @@ def screen(request, data, mode='login'):
             return redirect(request.path + context['paging']['last_url'])
         return page(request, 'booklist/account_home.html', context)
     if mode == 'notifications':
+        context['return_url']=safe_return(request.GET.get('from','/'))
+        context['notification_source']=request.get_full_path()
+        offset,size=pagination(request.GET.get('page','1'),50)
+        context['notification_page']=min(100,offset//size+1)
         context['notifications'] = inbox_query(request).select_related('event__actor').order_by('-id')[:50]
     return page(request, 'booklist/account.html', context)
 
@@ -124,7 +129,7 @@ def unread(request, data):
 
 @endpoint('GET')
 def notification_target(request, data, notification_id):
-    parameters(request, ())
+    parameters(request, ('from',))
     note = inbox_query(request).select_related('event__work').filter(pk=notification_id).first()
     if note is None:
         raise services.DomainError('not_found', '消息不存在', 404)
@@ -135,6 +140,10 @@ def notification_target(request, data, notification_id):
     catalog.work_detail(work.pk, include_retired=note.event.scope_key != 'public')
     suffix = '?activity=' + note.event.scope_key.split(':')[1] if note.event.scope_key.startswith('activity:') else ''
     anchor = '#reasons' if note.event.kind == 'reason_like' else ''
+    if 'from' in request.GET:
+        source=safe_return(request.GET['from'],'/notifications/')
+        if source.startswith('/notifications/'):
+            suffix += ('&' if suffix else '?')+urlencode({'from':source})
     return redirect(f'/works/{work.pk}/{suffix}{anchor}')
 
 

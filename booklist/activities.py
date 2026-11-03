@@ -1,4 +1,4 @@
-"""Activity recommendations also enroll a unique public recommendation."""
+"""Activity participation follows the period's fixed public-shelf policy."""
 from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
@@ -44,7 +44,7 @@ def votes(activity_id):
 
 def summary(row):
     return {'id': row.pk, 'title': row.title, 'theme': row.theme, 'status': row.status,
-        'status_label': LABELS[row.status], 'writable': writable(row), 'corrected': row.corrected_at is not None,
+        'status_label': LABELS[row.status], 'writable': writable(row), 'sync_public': row.sync_public, 'corrected': row.corrected_at is not None,
         'start_at': utc_milliseconds(row.started_at or row.start_at),
         'end_at': utc_milliseconds(row.ended_at or row.scheduled_end_at),
         'start_label': timezone.localtime(row.started_at or row.start_at, ZoneInfo('Asia/Shanghai')).strftime('%Y-%m-%d %H:%M'),
@@ -130,19 +130,32 @@ def ensure_snapshot(activity, work):
     return snap
 
 
+def participation_locked(activity):
+    return activity.participation_locked_at is not None or Recommendation.objects.filter(scope='activity',activity=activity).exists()
+
+
+def lock_participation(activity):
+    if activity.participation_locked_at is None:
+        activity.participation_locked_at=timezone.now()
+        activity.save(update_fields=['participation_locked_at','updated_at'])
+
+
 @transaction.atomic
 def submit(activity_id, client, data):
     activity = require_open(activity_id)
+    if data.get('expected_sync_public',activity.sync_public) != activity.sync_public:
+        raise services.DomainError('activity_policy_changed','本期推荐归属已调整，请刷新页面后再提交',409)
     reason = normalize(data['reason'], 'reason')
     work = books.resolve_submission(data, client)
     from .reason_references import validate
     previous=recs(activity_id).filter(work=work,anonymous_client=client).first()
     refs=validate(reason,data.get('references'),previous,work.pk)
     if work.review_status == 'pending':
-        PendingActivitySubmission.objects.create(activity=activity, work=work, anonymous_client=client,
+        PendingActivitySubmission.objects.create(activity=activity, work=work, anonymous_client=client, sync_public=activity.sync_public,
             reason=reason, reason_references=refs, contains_spoilers=bool(reason) and data.get('contains_spoilers', False), copy_public_reason=data['copy_public_reason'])
         return {'status': 'pending'}
-    books.enroll(work)
+    if activity.sync_public:
+        books.enroll(work)
     snap = ensure_snapshot(activity, work)
     row = recs(activity_id).filter(work=work, anonymous_client=client).first()
     if row:
@@ -156,9 +169,11 @@ def submit(activity_id, client, data):
             anonymous_client=client, reason=reason, reason_references=refs, contains_spoilers=bool(reason) and data.get('contains_spoilers', False), text_hidden_at=hidden.text_hidden_at if hidden else None)
         from .notifications import co_recommended
         co_recommended(work, client, activity)
-    books.set_relation(work, client, 'recommend', True, origin='activity')
-    if data['copy_public_reason'] and reason and not books.reasons().filter(work=work, anonymous_client=client).exists():
-        books.set_reason(work, client, reason, data.get('contains_spoilers'), refs, reference_source=row)
+    lock_participation(activity)
+    if activity.sync_public:
+        books.set_relation(work, client, 'recommend', True, origin='activity')
+        if data['copy_public_reason'] and reason and not books.reasons().filter(work=work, anonymous_client=client).exists():
+            books.set_reason(work, client, reason, data.get('contains_spoilers'), refs, reference_source=row)
     return {'status': 'saved', 'activity_id': activity.pk, 'work_id': work.pk}
 
 
@@ -176,7 +191,7 @@ def edit_reason(row, text, contains_spoilers=None, references=None):
 
 @transaction.atomic
 def withdraw(activity_id, work_id, client):
-    require_open(activity_id); work = books.require_work(work_id)
+    require_open(activity_id); work = books.require_work(work_id, public=False)
     changed = recs(activity_id).filter(work_id=work_id, anonymous_client=client).update(withdrawn_at=timezone.now(), updated_at=timezone.now())
     if changed and not recs(activity_id).filter(work_id=work_id).exists():
         from .lifecycle import finish_activity_cycle
@@ -188,12 +203,13 @@ def recommend(activity_id, work_id, client, enabled):
     if not enabled:
         return withdraw(activity_id, work_id, client)
     require_open(activity_id)
-    work = books.require_work(work_id)
+    work = books.require_work(work_id, public=False)
     # A list button can join an existing entry, never revive a stale or missing entry.
     snap = ActivityWork.objects.filter(activity_id=activity_id, work=work, archived_at__isnull=True,
                                       merged_into__isnull=True).first()
     if snap is None or not recs(activity_id).filter(activity_work=snap).exists():
-        raise services.DomainError('not_in_activity', '请先推荐到该活动', 409)
+        status=409 if ActivityWork.objects.filter(activity_id=activity_id,work=work).exists() else 404
+        raise services.DomainError('not_in_activity', '请先推荐到该活动', status)
     if recs(activity_id).filter(work=work, anonymous_client=client).exists():
         # A repeated +1 is not a reason edit, including retries with a fresh idempotency key.
         return {'status': 'saved', 'activity_id': activity_id, 'work_id': work_id}
@@ -202,7 +218,7 @@ def recommend(activity_id, work_id, client, enabled):
 
 
 def reason(activity_id, work_id, client, value, contains_spoilers=None, references=None):
-    require_open(activity_id); books.require_work(work_id)
+    require_open(activity_id); books.require_work(work_id, public=False)
     row = recs(activity_id).filter(work_id=work_id, anonymous_client=client).first()
     if row is None:
         raise services.DomainError('not_found', '活动推荐不存在', 404)
@@ -211,7 +227,7 @@ def reason(activity_id, work_id, client, value, contains_spoilers=None, referenc
 
 
 def like(activity_id, work_id, client, enabled):
-    require_open(activity_id); books.require_work(work_id)
+    require_open(activity_id); books.require_work(work_id, public=False)
     row = votes(activity_id).filter(work_id=work_id, anonymous_client=client).first()
     if not enabled:
         if row:
@@ -222,7 +238,7 @@ def like(activity_id, work_id, client, enabled):
             raise services.DomainError('not_in_activity', '请先推荐到该活动', 409)
         Vote.objects.create(scope='activity', activity_id=activity_id, activity_work=snap, work_id=work_id, anonymous_client=client)
         from .notifications import work_liked
-        work_liked(books.require_work(work_id), client, get(activity_id))
+        work_liked(books.require_work(work_id, public=False), client, get(activity_id))
     return {'status': 'saved'}
 
 
