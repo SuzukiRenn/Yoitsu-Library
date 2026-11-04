@@ -1,1 +1,6 @@
-@media(max-width:700px){.site-header .header-location{flex-basis:100%}.site-header .main-nav{flex:1 1 100%;margin-left:0;justify-content:center}.site-header .main-nav>a{flex:1;text-align:center}.site-header .account-nav{flex-basis:100%}}
+@media(max-width:700px){
+ .site-header .header-location{flex-basis:100%}
+ .site-header .main-nav{flex:0 0 auto;margin-left:auto;justify-content:flex-end}
+ .site-header .main-nav>a{flex:0 0 80px;width:80px;text-align:center}
+ .site-header .account-nav{flex-basis:100%}
+}

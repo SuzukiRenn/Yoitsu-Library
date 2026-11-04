@@ -21,7 +21,7 @@
 <link rel="stylesheet" href="{% static 'activity-notice.css' %}?v=20261104-rankings-anchor-1">
 <script type="module" src="{% static 'activity-notice.mjs' %}?v=20261104-rankings-anchor-1"></script>
 <script type="module" src="{% static 'recent-views.mjs' %}?v=20261104-rankings-1"></script>
-<link rel="stylesheet" href="{% static 'rankings-nav.css' %}?v=20261104-1">
+<link rel="stylesheet" href="{% static 'rankings-nav.css' %}?v=20261104-2">
 {% block scripts %}{% endblock %}</head>
 <body{% if current_account %} data-reader-id="{{ current_account.id }}"{% endif %}><a class="skip-link" href="#main">跳到内容</a>
 <header class="site-header{% block header_class %}{% endblock %}{% if has_admin_access %} has-admin-tools{% endif %}"><div class="header-location"><a class="brand" href="/"><img src="{% static 'logo.png' %}?v=20261022-charcoal-1" width="28" height="28" alt="" aria-hidden="true"><span lang="ja">ヨイツ図書館</span></a>{% block site_location %}{% endblock %}</div><div class="header-controls"><nav class="account-nav" aria-label="账户导航">{% if current_account %}<a data-context-notifications href="{{ notification_url }}">消息 <span data-unread-count{% if not unread_notifications %} hidden{% endif %}>{{ unread_notifications }}</span></a><details class="account-menu" data-account-menu><summary aria-label="个人菜单：{{ current_account.display_name }}">{{ current_account.display_name }}<span aria-hidden="true">▾</span></summary><div class="account-menu-list"><a href="/account/">个人主页</a><button type="button" data-account-logout>退出</button></div></details>{% else %}<a data-context-login href="{{ login_url }}">登录</a>{% if not qq_email_login %}<a href="/account/register/">注册</a>{% endif %}{% endif %}</nav>
