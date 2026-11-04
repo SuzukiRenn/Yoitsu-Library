@@ -35,6 +35,9 @@ def search_key(value):
 def cover_url(value, *, cached=True):
     if not isinstance(value, str) or len(value) > 2048 or any(ord(c) < 33 for c in value):
         return None
+    from .rankings import curated_cover
+    curated=curated_cover(value)
+    if curated:return curated
     try:
         url = urlsplit(value)
         from .cover_cache import local_url

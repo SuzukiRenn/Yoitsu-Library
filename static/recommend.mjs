@@ -8,7 +8,7 @@ import {readMetadata} from './manual-metadata.mjs?v=20261025-keyboard-1';
 
 import {installCandidateKeyboard} from './candidate-keyboard.mjs?v=20261025-1';
 
-import {returnTo} from './navigation-context.mjs?v=20261103-retract-1';
+import {returnTo} from './navigation-context.mjs?v=20261104-rankings-1';
 
 const form = document.querySelector('#recommend-form');
 if (form) {

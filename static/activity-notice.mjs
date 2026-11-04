@@ -29,7 +29,9 @@ export function installActivityNotice(doc=document,win=window) {
   let current=initial, acknowledged=false, busy=false, timer, stopped=false;
   const position=()=>{
     if(hint.hidden || stopped)return;
-    const box=hint.getBoundingClientRect(), target=entry.getBoundingClientRect();
+    const target=entry.getBoundingClientRect(), nav=entry.closest?.('.main-nav')?.getBoundingClientRect?.();
+    if(nav)hint.style.setProperty('--activity-notice-right',`${Math.max(0,nav.right-target.right)}px`);
+    const box=hint.getBoundingClientRect();
     const center=target.left+target.width/2-box.left;
     hint.style.setProperty('--activity-notice-pointer',`${Math.max(12,Math.min(center,box.width-12))}px`);
   };

@@ -1,5 +1,5 @@
 const STORE='booklist:page-positions:v1',PENDING='booklist:page-return:v1',TTL=86400000;
-const page=/^\/(?:works\/[1-9]\d*\/(?:edit\/)?|activities\/(?:[1-9]\d*\/(?:recommend\/)?|history\/)?|recommend\/|catalog\/|feedback\/|notifications\/|account\/(?:settings\/|bind\/)?|privacy\/|guidelines\/|contact\/)?$/;
+const page=/^\/(?:works\/[1-9]\d*\/(?:edit\/)?|activities\/(?:[1-9]\d*\/(?:recommend\/)?|history\/)?|recommend\/|catalog\/|feedback\/|notifications\/|account\/(?:settings\/|bind\/)?|rankings\/|privacy\/|guidelines\/|contact\/)?$/;
 export function localReturn(value,origin,fallback='/') {
  try {
   if(typeof value!=='string' || value.length>8192)return fallback;

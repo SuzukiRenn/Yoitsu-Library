@@ -69,6 +69,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('release'); parser.add_argument('--catalog'); parser.add_argument('--covers')
     parser.add_argument('--update-only', action='store_true')
+    parser.add_argument('--rankings-catalog', action='store_true')
     parser.add_argument('--increment'); parser.add_argument('--increment-sha256')
     args = parser.parse_args()
     release = args.release
@@ -160,6 +161,7 @@ def main():
         run(*command, 'config', '--quiet')
         tool = command + ['run', '-T', '--rm', '--no-deps', 'tools']
         run(*tool, 'python', 'scripts/check_production.py')
+        if args.rankings_catalog:run(*tool,'python','manage.py','import_rankings_catalog')
         proxy_image = compose['services']['proxy']['image']
         run('docker', 'run', '--rm', '--network', 'none', '--read-only', '--user', '10001:10001',
             '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges:true', '--tmpfs', '/tmp:size=32m',
@@ -204,6 +206,12 @@ def main():
                     if line.startswith('CATALOG_INCREMENT_SUCCESS ')))
                 if not increment_receipt.get('success') or not increment_receipt.get('preexisting_rows_unchanged'):
                     raise RuntimeError('Catalog increment did not preserve existing rows')
+            rankings_receipt=None
+            if args.rankings_catalog:
+                payload=run(*tool,'python','manage.py','import_rankings_catalog','--apply',capture=True,timeout=600)
+                print(payload,flush=True)
+                rankings_receipt=json.loads(next(line.split(' ',1)[1] for line in payload.splitlines() if line.startswith('RANKINGS_CATALOG_SUCCESS ')))
+                if not rankings_receipt.get('preexisting_rows_unchanged'):raise RuntimeError('Ranked catalog import did not preserve old rows')
             if preserved is not None:
                 verify(database, preserved)
                 print('PREEXISTING_IDENTITY_DATA_VERIFIED', flush=True)
@@ -231,7 +239,7 @@ def main():
             receipt = {'success': True, 'release': release, 'bind': '127.0.0.1:' + str(PORT),
                        'public_access': False, 'tls_system_ca_verified': True, 'anonymous_services_modified': False,
                        'previous_release': old_release, 'update_only': args.update_only, 'preexisting_data_preserved': preserved is not None,
-                       'catalog_increment': increment_receipt}
+                       'catalog_increment': increment_receipt,'rankings_catalog':rankings_receipt}
             (STATE / 'receipt.json').write_text(json.dumps(receipt, indent=2))
             (STATE / 'release.txt').write_text(release + '\n')
             from deploy.identity_public import mode as public_mode

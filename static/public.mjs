@@ -8,7 +8,7 @@ import {startLiveInteractions} from './live-interactions.mjs?v=20261103-retract-
 import {createShelfRefresh} from './live-shelf.mjs?v=20261026-tag-focus-1';
 import './navigation-motion.mjs?v=20261025-reading-1';
 import './work-motion.mjs?v=20261025-reading-1';
-import {installNavigationContext} from './navigation-context.mjs?v=20261103-retract-1';
+import {installNavigationContext} from './navigation-context.mjs?v=20261104-rankings-1';
 installNavigationContext();
 import {installShelfReturn} from './shelf-return.mjs?v=20261024-references-1';
 installShelfReturn();

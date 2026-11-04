@@ -2,7 +2,7 @@
 import re
 from urllib.parse import urlsplit, unquote, urlencode
 
-FRONT_PAGE=re.compile(r'/(?:works/[1-9][0-9]*/(?:edit/)?|activities/(?:[1-9][0-9]*/(?:recommend/)?|history/)?|recommend/|catalog/|feedback/|notifications/|account/(?:settings/|bind/)?|privacy/|guidelines/|contact/)?'.replace(' ',''))
+FRONT_PAGE=re.compile(r'/(?:works/[1-9][0-9]*/(?:edit/)?|activities/(?:[1-9][0-9]*/(?:recommend/)?|history/)?|recommend/|catalog/|feedback/|notifications/|account/(?:settings/|bind/)?|rankings/|privacy/|guidelines/|contact/)?'.replace(' ',''))
 
 
 def safe_return(value, fallback='/'):

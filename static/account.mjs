@@ -1,5 +1,5 @@
-import {returnTo} from './navigation-context.mjs?v=20261103-retract-1';
-import {installEmailLogin} from './email-login.mjs?v=20261103-retract-1';
+import {returnTo} from './navigation-context.mjs?v=20261104-rankings-1';
+import {installEmailLogin} from './email-login.mjs?v=20261104-rankings-1';
 export function safeNext(value, origin) {
   try {const url = new URL(value || '/', origin); return url.origin === origin && url.pathname.startsWith('/') ? url.pathname + url.search + url.hash : '/';}
   catch {return '/';}

@@ -16,6 +16,7 @@ def read_limit(request, search=False):
 
 def page(request, template, context):
     context = {**context, 'navigation_activities': request.path.startswith('/activities/') or bool(context.get('activity'))}
+    context['navigation_rankings']=bool(context.get('navigation_rankings') or (not context['navigation_activities'] and context.get('return_url','').split('?',1)[0]=='/rankings/'))
     response = render(request, template, context)
     response['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
     return response
@@ -64,7 +65,7 @@ def work_page(request, data, work_id):
     return_url = shelf_return_url(request.GET.get('from', ''), request.GET.get('activity'))
     from .navigation import safe_return
     source=safe_return(request.GET.get('from',''),'')
-    if source.split('?',1)[0] in ('/notifications/','/account/'):
+    if source.split('?',1)[0] in ('/notifications/','/account/','/rankings/'):
         return_url=source
     period = activities.get(positive(request.GET['activity'])) if 'activity' in request.GET else None
     if period: activities.advance_due(); period.refresh_from_db()

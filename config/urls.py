@@ -1,10 +1,12 @@
 from booklist import reason_likes, activity_export, legal_pages
-from booklist import recent_views
+from booklist import recent_views, rankings
 from booklist import feedback, account_views, account_admin, email_views, activity_notices
 from django.urls import path
 from booklist import views, catalog_views, public_views, activity_views, recommend_views, admin_views, metadata_views, cover_cache, live_stats
 
 urlpatterns = [
+    path('rankings/', rankings.home),
+    path('api/v1/rankings/', rankings.listing),
     path('privacy/', legal_pages.information, {'section': 'privacy'}),
     path('guidelines/', legal_pages.information, {'section': 'guidelines'}),
     path('contact/', legal_pages.information, {'section': 'contact'}),

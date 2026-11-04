@@ -1,0 +1,392 @@
+{
+  "workbook_sha256": "8ccdc4aa306ce75b9aaee71fa05c2bf03e2c63b380cf37b6ca6f7e946d15bb3e",
+  "covers": [
+    {
+      "japanese": "流血女神伝",
+      "publisher": "集英社／コバルト文庫",
+      "isbn": null,
+      "volume": "帝国の娘 前編（シリーズ第1作）",
+      "edition": "集英社eコバルト文庫・原作小説の電子版書影",
+      "source_page": "https://ebooks.shueisha.co.jp/detail.php?book=sc947046",
+      "sha256": "398c889efab8a0bea688f4d914b1ff5f4a5cb2aa3db8487a734052b650636d01"
+    },
+    {
+      "japanese": "楽園の魔女たち",
+      "publisher": "集英社／コバルト文庫",
+      "isbn": null,
+      "volume": "賢者からの手紙（第1巻）",
+      "edition": "集英社eコバルト文庫・原作小説の電子版書影",
+      "source_page": "https://ebooks.shueisha.co.jp/detail.php?book=sc947172",
+      "sha256": "01e82333d0944b4694249e711af1d8777e1c3735f2b4886139045a4db3c4e6d1"
+    },
+    {
+      "japanese": "物語シリーズ",
+      "publisher": "講談社",
+      "isbn": "9784062836029",
+      "volume": "化物語（上）（物語シリーズ第1作・上巻）",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.kodansha.co.jp/book/products/0000208722",
+      "sha256": "a669aac907a4126a8222f3354b7237454bee947665a591cbf73d984c6d774db7"
+    },
+    {
+      "japanese": "暴風ガールズファイト",
+      "publisher": "KADOKAWA",
+      "isbn": "9784757737525",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.kadokawa.co.jp/product/200708000481/",
+      "sha256": "2027933f2d752280bf8fd1875a85a3fda02bbe3aeccff8925e3540b810d85e3e"
+    },
+    {
+      "japanese": "ヴァンパイア・サマータイム",
+      "publisher": "KADOKAWA",
+      "isbn": "9784047290112",
+      "volume": "単巻（本編）",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.kadokawa.co.jp/product/301305000921/",
+      "sha256": "f5201b73fc0bfe4d740dc5381ca4eb479eacd89e96f00acf41bd83baad040b65"
+    },
+    {
+      "japanese": "水底のソラリス",
+      "publisher": "KADOKAWA",
+      "isbn": "9784040663913",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://promo.kadokawa.co.jp/mfbunkoj/special/solaris/",
+      "sha256": "cf9c56de2df4e72fd5f820ef08e14e183a2ad78034fd2be12d5f6a2857cd2430"
+    },
+    {
+      "japanese": "きんいろカルテット！",
+      "publisher": "オーバーラップ／オーバーラップ文庫",
+      "isbn": "9784906866526",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://over-lap.co.jp/Form/Product/ProductDetail.aspx?cat=BNK&pid=9784906866526&shop=0&swrd=&vid=",
+      "sha256": "ba45d43ce7d175b484767ec8c9fe8a00c381d57e0ce01e438ad579b58caf58fc"
+    },
+    {
+      "japanese": "男子高校生で売れっ子ライトノベル作家をしているけれど、年下のクラスメイトで声優の女の子に首を絞められている。",
+      "publisher": "KADOKAWA",
+      "isbn": "9784048662734",
+      "volume": "I -Time to Play-〈上〉（第1巻）",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.kadokawa.co.jp/product/311999400000/",
+      "sha256": "d1d2e65fd8f54e6c23c698e2bc3748a5db2a8ed968a9f38043af42e17af7e30b"
+    },
+    {
+      "japanese": "筺底のエルピス",
+      "publisher": "小学館／ガガガ文庫",
+      "isbn": "9784094515275",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.shogakukan.co.jp/books/09451527",
+      "sha256": "49b97f434ca271403d3c28388a77b1e30c18af61a4cb846d74fb87cff7ca426d"
+    },
+    {
+      "japanese": "やがて恋するヴィヴィ・レイン",
+      "publisher": "小学館／ガガガ文庫",
+      "isbn": "9784094516340",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.shogakukan.co.jp/books/09451634",
+      "sha256": "c8f695cd4a566e16b02b59c63e8e28bdeef3ec6ae94ff32c9733fed4d2b63b53"
+    },
+    {
+      "japanese": "先生とそのお布団",
+      "publisher": "小学館／ガガガ文庫",
+      "isbn": "9784094517101",
+      "volume": "単巻（本編）",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.shogakukan.co.jp/books/09451710",
+      "sha256": "8d71e2751a0bb5cf5e05784519f9eceea599cb892bedf978097d82e2b3a9fba2"
+    },
+    {
+      "japanese": "JKハルは異世界で娼婦になった",
+      "publisher": "早川書房",
+      "isbn": "9784152097378",
+      "volume": "単巻（本編）",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.hanmoto.com/bd/isbn/9784152097378",
+      "sha256": "aeff12bcca3224e859a687e12006874f64460214a2c99f9078e743b34d25472d"
+    },
+    {
+      "japanese": "百万光年のちょっと先",
+      "publisher": "集英社／JUMP j BOOKS",
+      "isbn": "9784087034448",
+      "volume": "単巻（本編）",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://j-books.shueisha.co.jp/books/hyakumankounennochottosaki.html",
+      "sha256": "0fe12b459bd74ff8d32f818d6b8efa1c79468f9692917e7d1a12c0b42b73c68d"
+    },
+    {
+      "japanese": "偏差値10の俺がい世界で知恵の勇者になれたワケ",
+      "publisher": "KADOKAWA",
+      "isbn": "9784040726786",
+      "volume": "単巻（本編）",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.kadokawa.co.jp/product/321712000884/",
+      "sha256": "dcfebfcadf1f2b08fa514c8357db987004e86315dda749f02db3a98ef4108025"
+    },
+    {
+      "japanese": "黄昏のブッシャリオン",
+      "publisher": "KADOKAWA",
+      "isbn": "9784040723679",
+      "volume": "単巻（本編）",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.kadokawa.co.jp/product/321703000994/",
+      "sha256": "8e031da76012b79878720fa34ae66390ffd8e1a8ba46c703a91647539575ccf6"
+    },
+    {
+      "japanese": "キミの忘れかたを教えて",
+      "publisher": "KADOKAWA",
+      "isbn": "9784041070918",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.kadokawa.co.jp/product/321803000510/",
+      "sha256": "18f46f06bca481a509869f79fe0917a48c462e99b6df2bf5bda51e6806a7a75d"
+    },
+    {
+      "japanese": "航宙軍士官、冒険者になる",
+      "publisher": "KADOKAWA",
+      "isbn": "9784047353862",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.kadokawa.co.jp/product/321808000098/",
+      "sha256": "56c908445e793b149c698259188a5298d871cb26980960523e56123a23d2d8e8"
+    },
+    {
+      "japanese": "ゲーム実況による攻略と逆襲の異世界神戦記",
+      "publisher": "講談社",
+      "isbn": "9784065135907",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.kodansha.co.jp/book/products/0000315412",
+      "sha256": "ce594910a1a7915cacd7007c3f360e2afd0daf59c8295fc21c49fad0ebd5f078"
+    },
+    {
+      "japanese": "竜魔神姫ヴァルアリスの敗北",
+      "publisher": "KADOKAWA",
+      "isbn": "9784049122701",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.kadokawa.co.jp/product/321809000031/",
+      "sha256": "4fec8516ba1fea30f242eefd44d3f893edeedd0b83d17df53f28abedcc7963fc"
+    },
+    {
+      "japanese": "さよなら異世界、またきて明日",
+      "publisher": "KADOKAWA",
+      "isbn": "9784040735412",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.kadokawa.co.jp/product/321910000998/",
+      "sha256": "6346cb08b289135550de16a14d3e1db6dc44c40677f694e0404d3619cf3cdc4f"
+    },
+    {
+      "japanese": "オーバーライト",
+      "publisher": "KADOKAWA",
+      "isbn": "9784049130188",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.kadokawa.co.jp/product/321910000148/",
+      "sha256": "9c0ddd3b3033038a7b4ea5254229304b75c716484220dbbbea989789bce50821"
+    },
+    {
+      "japanese": "バレットコード：ファイアウォール",
+      "publisher": "KADOKAWA",
+      "isbn": "9784049133134",
+      "volume": "単巻（本編）",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.kadokawa.co.jp/product/322004000044/",
+      "sha256": "f864825d6f1e5e7a96aefc89389042f547f8da30bf3917da2e07ec3baa6247ca"
+    },
+    {
+      "japanese": "ホヅミ先生と茉莉くんと。",
+      "publisher": "KADOKAWA",
+      "isbn": "9784049135343",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.kadokawa.co.jp/product/322008000010/",
+      "sha256": "5d27e40738494b0e9b1103c4a628deb07ad453477978fa2b2112616da3c4f10f"
+    },
+    {
+      "japanese": "忘れさせてよ、後輩くん。",
+      "publisher": "KADOKAWA",
+      "isbn": "9784041112953",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.kadokawa.co.jp/product/322101000027/",
+      "sha256": "d8bc8a2f42d8eb0f81d954fbee470a62bee2f2344239734a7c41793701944aeb"
+    },
+    {
+      "japanese": "奇世界トラバース",
+      "publisher": "SBクリエイティブ／GA文庫",
+      "isbn": "9784815613976",
+      "volume": "単巻（本編）",
+      "edition": "日本語小説・GA文庫（書籍版対応の電子版書影）",
+      "source_page": "https://www.kinokuniya.co.jp/f/dsg-08-EK-1121220",
+      "sha256": "ea763e387c72904303437910c97579e09e7ad1f3da969e59462b5e75ac28bd01"
+    },
+    {
+      "japanese": "恋した人は、妹の代わりに死んでくれと言った。",
+      "publisher": "TOブックス",
+      "isbn": "9784866993225",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://tobooks.shop-pro.jp/?pid=160662905",
+      "sha256": "0a98c3cf6021e4a42581fa0ffb15c22a242d1b1873cbac672c01dab14ec16acf"
+    },
+    {
+      "japanese": "転生令嬢と数奇な人生を",
+      "publisher": "早川書房",
+      "isbn": "9784152100580",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.hayakawa-online.co.jp/shop/g/g0005210058/",
+      "sha256": "f6adeeec3ff9148301db4f91b95e728fbf90d992b07b4326c1d5c9ebca01ec7e"
+    },
+    {
+      "japanese": "VTuberのエンディング、買い取ります。",
+      "publisher": "KADOKAWA",
+      "isbn": "9784040748474",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.kadokawa.co.jp/product/322209001610/",
+      "sha256": "4e0d90f49c9a75445d311e7b0d01a26c620fc3cc1ee2191b5a4cd5b7dd9e2c8a"
+    },
+    {
+      "japanese": "悪役令嬢は溺愛ルートに入りました!?",
+      "publisher": "スクウェア・エニックス／SQEXノベル",
+      "isbn": "9784757570634",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://magazine.jp.square-enix.com/sqexnovel/series/detail/akuyaku/",
+      "sha256": "1fb6411b75eed7a92cfdf92348ca21dee50528baed81ad56d03d48491958827d"
+    },
+    {
+      "japanese": "世界救い終わったけど、記憶喪失の女の子ひろった",
+      "publisher": "TOブックス",
+      "isbn": "9784866997124",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.tobooks.jp/contents/11822",
+      "sha256": "8b4e520d90fa5a758ac1943986c802873571e64473c031b44d5b1ef993763f37"
+    },
+    {
+      "japanese": "月の白さを知りてまどろむ",
+      "publisher": "ドリコム／DREノベルス",
+      "isbn": "9784434310638",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://drecom.co.jp/product_news/2022/10/20221007-01.php",
+      "sha256": "f16a679c4e2df340c27f63e6abcae2c669e521deb76160a201ffd4c27cb8b1dd"
+    },
+    {
+      "japanese": "この物語を君に捧ぐ",
+      "publisher": "講談社",
+      "isbn": "9784065357323",
+      "volume": "単巻（本編）",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.kodansha.co.jp/comic/products/0000390691",
+      "sha256": "68bca1d2025ae8f088a75ef8c0cc1879251eaf707b1da9e602fb05c687c61c2e"
+    },
+    {
+      "japanese": "星が果てても君は鳴れ",
+      "publisher": "KADOKAWA",
+      "isbn": "9784049155266",
+      "volume": "単巻（本編）",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.kadokawa.co.jp/product/322310000072/",
+      "sha256": "42909c46123d7bdcfc6b2d0b55d6b0d4bcb2cd014d105bdfcde6b016021d72da"
+    },
+    {
+      "japanese": "【悲報】お嬢様系底辺ダンジョン配信者、配信切り忘れに気づかず同業者をボコってしまう",
+      "publisher": "小学館／ガガガ文庫",
+      "isbn": "9784094531572",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.shogakukan.co.jp/books/09453157",
+      "sha256": "3645d5214c6563964d3e3294ebd33e677622cfa2d3e04d0c636d3748fc2ef3a8"
+    },
+    {
+      "japanese": "天使の胸に、さよならの花束を",
+      "publisher": "小学館／ガガガ文庫",
+      "isbn": "9784094532067",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.shogakukan.co.jp/books/09453206",
+      "sha256": "945685b567e729e69944394752f30d37ed6aac553eab1fea42b12ac31d9b7ff5"
+    },
+    {
+      "japanese": "セピア×セパレート 復活停止",
+      "publisher": "KADOKAWA",
+      "isbn": "9784049153873",
+      "volume": "単巻（本編）",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.kadokawa.co.jp/product/322307000330/",
+      "sha256": "e366a63aca937d968261ba67e9a790b310bfe71fc70cff730cb47a2356d048aa"
+    },
+    {
+      "japanese": "引きこもりVTuberは伝えたい。",
+      "publisher": "KADOKAWA",
+      "isbn": "9784049153927",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://dengekibunko.jp/product/hikikomoriv/322307000694.html",
+      "sha256": "8fca203638736d0e5106943958b89c508e90eee4972b609cc6bf091e84c0972e"
+    },
+    {
+      "japanese": "やがて英雄になる最強主人公に転生したけど、僕には荷が重かったようです",
+      "publisher": "KADOKAWA",
+      "isbn": "9784040753577",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.kadokawa.co.jp/product/322311000095/",
+      "sha256": "737f228f83597144953d3c806382aab8b38f2a65da50c0ae0dbe63838a552fca"
+    },
+    {
+      "japanese": "ふつおたはいりません！ ～崖っぷち声優、ラジオで人生リスタート！～",
+      "publisher": "KADOKAWA",
+      "isbn": "9784049152906",
+      "volume": "単巻（本編）",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://dengekibunko.jp/product/futsuota/322305000970.html",
+      "sha256": "6723405b553a7396f7820bc79c2aa2b00618bcf0c3a84dc115c366450ebf842b"
+    },
+    {
+      "japanese": "飼育員セシルの日誌 ～ひとりぼっちの女の子が新天地で愛を知るまで～",
+      "publisher": "オーバーラップ／オーバーラップノベルスf",
+      "isbn": "9784824007704",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://over-lap.co.jp/Form/Product/ProductDetail.aspx?shop=0&pid=9784824007704",
+      "sha256": "1ec5db73f589543710b6f7430e7daebd677ddb9bc5b38d51fc9c6fcacd3df128"
+    },
+    {
+      "japanese": "服飾師ルチアはあきらめない ～今日から始める幸服計画～",
+      "publisher": "KADOKAWA",
+      "isbn": "9784046803757",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.kadokawa.co.jp/product/322012000917/",
+      "sha256": "7a4a2bf11fab9846b0eaac190f11c0531000a6855915e720683a80ba24a36d6b"
+    },
+    {
+      "japanese": "迷宮クソたわけ",
+      "publisher": "BookBase／ダンガン文庫",
+      "isbn": "9784911602003",
+      "volume": "1",
+      "edition": "2026年4月刊 BookBase紙書籍再刊・原作小説",
+      "source_page": "https://www.hanmoto.com/bd/isbn/9784911602003",
+      "sha256": "b272826aefce28dc90afcab912561d4ecd63e9f0895d2f2941e5de6b81eee8b2"
+    },
+    {
+      "japanese": "捨てられ公爵夫人は、平穏な生活をお望みのようです",
+      "publisher": "TOブックス",
+      "isbn": "9784867944219",
+      "volume": "1",
+      "edition": "日本語紙書籍・小説",
+      "source_page": "https://www.tobooks.jp/contents/17799",
+      "sha256": "bad869b54092d542ba397e8223046943aeff063cdcbc49bd7bbc629200214a19"
+    }
+  ]
+}
