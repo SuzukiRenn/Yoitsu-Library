@@ -39,7 +39,7 @@ $('load-more').addEventListener('click',()=>{const first=limit;limit+=10;render(
 $('rankings-panel').addEventListener('click',event=>{
  const b=event.target.closest('[data-entry]');if(!b)return;const entry=currentSection().entries[Number(b.dataset.entry)];
  const historyRows=[];for(const y of [...data.years].reverse())for(const s of y.sections)for(const e of s.entries)if(e.japanese===entry.japanese)historyRows.push({year:y.year,section:s.label,rank:e.rankLabel});
- $('work-dialog-content').innerHTML=`<div class="dialog-book">${cover(entry,true)}<div><h2 id="work-title">${entry.workUrl?`<a class="ranked-detail-link" href="${esc(entry.workUrl+'?'+new URLSearchParams({from:location.pathname+location.search}))}">${esc(entry.title)}</a>`:esc(entry.title)}</h2><p class="jp-title" lang="ja">${esc(entry.japanese)}</p>${entry.author?`<p class="dialog-author">${esc(entry.author)}</p>`:''}</div></div><h3 class="history-heading">历年上榜记录</h3><ul class="rank-history">${historyRows.map(r=>`<li><span>${r.year} 年</span><span>${esc(r.section)}</span><strong>${esc(r.rank)} 名</strong></li>`).join('')}</ul>`;
+ $('work-dialog-content').innerHTML=`<div class="dialog-book">${cover(entry,true)}<div><h2 id="work-title">${esc(entry.title)}</h2><p class="jp-title" lang="ja">${esc(entry.japanese)}</p>${entry.author?`<p class="dialog-author">${esc(entry.author)}</p>`:''}</div></div><h3 class="history-heading">历年上榜记录</h3><ul class="rank-history">${historyRows.map(r=>`<li><span>${r.year} 年</span><span>${esc(r.section)}</span><strong>${esc(r.rank)} 名</strong></li>`).join('')}</ul>`;
  $('work-dialog').showModal();
 });
 $('close-dialog').addEventListener('click',()=>$('work-dialog').close());
