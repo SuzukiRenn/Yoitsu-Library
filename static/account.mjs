@@ -1,5 +1,6 @@
 import {returnTo} from './navigation-context.mjs?v=20261104-rankings-1';
-import {installEmailLogin} from './email-login.mjs?v=20261104-rankings-1';
+import {installEmailLogin} from './email-login.mjs?v=20261105-nickname-1';
+import {finishAccountLogin} from './account-onboarding.mjs?v=20261105-nickname-1';
 export function safeNext(value, origin) {
   try {const url = new URL(value || '/', origin); return url.origin === origin && url.pathname.startsWith('/') ? url.pathname + url.search + url.hash : '/';}
   catch {return '/';}
@@ -77,6 +78,7 @@ if (typeof document !== 'undefined' && !document.documentElement.hasAttribute('d
   }
   const next = safeNext(new URLSearchParams(location.search).get('next') || (location.pathname==='/account/bind/'?'/account/settings/':'/'), location.origin);
   installEmailLogin(accountPost,next);
+  if(document.querySelector('[data-nickname-setup]'))window.addEventListener('pageshow',event=>{if(event.persisted)location.reload();});
   const switchLink=document.querySelector('[data-auth-switch]');
   if(switchLink)switchLink.href += `?next=${encodeURIComponent(next)}`;
   for (const form of document.querySelectorAll('[data-account-form]')) form.addEventListener('submit', async event => {
@@ -85,11 +87,12 @@ if (typeof document !== 'undefined' && !document.documentElement.hasAttribute('d
     if (data.confirmation !== undefined && data.confirmation !== (data.password || data.new_password)) {status.textContent='两次输入的密码不一致';return;}
     delete data.confirmation;button.disabled=true;status.textContent='';
     try {
-      await accountPost(`/api/v1/account/${form.dataset.accountForm}/`, data);
+      const result=await accountPost(`/api/v1/account/${form.dataset.accountForm}/`, data);
       if(form.dataset.accountForm==='password') location.assign('/account/login/');
       else if(form.hasAttribute('data-legacy-login')) location.assign('/account/bind/?next='+encodeURIComponent(next));
+      else if(form.hasAttribute('data-nickname-setup')) returnTo(next);
       else if(form.dataset.accountForm==='profile') location.reload();
-      else returnTo(next);
+      else finishAccountLogin(result,next);
     } catch(error) {status.textContent=error.message;} finally {button.disabled=false;}
   });
   const status = document.querySelector('#action-status');

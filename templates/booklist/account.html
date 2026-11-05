@@ -1,7 +1,7 @@
 {% extends 'booklist/base.html' %}
 {% load static %}
 {% block scripts %}{% if mode == 'notifications' %}<script type="module" src="{% static 'notification-retractions.mjs' %}?v=20261103-retract-1"></script>{% endif %}{% endblock %}
-{% block title %}{% if mode == 'notifications' %}消息{% elif mode == 'bind' %}绑定 QQ 邮箱{% elif mode == 'settings' %}修改信息{% elif mode == 'register' %}注册{% else %}登录{% endif %} · {% endblock %}
+{% block title %}{% if mode == 'notifications' %}消息{% elif mode == 'nickname' %}填写昵称{% elif mode == 'bind' %}绑定 QQ 邮箱{% elif mode == 'settings' %}修改信息{% elif mode == 'register' %}注册{% else %}登录{% endif %} · {% endblock %}
 {% block content %}<section class="account-panel">
 {% if mode == 'notifications' %}
 <div class="section-heading"><h1>消息</h1><div class="notification-actions"><a class="reason-link notification-action" data-context-return href="{{ return_url }}">← 返回</a><button type="button" class="primary notification-action" data-read-all>全部已读</button></div></div>
@@ -11,6 +11,11 @@
 <div class="notification-actions"><a class="primary notification-action" data-notification-work href="/notifications/{{ item.id }}/work/?from={{ notification_source|urlencode }}">查看作品</a>
 {% if not item.read_at %}<button type="button" class="reason-link notification-action" data-read="{{ item.id }}">标为已读</button>{% endif %}</div></li>{% empty %}<li class="empty-state">暂无消息</li>{% endfor %}</ol>
 <button type="button" class="reason-link notification-action" data-more-notifications hidden>加载更多</button>
+{% elif mode == 'nickname' %}
+<h1>填写昵称</h1>
+<form method="post" data-account-form="profile" data-nickname-setup>
+<label>昵称<input name="display_name" required maxlength="40" autocomplete="nickname" placeholder="请输入昵称" autofocus></label>
+<div class="auth-actions"><button class="primary" type="submit">保存并继续</button><button type="button" data-account-logout>退出登录</button></div><p role="status" aria-live="polite"></p></form>
 {% elif mode == 'bind' %}
 {% include 'booklist/email_form.html' %}
 {% elif mode == 'settings' %}

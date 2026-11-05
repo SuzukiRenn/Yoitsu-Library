@@ -1,4 +1,4 @@
-import {returnTo} from './navigation-context.mjs?v=20261104-rankings-1';
+import {finishAccountLogin} from './account-onboarding.mjs?v=20261105-nickname-1';
 export function installEmailLogin(post, next, doc=document, win=window){
  const form=doc.querySelector('[data-email-login]');if(!form)return;
  const email=form.querySelector('[name=email]'),code=form.querySelector('[name=code]');
@@ -20,7 +20,7 @@ export function installEmailLogin(post, next, doc=document, win=window){
   event.preventDefault();if(busy||sending)return;
   if(!challenge||sentEmail!==email.value.trim().toLowerCase()){status.textContent='请先获取当前邮箱的验证码';return;}
   busy=true;submit.disabled=true;update();status.textContent='';
-  try{await post(`/api/v1/account/email/${form.dataset.emailLogin==='bind'?'bind':'login'}/`,{email:sentEmail,challenge,code:code.value.trim()});returnTo(next,win);}
+  try{const result=await post(`/api/v1/account/email/${form.dataset.emailLogin==='bind'?'bind':'login'}/`,{email:sentEmail,challenge,code:code.value.trim()});finishAccountLogin(result,next,win);}
   catch(error){status.textContent=error.message;}finally{busy=false;submit.disabled=false;update();}
  });
  win.addEventListener('pagehide',()=>win.clearInterval(timer));

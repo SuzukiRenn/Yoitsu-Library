@@ -66,7 +66,7 @@ def register(name, label, secret):
         now = timezone.now()
         principal = AnonymousClient.objects.create(token_hash=token_hash(secrets.token_urlsafe(32)),
             last_seen_at=now, expires_at=now + timedelta(days=36500))
-        account = Account.objects.create(username=name, display_name=label, password_hash=encoded, principal=principal)
+        account = Account.objects.create(username=name, display_name=label, password_hash=encoded, principal=principal, nickname_confirmed_at=now)
         return session(account)
 
 

@@ -42,6 +42,9 @@ try{
  const binding=fixture(async()=>({challenge:'token',retry_after:60}),'bind');
  await binding.events['send:click']();await binding.events.submit({preventDefault(){}});
  assert.deepEqual(binding.redirects,['/?tag=2']);binding.windowEvents.pagehide();
+ const onboarding=fixture(async url=>url.endsWith('/code/')?{challenge:'token',retry_after:60}:{nickname_required:true});
+ await onboarding.events['send:click']();await onboarding.events.submit({preventDefault(){}});
+ const route=new URL(onboarding.redirects[0],'http://local');assert.equal(route.pathname,'/account/nickname/');assert.equal(route.searchParams.get('next'),'/?tag=2');onboarding.windowEvents.pagehide();
  assert.doesNotThrow(()=>installEmailLogin(()=>{},'/',{querySelector:()=>null},{}));
  console.log('Email login: countdown, missing challenge, edit/send race, migration redirect and cleanup passed.');
 }finally{Date.now=oldNow;}

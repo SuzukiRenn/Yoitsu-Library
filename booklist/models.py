@@ -53,6 +53,7 @@ class Account(Timestamped):
     track_recent_views = models.BooleanField(default=True)
     username = models.CharField(max_length=32, unique=True)
     display_name = models.CharField(max_length=40)
+    nickname_confirmed_at = models.DateTimeField(null=True)
     password_hash = models.CharField(max_length=256)
     # A dedicated, never browser-issued principal preserves all existing ownership,
     # uniqueness, moderation, merge and audit rules. Legacy clients are never claimed.

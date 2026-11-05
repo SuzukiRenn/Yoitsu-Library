@@ -7,7 +7,10 @@ from django.utils import timezone
 from django.db import transaction
 from . import accounts, services
 from .catalog_views import page, parameters
-from .models import Notification
+from .models import Notification, Account
+from django.db.models import Value
+from django.db.models.functions import Coalesce
+from . import nickname_setup
 from .views import endpoint, set_cookie
 from .protocol import pagination
 from .navigation import safe_return, login_url
@@ -25,7 +28,8 @@ def authenticated(request, result):
     if request.account_session:
         request.account_session.delete()
     rotate_token(request)
-    response = JsonResponse({'account': accounts.public(session.account)})
+    response = JsonResponse({'account': accounts.public(session.account),
+                             'nickname_required': nickname_setup.required(session.account)})
     set_cookie(response, settings.ACCOUNT_COOKIE, token, settings.ACCOUNT_AGE)
     response.delete_cookie(settings.ANONYMOUS_COOKIE, samesite='Lax')
     return response
@@ -62,7 +66,8 @@ def logout(request, data):
 
 @endpoint('GET')
 def me(request, data):
-    return JsonResponse({'account': accounts.public(accounts.require(request))})
+    account = accounts.require(request)
+    return JsonResponse({'account': accounts.public(account), 'nickname_required': nickname_setup.required(account)})
 
 
 @endpoint('POST', fields=('display_name',))
@@ -70,8 +75,11 @@ def profile(request, data):
     with transaction.atomic():
         account = accounts.require(request)
         services.rate_limit('account_profile', str(account.pk), 20, 3600)
-        account.display_name = accounts.display_name(data['display_name'])
-        account.save(update_fields=['display_name', 'updated_at'])
+        label = accounts.display_name(data['display_name'])
+        now = timezone.now()
+        Account.objects.filter(pk=account.pk).update(display_name=label, updated_at=now,
+            nickname_confirmed_at=Coalesce('nickname_confirmed_at', Value(now)))
+        account.refresh_from_db()
     return JsonResponse({'account': accounts.public(account)})
 
 
@@ -101,6 +109,12 @@ def screen(request, data, mode='login'):
         return redirect(safe_return(request.GET.get('next','/account/settings/')))
     if mode == 'register' and settings.QQ_EMAIL_LOGIN:
         return redirect('/account/login/?' + urlencode({'next': request.GET.get('next','/')}))
+    if mode == 'nickname':
+        destination = safe_return(request.GET.get('next', '/'))
+        if not request.account:
+            return redirect(login_url(destination))
+        if not nickname_setup.required(request.account):
+            return redirect(destination)
     context = {'mode': mode, 'qq_email_login': settings.QQ_EMAIL_LOGIN}
     if mode == 'profile':
         from .account_home import context as home_context

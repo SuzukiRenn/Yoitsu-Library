@@ -1,4 +1,4 @@
-import {renderRecommenders} from './account.mjs?v=20261103-retract-1';
+import {renderRecommenders} from './account.mjs?v=20261105-nickname-1';
 import {renderReasonPreview} from './reason-ui.mjs?v=20261024-identity-sync';
 import {createPublicApi} from './public-api.mjs?v=20261025-withdraw-1';
 import {writeWithConfirmation,confirmWithdrawal} from './withdraw-confirm.mjs?v=20261025-1';

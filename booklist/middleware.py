@@ -54,7 +54,10 @@ class IdentityMiddleware:
             response = database_unavailable(request, exc)
             response['X-Frame-Options'] = 'DENY'
             return response
-        response = self.get_response(request)
+        from .nickname_setup import gate
+        response = gate(request)
+        if response is None:
+            response = self.get_response(request)
         response['Cache-Control'] = 'no-store'
         response['X-Frame-Options'] = 'DENY'
         return response

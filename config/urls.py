@@ -16,6 +16,7 @@ urlpatterns = [
     path('api/v1/account/email/login/', email_views.login),
     path('api/v1/account/email/bind/', email_views.bind),
     path('account/bind/', account_views.screen, {'mode': 'bind'}),
+    path('account/nickname/', account_views.screen, {'mode': 'nickname'}),
     path('account/legacy-login/', account_views.screen, {'mode': 'legacy'}),
     path('account/login/', account_views.screen),
     path('account/register/', account_views.screen, {'mode': 'register'}),
