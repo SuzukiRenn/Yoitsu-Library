@@ -10,13 +10,14 @@ from .views import endpoint
 
 def snapshot(ids, client, activity_id=None):
     activity = activities.summary(activities.get(activity_id)) if activity_id is not None else None
-    works = catalog.visible_works(include_retired=bool(activity and activity['status'] == 'ended')).filter(pk__in=ids, public_added_at__isnull=False)
+    works = catalog.visible_works(include_retired=bool(activity and activity['status'] == 'ended')).filter(pk__in=ids)
     if activity_id is not None:
         works = works.filter(pk__in=ActivityWork.objects.filter(activity_id=activity_id,
             archived_at__isnull=True, merged_into__isnull=True).values('work_id'))
         recs, likes = activities.recs(activity_id), activities.votes(activity_id)
         reasons = recs.filter(text_hidden_at__isnull=True).exclude(reason='')
     else:
+        works = works.filter(public_added_at__isnull=False)
         recs, likes = books.recommendations(), books.likes()
         reasons = books.reasons().filter(text_hidden_at__isnull=True).exclude(reason='')
     recs, likes, reasons = [query.filter(work_id__in=ids) for query in (recs, likes, reasons)]
