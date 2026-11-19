@@ -387,6 +387,542 @@
       "edition": "日本語紙書籍・小説",
       "source_page": "https://www.tobooks.jp/contents/17799",
       "sha256": "bad869b54092d542ba397e8223046943aeff063cdcbc49bd7bbc629200214a19"
+    },
+    {
+      "subject_id": 619804,
+      "japanese": "おまえだけは選ばない",
+      "author": "白鳥かおる",
+      "publisher": "角川スニーカー文庫",
+      "source_page": "https://bgm.tv/subject/619804",
+      "image_url": "https://lain.bgm.tv/pic/cover/l/67/df/619804_Ofzii.jpg",
+      "bytes": 269030,
+      "sha256": "49f8f8d6f93720c8d33af55f825664242b585848fc68ab0d531dfc9a193f4444",
+      "width": 1243,
+      "height": 1761,
+      "isbn": null,
+      "edition": "日本語紙書籍・小説",
+      "year_added": 2027
+    },
+    {
+      "subject_id": 621995,
+      "japanese": "王者の盤狂わせ",
+      "author": "依依恋恋",
+      "publisher": "マイクロマガジン社",
+      "source_page": "https://bgm.tv/subject/621995",
+      "image_url": "https://lain.bgm.tv/pic/cover/l/c7/86/621995_wOQsQ.jpg",
+      "bytes": 249547,
+      "sha256": "df938e658d3dad8e1518f0317cd0efbe11f303f51779d69b16a22042b1d0556e",
+      "width": 1064,
+      "height": 1500,
+      "isbn": null,
+      "edition": "日本語紙書籍・小説",
+      "year_added": 2027
+    },
+    {
+      "subject_id": 697553,
+      "japanese": "魔法少女はおとなのつとめです。",
+      "author": "多部キャノン",
+      "publisher": "オーバーラップ文庫",
+      "source_page": "https://bgm.tv/subject/697553",
+      "image_url": "https://lain.bgm.tv/pic/cover/l/a6/10/697553_4g8Gh.jpg",
+      "bytes": 234791,
+      "sha256": "e067f87b0ddc97bd9959b32886c8bb2ef6e3bcf4339f9bf53f03c4d394bf93e6",
+      "width": 1064,
+      "height": 1500,
+      "isbn": null,
+      "edition": "日本語紙書籍・小説",
+      "year_added": 2027
+    },
+    {
+      "subject_id": 629936,
+      "japanese": "1/nのワトソン",
+      "author": "塗田一帆",
+      "publisher": "ガガガ文庫",
+      "source_page": "https://bgm.tv/subject/629936",
+      "image_url": "https://lain.bgm.tv/pic/cover/l/27/16/629936_F66BO.jpg",
+      "bytes": 179119,
+      "sha256": "13b6ed50c3fbeaedd124897fb2e73694140310c5d41a9612da087e5173c22646",
+      "width": 698,
+      "height": 1000,
+      "isbn": null,
+      "edition": "日本語紙書籍・小説",
+      "year_added": 2027
+    },
+    {
+      "subject_id": 608941,
+      "japanese": "さようなら運命の人。二日前でまた会いましょう。",
+      "author": "四十万チマ",
+      "publisher": "SBクリエイティブ",
+      "source_page": "https://bgm.tv/subject/608941",
+      "image_url": "https://lain.bgm.tv/pic/cover/l/a8/3c/608941_kMH1w.jpg",
+      "bytes": 192012,
+      "sha256": "4a9639774481afbf30369e9ad9f7ccbc84f764148a475838bcbf40569f05d4f4",
+      "width": 1052,
+      "height": 1501,
+      "isbn": "9784815637309",
+      "edition": "日本語紙書籍・小説",
+      "year_added": 2027
+    },
+    {
+      "subject_id": 639819,
+      "japanese": "トリック・オア・デリート 不可解",
+      "author": "ひなちほこ",
+      "publisher": "電撃文庫",
+      "source_page": "https://bgm.tv/subject/639819",
+      "image_url": "https://lain.bgm.tv/pic/cover/l/e0/5d/639819_x7he7.jpg",
+      "bytes": 247600,
+      "sha256": "e6242711ad34c41320e64f34c7d5fbcfe4088ddd452c4ae26cb5461804cb97e8",
+      "width": 1000,
+      "height": 1419,
+      "isbn": null,
+      "edition": "日本語紙書籍・小説",
+      "year_added": 2027
+    },
+    {
+      "subject_id": 661519,
+      "japanese": "人生全部賭けても、銀の魔女に勝ちたい",
+      "author": "深水紅茶",
+      "publisher": "富士見ファンタジア文庫",
+      "source_page": "https://bgm.tv/subject/661519",
+      "image_url": "https://lain.bgm.tv/pic/cover/l/cd/df/661519_mbKLp.jpg",
+      "bytes": 244516,
+      "sha256": "c10dcc7759a42f8cd716ed0fd9e2001a26faa2fd04a4ae623e91311d866ead18",
+      "width": 1058,
+      "height": 1500,
+      "isbn": null,
+      "edition": "日本語紙書籍・小説",
+      "year_added": 2027
+    },
+    {
+      "subject_id": 720424,
+      "japanese": "幼なじみが謎解きをしかけてくる",
+      "author": "雨露山鳥",
+      "publisher": "KADOKAWA",
+      "source_page": "https://bgm.tv/subject/720424",
+      "image_url": "https://lain.bgm.tv/pic/cover/l/54/f6/720424_fQXTF.jpg",
+      "bytes": 287494,
+      "sha256": "3c5bb0ad90c0eb3145936a292ae35ba7abf5cb8e5521ac531cafe853ea881ea9",
+      "width": 1037,
+      "height": 1500,
+      "isbn": null,
+      "edition": "日本語紙書籍・小説",
+      "year_added": 2027
+    },
+    {
+      "subject_id": 616306,
+      "japanese": "やぁ“登校”に挑めニンゲン",
+      "author": "罠和ノワナ",
+      "publisher": "MF文庫J",
+      "source_page": "https://bgm.tv/subject/616306",
+      "image_url": "https://lain.bgm.tv/pic/cover/l/c7/80/616306_A82aC.jpg",
+      "bytes": 335070,
+      "sha256": "32e98c95fe4cb15431c73446bf520ddb4a2e25dad494489651f08586dd359f5d",
+      "width": 1057,
+      "height": 1500,
+      "isbn": null,
+      "edition": "日本語紙書籍・小説",
+      "year_added": 2027
+    },
+    {
+      "subject_id": 615556,
+      "japanese": "死亡エンドを回避したギャルゲーのヒロインたちが俺の【日記帳】を読んで秘密を知ったらしい",
+      "author": "addict",
+      "publisher": "GA文庫",
+      "source_page": "https://bgm.tv/subject/615556",
+      "image_url": "https://lain.bgm.tv/pic/cover/l/be/a4/615556_w0X0G.jpg",
+      "bytes": 137441,
+      "sha256": "1390d7c303116767b4b4bc84ecd19f3606ff43276cc4355bee3e391541513106",
+      "width": 718,
+      "height": 1024,
+      "isbn": null,
+      "edition": "日本語紙書籍・小説",
+      "year_added": 2027
+    },
+    {
+      "subject_id": 646791,
+      "japanese": "神懸かれ、キラーチューン。",
+      "author": "岬鷺宮",
+      "publisher": "電撃文庫",
+      "source_page": "https://bgm.tv/subject/646791",
+      "image_url": "https://lain.bgm.tv/pic/cover/l/8a/7c/646791_8H6g3.jpg",
+      "bytes": 169915,
+      "sha256": "16a06fa49a828d40db0669dee6843a027bb5c02bef17b2c51362fd2f889b8b10",
+      "width": 846,
+      "height": 1200,
+      "isbn": null,
+      "edition": "日本語紙書籍・小説",
+      "year_added": 2027
+    },
+    {
+      "subject_id": 590822,
+      "japanese": "崩壊世界の魔法杖職人",
+      "author": "黒留ハガネ",
+      "publisher": "KADOKAWA",
+      "source_page": "https://bgm.tv/subject/590822",
+      "image_url": "https://lain.bgm.tv/pic/cover/l/6a/ca/590822_iMmM5.jpg",
+      "bytes": 293013,
+      "sha256": "377ada7573fb5c55b8be57ff34e51f05ede3ab39353e13851f811d36b177c5b9",
+      "width": 1056,
+      "height": 1500,
+      "isbn": null,
+      "edition": "日本語紙書籍・小説",
+      "year_added": 2027
+    },
+    {
+      "subject_id": 652422,
+      "japanese": "鉄錆びの女王機兵",
+      "author": "荻原数馬",
+      "publisher": "ダンガン文庫",
+      "source_page": "https://bgm.tv/subject/652422",
+      "image_url": "https://lain.bgm.tv/pic/cover/l/81/37/652422_TG3q5.jpg",
+      "bytes": 345228,
+      "sha256": "04d2ba26d00c8a3d127548fea350f3bde575db5cd48e1bf1763fb3181da2eb2a",
+      "width": 1089,
+      "height": 1548,
+      "isbn": "9784911602171",
+      "edition": "日本語紙書籍・小説",
+      "year_added": 2027
+    },
+    {
+      "subject_id": 337906,
+      "japanese": "ふつつかな悪女ではございますが ～雛宮蝶鼠とりかえ伝～",
+      "author": "中村颯希",
+      "publisher": "一迅社ノベルス",
+      "source_page": "https://bgm.tv/subject/337906",
+      "image_url": "https://lain.bgm.tv/pic/cover/l/ea/89/337906_53qLz.jpg",
+      "bytes": 748762,
+      "sha256": "62e4127cca6f8bec2e79355cb37ad4e0252b1d67da433e026d06cd858a040f59",
+      "width": 1742,
+      "height": 2560,
+      "isbn": null,
+      "edition": "日本語紙書籍・小説",
+      "year_added": 2027
+    },
+    {
+      "subject_id": 667368,
+      "japanese": "白の平民魔法使い",
+      "author": "らむなべ",
+      "publisher": "ダンガン文庫",
+      "source_page": "https://bgm.tv/subject/667368",
+      "image_url": "https://lain.bgm.tv/pic/cover/l/72/64/667368_k9KLp.jpg",
+      "bytes": 307793,
+      "sha256": "5fb4e7d34c36d75d294689f84851e27e0b9e93622d15754aa2b076b26d0dfc58",
+      "width": 1054,
+      "height": 1500,
+      "isbn": "9784911602195",
+      "edition": "日本語紙書籍・小説",
+      "year_added": 2027
+    },
+    {
+      "subject_id": 590179,
+      "japanese": "左遷錬金術師の辺境暮らし 元エリートは二度目の人生も失敗したので辺境でのんびりとやり直すことにしました",
+      "author": "出雲大吉",
+      "publisher": "カドカワBOOKS",
+      "source_page": "https://bgm.tv/subject/590179",
+      "image_url": "https://lain.bgm.tv/pic/cover/l/ad/20/590179_V4R5z.jpg",
+      "bytes": 276616,
+      "sha256": "8427b070b02bc4c61d300fa238de0f860a6ec8cf22673d836051e97a67fc6d06",
+      "width": 1013,
+      "height": 1500,
+      "isbn": null,
+      "edition": "日本語紙書籍・小説",
+      "year_added": 2027
+    }
+  ],
+  "annual_updates": [
+    {
+      "year": 2027,
+      "checked_at": "2026-11-19",
+      "rank_sources": {
+        "bunko": {
+          "url": "https://bgm.tv/index/106106",
+          "ranks": [
+            1,
+            20
+          ]
+        },
+        "novels": {
+          "type": "user_supplied_book_photo",
+          "sha256": "f138d4471514a7eba770113847f44c4bf0eed18ad7cb3276ae41564b0936b4c2",
+          "ranks": [
+            1,
+            10
+          ]
+        }
+      },
+      "scope": "Only the supplied bunko top 20 and novels top 10; not the complete annual rankings.",
+      "records": [
+        {
+          "category": "bunko",
+          "rank": 1,
+          "workKey": "483f1881b4bd0e4da7b9d600",
+          "japanese": "負けヒロインが多すぎる！",
+          "title": "败北女角太多了！(败犬女主太多了！)",
+          "rank_source": "https://bgm.tv/index/106106",
+          "translation_status": "community_or_existing"
+        },
+        {
+          "category": "bunko",
+          "rank": 2,
+          "workKey": "1e806ae1abd1de7ca8ed1cdb",
+          "japanese": "あそびのかんけい",
+          "title": "玩玩的恋爱关系(玩乐关系)",
+          "rank_source": "https://bgm.tv/index/106106",
+          "translation_status": "community_or_existing"
+        },
+        {
+          "category": "bunko",
+          "rank": 3,
+          "workKey": "485e2bf037d61f5c92ab0cc4",
+          "japanese": "おまえだけは選ばない",
+          "title": "唯独不会选择你",
+          "rank_source": "https://bgm.tv/index/106106",
+          "translation_status": "community_or_existing"
+        },
+        {
+          "category": "bunko",
+          "rank": 4,
+          "workKey": "2bd6576f91f0683a1ac58fd7",
+          "japanese": "不死探偵・冷堂紅葉",
+          "title": "不死侦探冷堂红叶",
+          "rank_source": "https://bgm.tv/index/106106",
+          "translation_status": "community_or_existing"
+        },
+        {
+          "category": "bunko",
+          "rank": 5,
+          "workKey": "bffe061a2a68b6ba081113d6",
+          "japanese": "週に一度クラスメイトを買う話",
+          "title": "我买下了与她的每周密会～以五千圆为借口，共度两人时光～(一周一次买下同班同学的那些事)",
+          "rank_source": "https://bgm.tv/index/106106",
+          "translation_status": "community_or_existing"
+        },
+        {
+          "category": "bunko",
+          "rank": 6,
+          "workKey": "648b535302de1ba9cf11b228",
+          "japanese": "王者の盤狂わせ",
+          "title": "王者的逆转棋局（暂译）",
+          "rank_source": "https://bgm.tv/index/106106",
+          "translation_status": "provisional"
+        },
+        {
+          "category": "bunko",
+          "rank": 7,
+          "workKey": "7f0357cc0d77043075cdd3c6",
+          "japanese": "お隣の天使様にいつの間にか駄目人間にされていた件",
+          "title": "关于我在无意间被隔壁的天使变成废柴这件事(关于邻家的天使大人不知不觉把我惯成了废人这档子事)",
+          "rank_source": "https://bgm.tv/index/106106",
+          "translation_status": "community_or_existing"
+        },
+        {
+          "category": "bunko",
+          "rank": 8,
+          "workKey": "6c8d3beb59f5e99521ea856b",
+          "japanese": "魔法少女はおとなのつとめです。",
+          "title": "魔法少女是大人的职责。（暂译）",
+          "rank_source": "https://bgm.tv/index/106106",
+          "translation_status": "provisional"
+        },
+        {
+          "category": "bunko",
+          "rank": 9,
+          "workKey": "0c1f350c19ae4062d23d1861",
+          "japanese": "1/nのワトソン",
+          "title": "1/n的华生",
+          "rank_source": "https://bgm.tv/index/106106",
+          "translation_status": "community_or_existing"
+        },
+        {
+          "category": "bunko",
+          "rank": 10,
+          "workKey": "dd96c7b3714ba37af5d823f4",
+          "japanese": "わたしが恋人になれるわけないじゃん、ムリムリ！(※ムリじゃなかった!?)",
+          "title": "我们不可能成为恋人！绝对不行。(※似乎可行？)（我怎么可能成为你的恋人，不行不行！）",
+          "rank_source": "https://bgm.tv/index/106106",
+          "translation_status": "community_or_existing"
+        },
+        {
+          "category": "bunko",
+          "rank": 11,
+          "workKey": "589f6d455f82fc319d1c8ad3",
+          "japanese": "さようなら運命の人。二日前でまた会いましょう。",
+          "title": "再见了，命中注定之人。两天前再会吧。（暂译）",
+          "rank_source": "https://bgm.tv/index/106106",
+          "translation_status": "provisional"
+        },
+        {
+          "category": "bunko",
+          "rank": 12,
+          "workKey": "80d9ff639edc6841f6800015",
+          "japanese": "トリック・オア・デリート 不可解",
+          "title": "Trick or Delete 不可解（暂译）",
+          "rank_source": "https://bgm.tv/index/106106",
+          "translation_status": "provisional"
+        },
+        {
+          "category": "bunko",
+          "rank": 13,
+          "workKey": "63f0ae81b085a9be0b07d212",
+          "japanese": "人生全部賭けても、銀の魔女に勝ちたい",
+          "title": "即使赌上整个人生，也想战胜银之魔女（暂译）",
+          "rank_source": "https://bgm.tv/index/106106",
+          "translation_status": "provisional"
+        },
+        {
+          "category": "bunko",
+          "rank": 14,
+          "workKey": "281da0debd7a8eef5027b4eb",
+          "japanese": "幼なじみが謎解きをしかけてくる",
+          "title": "青梅竹马向我发起解谜挑战（暂译）",
+          "rank_source": "https://bgm.tv/index/106106",
+          "translation_status": "provisional"
+        },
+        {
+          "category": "bunko",
+          "rank": 15,
+          "workKey": "725dcbd0f8bc841cf580099e",
+          "japanese": "やぁ“登校”に挑めニンゲン",
+          "title": "来吧，人类，挑战“上学”吧（暂译）",
+          "rank_source": "https://bgm.tv/index/106106",
+          "translation_status": "provisional"
+        },
+        {
+          "category": "bunko",
+          "rank": 16,
+          "workKey": "c1efc2f7d999882e6710f2a4",
+          "japanese": "死亡エンドを回避したギャルゲーのヒロインたちが俺の【日記帳】を読んで秘密を知ったらしい",
+          "title": "避开死亡结局的美少女游戏女主角们，似乎读了我的【日记】而得知秘密（暂译）",
+          "rank_source": "https://bgm.tv/index/106106",
+          "translation_status": "provisional"
+        },
+        {
+          "category": "bunko",
+          "rank": 17,
+          "workKey": "0226d0e831e878b7a35e3bad",
+          "japanese": "Re:ゼロから始める異世界生活",
+          "title": "Re:从零开始的异世界生活",
+          "rank_source": "https://bgm.tv/index/106106",
+          "translation_status": "community_or_existing"
+        },
+        {
+          "category": "bunko",
+          "rank": 18,
+          "workKey": "f88b17e0639ba70305f27293",
+          "japanese": "神懸かれ、キラーチューン。",
+          "title": "神灵附体吧，致命旋律。（暂译）",
+          "rank_source": "https://bgm.tv/index/106106",
+          "translation_status": "provisional"
+        },
+        {
+          "category": "bunko",
+          "rank": 19,
+          "workKey": "cdbff0c1653d114cb7132bae",
+          "japanese": "こちら、終末停滞委員会。",
+          "title": "这里是终局停滞委员会。(这里是终末停滞委员会)",
+          "rank_source": "https://bgm.tv/index/106106",
+          "translation_status": "community_or_existing"
+        },
+        {
+          "category": "bunko",
+          "rank": 20,
+          "workKey": "9fb90be6330646aaabb9325c",
+          "japanese": "時々ボソッとロシア語でデレる隣のアーリャさん",
+          "title": "不时轻声地以俄语遮羞的邻座艾莉同学(邻座的艾琳同学偶尔会用俄语悄悄撒娇)",
+          "rank_source": "https://bgm.tv/index/106106",
+          "translation_status": "community_or_existing"
+        },
+        {
+          "category": "novels",
+          "rank": 1,
+          "workKey": "0af01a6f7792478ec3f3e199",
+          "japanese": "崩壊世界の魔法杖職人",
+          "title": "崩坏世界的魔杖匠人",
+          "rank_source": "user-supplied-2027-novels-photo",
+          "translation_status": "community_or_existing"
+        },
+        {
+          "category": "novels",
+          "rank": 2,
+          "workKey": "67de0cec9c77c1e1c8e85ecf",
+          "japanese": "鉄錆びの女王機兵",
+          "title": "铁锈女王机兵（暂译）",
+          "rank_source": "user-supplied-2027-novels-photo",
+          "translation_status": "provisional"
+        },
+        {
+          "category": "novels",
+          "rank": 3,
+          "workKey": "9c3af370bdb8c5d44decf81c",
+          "japanese": "サイレント・ウィッチ 沈黙の魔女の隠しごと",
+          "title": "Silent Witch 沉默魔女的秘密(沉默的魔女)",
+          "rank_source": "user-supplied-2027-novels-photo",
+          "translation_status": "community_or_existing"
+        },
+        {
+          "category": "novels",
+          "rank": 4,
+          "workKey": "2e8cb55ebee5882aa4861208",
+          "japanese": "転生した大聖女は、聖女であることをひた隠す",
+          "title": "转生后的大圣女，极力隐瞒圣女的身分(转生了的大圣女，拼死隐瞒自己身为圣女)",
+          "rank_source": "user-supplied-2027-novels-photo",
+          "translation_status": "community_or_existing"
+        },
+        {
+          "category": "novels",
+          "rank": 5,
+          "workKey": "8361c12a500fa8e529485ffe",
+          "japanese": "魔導具師ダリヤはうつむかない",
+          "title": "魔导具师妲莉亚永不妥协～从今天开始的自由职人生活～",
+          "rank_source": "user-supplied-2027-novels-photo",
+          "translation_status": "community_or_existing"
+        },
+        {
+          "category": "novels",
+          "rank": 6,
+          "workKey": "0e8adb9465cfc10247f4cbff",
+          "japanese": "転生したらスライムだった件",
+          "title": "关于我转生变成史莱姆这档事(关于我转生成为史莱姆的那件事)",
+          "rank_source": "user-supplied-2027-novels-photo",
+          "translation_status": "community_or_existing"
+        },
+        {
+          "category": "novels",
+          "rank": 7,
+          "workKey": "12e7071ffdd7b0d33d81825f",
+          "japanese": "ふつつかな悪女ではございますが ～雛宮蝶鼠とりかえ伝～",
+          "title": "我是不才恶女～雏宫蝶鼠互换传～(恶女不才，请多关照！／虽然我是不完美恶女)",
+          "rank_source": "user-supplied-2027-novels-photo",
+          "translation_status": "community_or_existing"
+        },
+        {
+          "category": "novels",
+          "rank": 8,
+          "workKey": "e909e022a2f03152f08f32ce",
+          "japanese": "白の平民魔法使い",
+          "title": "白之平民魔法使（暂译）",
+          "rank_source": "user-supplied-2027-novels-photo",
+          "translation_status": "provisional"
+        },
+        {
+          "category": "novels",
+          "rank": 9,
+          "workKey": "870e3c824ac2b1f81703951f",
+          "japanese": "左遷錬金術師の辺境暮らし 元エリートは二度目の人生も失敗したので辺境でのんびりとやり直すことにしました",
+          "title": "贬职炼金术师的边境生活 前菁英的第二人生再次受挫，决定在边境悠闲地重新来过",
+          "rank_source": "user-supplied-2027-novels-photo",
+          "translation_status": "community_or_existing"
+        },
+        {
+          "category": "novels",
+          "rank": 10,
+          "workKey": "76bbe9ec4b95deeb45000632",
+          "japanese": "本好きの下剋上 ハンネローレの貴族院五年生",
+          "title": "小书痴的下克上：汉娜萝蕾贵族院五年级生",
+          "rank_source": "user-supplied-2027-novels-photo",
+          "translation_status": "community_or_existing"
+        }
+      ]
     }
   ]
 }

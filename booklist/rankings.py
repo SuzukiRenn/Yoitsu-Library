@@ -71,7 +71,7 @@ def visible_binding(work):
 def home(request,data):
     parameters(request,('year','category','shown'))
     read_limit(request)
-    return page(request,'booklist/rankings.html',{'navigation_rankings':True})
+    return page(request,'booklist/rankings.html',{'navigation_rankings':True,'rankings_first_year':dataset()['years'][0]['year'],'rankings_latest_year':dataset()['years'][-1]['year']})
 
 @endpoint('GET')
 def listing(request,data):

@@ -1,7 +1,7 @@
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const params=new URLSearchParams(location.search);
-let data,year=Number(params.get('year'))||2026,category=params.get('category')||'bunko',limit=10;
+let data,year=Number(params.get('year'))||null,category=params.get('category')||'bunko',limit=10;
 limit=Math.max(10,Math.min(100,Math.trunc(Number(params.get('shown')))||10));
 function setUrl(){const p=new URLSearchParams({year:String(year),category});if(limit>10)p.set('shown',String(limit));history.replaceState(null,'',location.pathname+'?'+p);}
 function currentYear(){return data.years.find(y=>y.year===year);}
