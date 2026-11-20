@@ -38,3 +38,16 @@ assert.equal((await open('?year=1900')).element('selected-year').textContent,'20
 const future=structuredClone(data);future.years.push({...structuredClone(data.years.at(-1)),year:2028});
 assert.equal((await open('',future)).element('selected-year').textContent,'2028');
 console.log('Rankings frontend: latest year, explicit year, paging, departments, history modal and future default passed.');
+
+assert.match((await open()).element('rankings-panel').innerHTML,/class="rank-honor"/);
+const old=await open('?year=2012&category=overall');
+assert.match(old.element('rankings-panel').innerHTML,/殿堂级/);
+assert.match(old.element('rankings-panel').innerHTML,/2020 年入选（当前荣誉）/);
+const noAwards=structuredClone(data);delete noAwards.hallOfFame;
+assert.doesNotMatch((await open('',noAwards)).element('rankings-panel').innerHTML,/class="rank-honor"/);
+const rowFixture=structuredClone(data);
+rowFixture.hallOfFame[rowFixture.years.at(-1).sections[0].entries[3].workKey]={label:'殿堂级',inductedYear:2027};
+assert.match((await open('',rowFixture)).element('rankings-panel').innerHTML,/<span class="rank-number">04<span class="rank-honor"/);
+console.log('Hall of fame: featured and ordinary ranks, historical series, current-honor tooltip and absent-metadata compatibility passed.');
+
+assert.match((await open()).element('rankings-panel').innerHTML,/2027 年达到殿堂条件（当前荣誉）/);

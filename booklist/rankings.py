@@ -81,6 +81,6 @@ def listing(request,data):
     bound={key:visible_binding(w) for key,w in catalog_bindings().items()}
     # Never expose source identities, private metadata, or local filesystem paths.
     years=[{**y,'sections':[{**s,'entries':[{**e,'workUrl':f'/works/{bound[e["workKey"]].pk}/' if bound.get(e['workKey']) else None} for e in s['entries']]} for s in y['sections']]} for y in source['years']]
-    response=JsonResponse({'years':years,'recordCount':source['recordCount']},json_dumps_params={'ensure_ascii':False})
+    response=JsonResponse({'years':years,'recordCount':source['recordCount'],'hallOfFame':source.get('hallOfFame',{})},json_dumps_params={'ensure_ascii':False})
     response['Cache-Control']='private, no-store'
     return response

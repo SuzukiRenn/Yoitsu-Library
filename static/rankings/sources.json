@@ -924,5 +924,107 @@
         }
       ]
     }
-  ]
+  ],
+  "hall_of_fame": {
+    "checked_at": "2026-11-20",
+    "display_policy": "Current series honor shown on historical rankings; does not imply the honor was held in that historical year.",
+    "selection_policy": "Curated published inductions; no automatic inference from counts of first places. Makeine uses the author-stated 2027 top-three condition and the supplied 2027 ranking, not an independently found formal induction announcement.",
+    "series": [
+      {
+        "workKeys": [
+          "bc129ac8d25001a067a24295"
+        ],
+        "japanese": "やはり俺の青春ラブコメはまちがっている。",
+        "inductedYear": 2016,
+        "basis": "publisher_confirmed",
+        "sources": [
+          "https://adpocket.shogakukan.co.jp/adnews/21159/",
+          "https://en.wikipedia.org/wiki/Kono_Light_Novel_ga_Sugoi!#Hall_of_Fame"
+        ]
+      },
+      {
+        "workKeys": [
+          "a114d3e7e58019e82489c0f7"
+        ],
+        "japanese": "ソードアート・オンライン",
+        "inductedYear": 2020,
+        "basis": "published_list",
+        "sources": [
+          "https://en.wikipedia.org/wiki/Kono_Light_Novel_ga_Sugoi!#Hall_of_Fame"
+        ]
+      },
+      {
+        "workKeys": [
+          "f6fe0771014044c9933967c6"
+        ],
+        "japanese": "とある魔術の禁書目録",
+        "inductedYear": 2020,
+        "basis": "published_list",
+        "sources": [
+          "https://en.wikipedia.org/wiki/Kono_Light_Novel_ga_Sugoi!#Hall_of_Fame"
+        ]
+      },
+      {
+        "workKeys": [
+          "1aeb4114c8c7c14a1bf75919"
+        ],
+        "japanese": "りゅうおうのおしごと！",
+        "inductedYear": 2020,
+        "basis": "published_list",
+        "sources": [
+          "https://en.wikipedia.org/wiki/Kono_Light_Novel_ga_Sugoi!#Hall_of_Fame",
+          "https://realsound.jp/book/2025/08/post-2114471.html"
+        ]
+      },
+      {
+        "workKeys": [
+          "f8c74027c00f2cd8db12e8af",
+          "87440e0ee9b3cc088ea9fa59"
+        ],
+        "japanese": "本好きの下剋上 ～司書になるためには手段を選んでいられません～",
+        "inductedYear": 2023,
+        "basis": "publisher_confirmed",
+        "sources": [
+          "https://disclosure2dl.edinet-fsa.go.jp/searchdocument/pdf/S100XF4F.pdf",
+          "https://en.wikipedia.org/wiki/Kono_Light_Novel_ga_Sugoi!#Hall_of_Fame"
+        ]
+      },
+      {
+        "workKeys": [
+          "c2f6964885b1fa8b764df69a"
+        ],
+        "japanese": "ようこそ実力至上主義の教室へ",
+        "inductedYear": 2023,
+        "basis": "published_list",
+        "sources": [
+          "https://en.wikipedia.org/wiki/Kono_Light_Novel_ga_Sugoi!#Hall_of_Fame",
+          "https://realsound.jp/book/2023/12/post-1507333.html"
+        ]
+      },
+      {
+        "workKeys": [
+          "cc26d6329f391cd1f0246a85"
+        ],
+        "japanese": "千歳くんはラムネ瓶のなか",
+        "inductedYear": 2023,
+        "basis": "publisher_confirmed",
+        "sources": [
+          "https://gagagabunko.jp/specal/chiramune/",
+          "https://en.wikipedia.org/wiki/Kono_Light_Novel_ga_Sugoi!#Hall_of_Fame"
+        ]
+      },
+      {
+        "workKeys": [
+          "483f1881b4bd0e4da7b9d600"
+        ],
+        "japanese": "負けヒロインが多すぎる！",
+        "inductedYear": 2027,
+        "basis": "author_condition_and_supplied_ranking",
+        "sources": [
+          "https://search.yahoo.co.jp/realtime/search?ei=UTF-8&p=%23%E3%81%84%E3%81%BF%E3%81%8E%E3%82%80%E3%82%8B&rkf=1",
+          "https://bgm.tv/index/106106"
+        ]
+      }
+    ]
+  }
 }

@@ -124,7 +124,7 @@ class RankingsTests(TestCase):
         page=self.client.get('/rankings/')
         self.assertContains(page,'2005—2027 年作品排名')
         self.assertContains(page,'id="selected-year">2027</span>')
-        self.assertContains(page,'rankings.mjs?v=20261119-1')
+        self.assertContains(page,'rankings.mjs?v=20261120-1')
 
     def test_new_bunko_book_does_not_bind_to_same_named_web_edition(self):
         self.seed_refs()
@@ -136,3 +136,18 @@ class RankingsTests(TestCase):
         actual=rankings.catalog_bindings()[row['key']]
         self.assertNotEqual(actual.pk,web.pk)
         self.assertEqual(actual.source_metadata['edition'],'book')
+
+    def test_hall_of_fame_is_series_scoped_and_does_not_change_rankings(self):
+        import json
+        data=rankings.dataset()
+        awards=self.client.get('/api/v1/rankings/').json()['hallOfFame']
+        self.assertEqual(awards,data['hallOfFame'])
+        self.assertEqual(len(awards),9)  # Eight series; two historical names for Bookworm.
+        self.assertEqual(awards['483f1881b4bd0e4da7b9d600'],{'label':'殿堂级','inductedYear':2027,'qualificationBased':True})
+        self.assertNotIn('76bbe9ec4b95deeb45000632',awards)  # Hannelore is a distinct spin-off.
+        for key in ('f8c74027c00f2cd8db12e8af','87440e0ee9b3cc088ea9fa59'):
+            self.assertEqual(awards[key]['inductedYear'],2023)
+        sources=json.loads((settings.BASE_DIR/'static/rankings/sources.json').read_text(encoding='utf-8'))['hall_of_fame']
+        self.assertEqual(len(sources['series']),8)
+        self.assertEqual(sources['series'][-1]['basis'],'author_condition_and_supplied_ranking')
+        self.assertTrue(all(row['sources'] for row in sources['series']))
