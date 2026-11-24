@@ -17,6 +17,10 @@ def read_limit(request, search=False):
 def page(request, template, context):
     context = {**context, 'navigation_activities': request.path.startswith('/activities/') or bool(context.get('activity'))}
     context['navigation_rankings']=bool(context.get('navigation_rankings') or (not context['navigation_activities'] and context.get('return_url','').split('?',1)[0]=='/rankings/'))
+    if template.startswith("booklist/course/"):
+        section = request.path.split("/")[1]
+        context["course_section"] = section
+        context["course_current"] = "page" if request.path == f"/{section}/" else "location"
     response = render(request, template, context)
     response['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
     return response

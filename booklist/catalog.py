@@ -70,6 +70,11 @@ def versioned_cover(work):
     return '/media/covers/'+name
 
 
+def display_cover(work):
+    return versioned_cover(work) or cover_url(
+        work.cover_url_override if work.cover_url_overridden else work.wenku8_cover_url)
+
+
 def snapshot_cover(work):
     return versioned_cover(work) or cover_url(
         work.cover_url_override if work.cover_url_overridden else work.wenku8_cover_url, cached=False) or ''
@@ -107,7 +112,7 @@ def serialize_works(works, detail=False):
         title, author, description = display_text(work, manuals.get(work.pk))
         row = {**edition_info(work.source_metadata), 'id': work.pk, 'title': title,
                'author': author,
-               'cover_url': versioned_cover(work) or cover_url(work.cover_url_override if work.cover_url_overridden else work.wenku8_cover_url),
+               'cover_url': display_cover(work),
                'is_public': work.pk in public_ids,
                'source_book_id': work.wenku8_book_id,
                'tags': sorted(tags[work.pk].values(), key=lambda tag: (tag['name'], tag['id']))}

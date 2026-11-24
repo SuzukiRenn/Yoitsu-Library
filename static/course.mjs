@@ -1,5 +1,17 @@
 import {createReasonReferenceEditor} from './reason-reference-editor.mjs?v=20261025-keyboard-1';
 
+const examples = document.querySelector('[data-course-examples]');
+if (examples) {
+  const query = examples.form.elements.query;
+  for (const button of examples.querySelectorAll('[data-course-example]')) {
+    button.addEventListener('click', () => {
+      query.value = button.dataset.courseExample;
+      query.focus();
+    });
+  }
+  examples.hidden = false;
+}
+
 for (const picker of document.querySelectorAll('[data-course-picker]')) {
   const query = picker.querySelector('[data-course-query]');
   const trigger = picker.querySelector('[data-course-search]');

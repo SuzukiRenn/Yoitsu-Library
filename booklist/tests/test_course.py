@@ -85,6 +85,7 @@ class CourseTests(TestCase):
         path = create.url
         shelf = CuratedShelf.objects.get()
         self.assertEqual(self.client.get(path).status_code, 404)
+        self.assertNotContains(self.client.get("/curated/"), shelf.title)
         self.assertEqual(self.post(owner, path, action='invite', version=1, reader_id=self.member.pk, role='member').status_code, 302)
         self.assertNotContains(owner.get(path), self.member.username)
         self.assertEqual(self.post(member, path, action='nominate', version=2, work=self.work.pk, reason='第一版理由').status_code, 302)
@@ -94,6 +95,10 @@ class CourseTests(TestCase):
         self.assertEqual(self.post(member, path, action='edit_item', version=3, item=item.pk, position=2, reason='过期理由').status_code, 409)
         self.assertEqual(self.post(owner, path, action='publish', version=4).status_code, 302)
         self.assertContains(self.client.get(path), '第一版理由')
+        shelf_index = self.client.get('/curated/')
+        self.assertContains(shelf_index, self.work.display_title)
+        self.assertContains(shelf_index, '1 部可见作品 · 第 1 版')
+        self.assertNotContains(shelf_index, '第一版理由')
         self.assertNotContains(self.client.get(path), '协作草稿')
         self.assertEqual(self.post(member, path, action='edit_item', version=5, item=item.pk, position=2, reason='第二版理由').status_code, 302)
         item.refresh_from_db()
@@ -107,6 +112,9 @@ class CourseTests(TestCase):
         self.work.hidden_at = timezone.now()
         self.work.save(update_fields=['hidden_at'])
         self.assertNotContains(self.client.get(path), '第二版理由')
+        shelf_index = self.client.get('/curated/')
+        self.assertContains(shelf_index, '0 部可见作品 · 第 2 版')
+        self.assertNotContains(shelf_index, self.work.display_title)
         self.assertEqual(shelf.editions.count(), 2)
 
     def test_work_page_routes_own_edits_spoilers_and_reference_visibility(self):

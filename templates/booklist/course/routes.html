@@ -6,7 +6,7 @@
   {% for item in reading_routes %}
   <li class="reason-card"><div class="reason-content"><p class="reason-author">{{ item.author }}{% if item.hidden %} · 已隐藏{% endif %}</p>
     {% include 'booklist/reason_body.html' %}
-    {% if item.can_edit %}<a href="/works/{{ work.id }}/reading-route/">编辑</a>{% endif %}
+    {% if item.can_edit %}<a class="reason-link" href="/works/{{ work.id }}/reading-route/">编辑路线</a>{% endif %}
     {% if has_admin_access %}
     <form action="/works/{{ work.id }}/reading-route/" method="post">
       {% include 'booklist/course/version.html' with version=item.version %}
@@ -14,6 +14,6 @@
       <button name="action" value="{% if item.hidden %}restore{% else %}hide{% endif %}">{% if item.hidden %}恢复{% else %}隐藏{% endif %}</button>
     </form>{% endif %}
   </div></li>
-  {% empty %}<li class="section-note">暂无阅读路线。</li>{% endfor %}
+  {% empty %}<li class="course-empty">暂无阅读路线。</li>{% endfor %}
   </ul>
 </section>

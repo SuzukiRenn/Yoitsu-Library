@@ -1,7 +1,7 @@
 {% extends 'booklist/course/base.html' %}
 {% block course_title %}操作提示{% endblock %}
+{% block course_layout %}course-focus{% endblock %}
 {% block course_content %}
-<h1>操作提示</h1>
-<p role="alert">{{ message }}</p>
-<a class="reason-link" href="{{ back_url }}">返回并刷新</a>
+<header class="course-heading"><h1>操作提示</h1></header>
+<div class="course-panel"><p role="alert">{{ message }}</p><a class="reason-link" href="{{ back_url }}">返回并刷新</a></div>
 {% endblock %}

@@ -150,10 +150,11 @@ def match(intent):
             else:
                 missing.append(next(term for term, term_key in terms.items() if term_key == key))
         if score:
-            ranked.append((score, work.pk, title, author, evidence, missing))
-    ranked.sort(key=lambda row: (-row[0], row[1]))
-    return [{'id': pk, 'title': title, 'author': author, 'evidence': evidence, 'missing': missing}
-            for _, pk, title, author, evidence, missing in ranked[:15]]
+            ranked.append((score, work, title, author, evidence, missing))
+    ranked.sort(key=lambda row: (-row[0], row[1].pk))
+    return [{'id': work.pk, 'title': title, 'author': author, 'cover_url': catalog.display_cover(work),
+             'evidence': evidence, 'missing': missing}
+            for _, work, title, author, evidence, missing in ranked[:15]]
 
 
 def ordinary(query):

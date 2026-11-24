@@ -1,7 +1,7 @@
 """Role-scoped collaborative drafts and immutable public editions."""
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 
 from . import catalog, services
 from .catalog_views import page
@@ -22,6 +22,19 @@ def role_for(shelf, account):
     return shelf.memberships.filter(account=account).values_list('role', flat=True).first() or ''
 
 
+def public_shelf_cards(shelves):
+    entries = [entry for shelf in shelves for entry in shelf.latest_editions[0].entries]
+    works = catalog.visible_works().in_bulk({entry['work_id'] for entry in entries})
+    cards = []
+    for shelf in shelves:
+        edition = shelf.latest_editions[0]
+        visible = [entry for entry in edition.entries if entry['work_id'] in works]
+        previews = [{'title': entry['title'], 'cover_url': catalog.display_cover(works[entry['work_id']])}
+                    for entry in visible[:3]]
+        cards.append({'shelf': shelf, 'edition': edition.number, 'count': len(visible), 'works': previews})
+    return cards
+
+
 @course_page
 def index(request):
     if request.method == 'POST':
@@ -30,12 +43,13 @@ def index(request):
         if CuratedShelf.objects.filter(owner=owner).count() >= 20:
             conflict('每位读者最多创建 20 份策展。')
         return redirect(shelf_url(CuratedShelf.objects.create(title=title, owner=owner)))
-    public = CuratedShelf.objects.filter(hidden=False, editions__isnull=False).distinct().order_by('-id')[:50]
+    latest = Prefetch('editions', queryset=CuratedEdition.objects.order_by('-number')[:1], to_attr='latest_editions')
+    public = CuratedShelf.objects.filter(hidden=False, editions__isnull=False).distinct().order_by('-id').prefetch_related(latest)[:50]
     mine = CuratedShelf.objects.none()
     if request.account:
         mine = CuratedShelf.objects.filter(hidden=False).filter(Q(owner=request.account) | Q(memberships__account=request.account)).distinct().order_by('-id')[:50]
     moderation = CuratedShelf.objects.filter(hidden=True).order_by('-id')[:50] if request.admin else []
-    return page(request, 'booklist/course/curated.html', {'public_shelves': public, 'my_shelves': mine, 'moderation_shelves': moderation})
+    return page(request, 'booklist/course/curated.html', {'public_shelves': public_shelf_cards(list(public)), 'my_shelves': mine, 'moderation_shelves': moderation})
 
 
 def entry_diff(older, newer):
