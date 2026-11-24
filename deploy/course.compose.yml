@@ -45,7 +45,8 @@ services:
     <<: *course-app
     command: ["python", "scripts/production_tasks.py", "backup"]
     volumes:
-      - course_data:/data:ro
+      # SQLite opens the source with mode=ro but may need to create WAL/SHM sidecars.
+      - course_data:/data
       - course_backups:/backups
     depends_on:
       app:

@@ -29,15 +29,23 @@ def main():
         from scripts.sqlite_backup import backup
         from scripts.retain_sqlite_backups import retain
         while True:
+            phase = 'sqlite_backup'
             try:
                 result=backup(Path(os.environ['BOOKLIST_DATA_DIR'])/'booklist.sqlite3','/backups',verify_restore=True)
+                phase = 'retention'
                 retention=retain('/backups',Path('/backups')/result['filename'])
                 health={'status':'verified','checked_at':datetime.now(timezone.utc).isoformat(),
                         'backup':result,'retention':retention}
                 delay=21600
             except Exception as exc:
                 health={'status':'needs_attention','checked_at':datetime.now(timezone.utc).isoformat(),
-                        'error_type':type(exc).__name__}
+                        'phase':phase,'error_type':type(exc).__name__}
+                error_code = getattr(exc, 'sqlite_errorcode', None)
+                error_name = getattr(exc, 'sqlite_errorname', None)
+                if error_code is not None:
+                    health['sqlite_errorcode'] = error_code
+                if error_name is not None:
+                    health['sqlite_errorname'] = error_name
                 delay=300
             # A private host-side monitor reads this file; no secrets or database rows are exported.
             pending=Path('/backups/.backup-health.tmp')
