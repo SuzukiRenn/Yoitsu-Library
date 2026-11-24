@@ -79,4 +79,7 @@ networks:
     ipam:
       config:
         - subnet: 172.30.31.0/28
+          gateway: 172.30.31.1
+          # Keep the proxy's fixed .2 outside the dynamic address pool.
+          ip_range: 172.30.31.8/29
   course_outbound: {}
