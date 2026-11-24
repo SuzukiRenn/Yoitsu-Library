@@ -4,20 +4,26 @@
 #floating-controls :is(.random-book,.back-to-top,.shelf-view-toggle){position:relative;inset:auto;flex:none}
 .course-tools { position: relative; flex: none; }
 .course-tools > summary {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 1px;
-  font-size: 10px;
-  line-height: 1.2;
+  display: grid;
+  place-items: center;
   list-style: none;
   cursor: pointer;
 }
 .course-tools > summary::-webkit-details-marker { display: none; }
 .course-tools > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .course-tools[open] > summary { border-color: var(--accent); background: var(--wash); }
-.course-tools-dots { font-size: 20px; line-height: .7; }
+.course-tools[open] > summary > .control-tooltip { display: none; }
+.course-tools-dots {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: -6px 0 currentColor, 6px 0 currentColor;
+}
+.course-tools > summary:focus-visible > .control-tooltip { visibility: visible; opacity: 1; }
+@media (hover: hover) {
+  .course-tools > summary:hover > .control-tooltip { visibility: visible; opacity: 1; }
+}
 .course-tool-links {
   position: absolute;
   inset-inline-end: calc(100% + 10px);
