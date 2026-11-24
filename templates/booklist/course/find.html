@@ -42,25 +42,22 @@
     {% endfor %}
   </ul>
   {% endif %}
-  <div class="course-result-tools">
-    {% if intent %}
-    <details class="course-disclosure course-search-conditions">
-      <summary>调整检索条件</summary>
-      <form method="post">
-        {% csrf_token %}
-        <input type="hidden" name="query" value="{{ query }}">
-        <div class="course-condition-fields">
-          <label>检索词 <input name="keywords" maxlength="100" value="{{ intent.keywords|join:', ' }}"></label>
-          <label>标签 <input name="tags" maxlength="100" value="{{ intent.tags|join:', ' }}"></label>
-          <label>排除词 <input name="exclude" maxlength="100" value="{{ intent.exclude|join:', ' }}"></label>
-        </div>
-        <p class="section-note">每组最多 4 个词，用逗号分隔。排除词只依据作品资料，资料未提及的特征无法判断。</p>
-        <button name="mode" value="conditions">按调整后的条件查找</button>
-      </form>
-    </details>
-    {% endif %}
-    {% if ordinary_url %}<a class="course-shelf-search" href="{{ ordinary_url }}">在公共书架继续检索</a>{% endif %}
-  </div>
+  {% if intent %}
+  <details class="course-disclosure course-search-conditions">
+    <summary>调整检索条件</summary>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="query" value="{{ query }}">
+      <div class="course-condition-fields">
+        <label>检索词 <input name="keywords" maxlength="100" value="{{ intent.keywords|join:', ' }}"></label>
+        <label>标签 <input name="tags" maxlength="100" value="{{ intent.tags|join:', ' }}"></label>
+        <label>排除词 <input name="exclude" maxlength="100" value="{{ intent.exclude|join:', ' }}"></label>
+      </div>
+      <p class="section-note">每组最多 4 个词，用逗号分隔。排除词只依据作品资料，资料未提及的特征无法判断。</p>
+      <button name="mode" value="conditions">按调整后的条件查找</button>
+    </form>
+  </details>
+  {% endif %}
 </section>
 {% endif %}
 {% endblock %}

@@ -153,25 +153,12 @@
 }
 .course-page .course-examples button:hover { background: var(--wash-hover); }
 .course-find-results .course-search-feedback { color: var(--prose); }
-.course-result-tools {
-  display: grid;
-  align-items: start;
-  gap: .65rem;
-  margin-top: .9rem;
-}
 .course-search-conditions {
+  margin-top: .9rem;
   padding-block: .55rem;
   border-block: 1px solid var(--line);
 }
 .course-search-conditions > summary { width: fit-content; }
-.course-shelf-search {
-  justify-self: start;
-  padding-block: .35rem;
-  color: var(--muted);
-  font-size: .85rem;
-  text-underline-offset: .15em;
-}
-.course-shelf-search:hover { color: var(--ink); }
 .course-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 .course-page .course-compact, .course-page .course-filter,
 .course-condition-fields, .course-picker-search {

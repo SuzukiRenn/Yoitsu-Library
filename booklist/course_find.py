@@ -4,7 +4,6 @@ import logging
 import re
 from threading import BoundedSemaphore
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from django.conf import settings
@@ -187,8 +186,7 @@ def search_page(request):
         query = clean(request.POST.get('query', ''), 180)
     except ValidationError as exc:
         return page_error(request, exc.messages[0], 400)
-    result = {'query': query, 'searched': True, 'ai_available': bool(settings.COURSE_DEEPSEEK_KEY),
-              'ordinary_url': '/?' + urlencode({'q': query[:100]})}
+    result = {'query': query, 'searched': True, 'ai_available': bool(settings.COURSE_DEEPSEEK_KEY)}
     if request.POST.get('mode') == 'conditions':
         try:
             intent = entered_intent(request.POST)
