@@ -194,9 +194,9 @@ def search_page(request):
             intent = entered_intent(request.POST)
         except ValidationError as exc:
             return page_error(request, exc.messages[0], 400)
-        result.update(results=match(intent), intent=intent, status='已按调整后的条件在公共书架查找。')
+        result.update(results=match(intent), intent=intent)
     elif request.POST.get('mode') != 'ai':
-        result.update(results=ordinary(query), status='已使用普通书名、作者和别名检索。')
+        result.update(results=ordinary(query))
     elif PRIVATE_INPUT.search(query):
         result.update(results=ordinary(query), status='输入可能包含联系方式或凭据，已改用站内检索。')
     else:
@@ -207,9 +207,7 @@ def search_page(request):
             intent = extract(query)
         except (services.DomainError, HTTPError, URLError, OSError, KeyError, IndexError, TypeError, ValueError) as exc:
             logger.info('course_intent_fallback type=%s', type(exc).__name__)
-            result.update(results=ordinary(query), status='智能解析暂不可用，已执行普通检索。也可缩短关键词后重试。')
+            result.update(results=ordinary(query), status='智能解析暂不可用，已执行普通检索。')
         else:
-            matches = match(intent)
-            result.update(results=matches, intent=intent, status='以下结果来自当前公共书架的可见资料。' if matches else
-                          '公共书架中没有足够依据的匹配。可调整题材或改用普通检索。')
+            result.update(results=match(intent), intent=intent)
     return page(request, 'booklist/course/find.html', result)

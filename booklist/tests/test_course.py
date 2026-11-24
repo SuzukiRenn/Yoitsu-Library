@@ -49,7 +49,9 @@ class CourseTests(TestCase):
         self.assertNotContains(response, '隐藏机密')
         self.assertContains(response, '按调整后的条件查找')
         no_match = self.post(self.client, '/find-books/', mode='conditions', query='火星', keywords='火星', tags='', exclude='')
-        self.assertContains(no_match, '暂无匹配')
+        self.assertContains(no_match, '暂无匹配作品。', count=1)
+        self.assertNotContains(no_match, 'data-course-examples')
+        self.assertNotContains(no_match, 'class="course-empty"')
 
     @override_settings(COURSE_DEEPSEEK_KEY='fake-test-only')
     def test_mocked_provider_success_blank_timeout_invalid_and_budget(self):
@@ -76,6 +78,9 @@ class CourseTests(TestCase):
                 opener.assert_not_called()
         with override_settings(COURSE_DEEPSEEK_KEY=''):
             self.assertContains(self.post(self.client, '/find-books/', mode='ai', query='山间来信'), '已执行普通检索')
+            fallback = self.post(self.client, '/find-books/', mode='ai', query='火星独白')
+            self.assertContains(fallback, '智能解析暂不可用，已执行普通检索。 暂无匹配作品。', count=1)
+            self.assertNotContains(fallback, '调整检索条件')
 
     def test_curated_permissions_versions_and_immutable_snapshots(self):
         owner, member = self.browser(self.owner_token), self.browser(self.member_token)

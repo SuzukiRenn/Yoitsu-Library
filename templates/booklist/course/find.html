@@ -5,37 +5,62 @@
 <header class="course-heading"><h1>AI找书</h1></header>
 <form method="post" class="course-panel course-search">
   {% csrf_token %}
-  <div class="course-search-main">
   <label for="find-query">你想找什么样的小说？</label>
-  <textarea id="find-query" aria-describedby="course-find-note" name="query" maxlength="180" required placeholder="想读带点旅行元素的奇幻故事">{{ query }}</textarea>
-  {% if ai_available %}<p class="section-note" id="course-find-note">点击智能查找会将这段查询发送给 DeepSeek。请勿填写个人信息。</p>{% else %}<p class="section-note" id="course-find-note">智能解析暂未配置，仍可使用普通检索。</p>{% endif %}
-  <div class="course-actions"><button class="primary" name="mode" value="ai">智能查找</button><button name="mode" value="plain">按关键词查找</button></div>
+  <textarea id="find-query"{% if ai_available %} aria-describedby="course-find-note"{% endif %} name="query" maxlength="180" required placeholder="输入书名、题材或想读的情节">{{ query }}</textarea>
+  <div class="course-actions">
+    {% if ai_available %}<button class="primary" name="mode" value="ai">智能查找</button><button class="course-keyword-search" name="mode" value="plain">按关键词查找</button>
+    {% else %}<button class="primary" name="mode" value="plain">按关键词查找</button>{% endif %}
   </div>
+  {% if ai_available %}<p class="section-note" id="course-find-note">智能查找由 DeepSeek 解析，请勿输入个人信息。</p>{% endif %}
+  {% if not searched %}
   <fieldset class="course-examples" data-course-examples hidden>
-    <legend>试试这样找</legend>
+    <legend class="sr-only">搜索示例</legend>
+    <span aria-hidden="true">示例</span>
     <button type="button" data-course-example="想读有旅行和魔法元素的奇幻小说。">旅行与魔法</button>
-    <button type="button" data-course-example="想找轻松温暖、读起来节奏舒缓的日常故事。">轻松温暖的日常</button>
     <button type="button" data-course-example="想看校园悬疑，但不要恐怖题材。">校园悬疑，排除恐怖</button>
   </fieldset>
+  {% endif %}
 </form>
 {% if searched %}
-<section class="course-section" aria-labelledby="course-find-results">
-<h2 id="course-find-results">查找结果</h2>
-<p class="section-note" role="status">{{ status }}</p>
-{% if intent %}<p class="course-terms">检索词 {% for term in intent.keywords %}{{ term }}{% if not forloop.last %}、{% endif %}{% endfor %}　标签 {% for tag in intent.tags %}{{ tag }}{% if not forloop.last %}、{% endif %}{% endfor %}</p>
-{% if intent.exclude %}<p>已排除资料中明确出现的词 {% for term in intent.exclude %}{{ term }}{% if not forloop.last %}、{% endif %}{% endfor %}。资料未提及的特征无法判断。</p>{% endif %}
-<details class="course-disclosure course-panel"><summary>调整检索条件</summary>
-<form method="post" class="course-stack">{% csrf_token %}<input type="hidden" name="query" value="{{ query }}"><p class="section-note">每组最多 4 个词，用逗号分隔。</p><div class="course-condition-fields"><label>检索词 <input name="keywords" maxlength="100" value="{{ intent.keywords|join:', ' }}"></label><label>标签 <input name="tags" maxlength="100" value="{{ intent.tags|join:', ' }}"></label><label>排除词 <input name="exclude" maxlength="100" value="{{ intent.exclude|join:', ' }}"></label></div><button name="mode" value="conditions">按调整后的条件查找</button></form></details>{% endif %}
-<ul class="course-list">
-{% for item in results %}
-<li class="course-book-result">
-<div class="book-cover" aria-hidden="true">{% include "booklist/cover_image.html" with work=item %}</div>
-<div class="course-book-result-body"><h3><a href="/works/{{ item.id }}/?from=/find-books/">{{ item.title }}</a></h3>
-{% if item.author %}<p class="section-note">{{ item.author }}</p>{% endif %}
-{% if item.evidence %}<ul>{% for evidence in item.evidence %}<li>{{ evidence }}</li>{% endfor %}</ul>{% endif %}{% if item.missing %}<p class="section-note">未找到依据 {{ item.missing|join:'、' }}</p>{% endif %}</div></li>
-{% empty %}<li class="course-empty">暂无匹配。可以试试更短的书名、作者或题材关键词。</li>{% endfor %}
-</ul>
-{% if ordinary_url %}<a class="reason-link" href="{{ ordinary_url }}">在公共书架继续检索</a>{% endif %}
+<section class="course-section course-find-results" aria-label="查找结果">
+  {% if status or not results %}
+  <p class="course-search-feedback" role="status">{% if status %}{{ status }}{% if not results %} {% endif %}{% endif %}{% if not results %}暂无匹配作品。{% endif %}</p>
+  {% endif %}
+  {% if results %}
+  <h2{% if status %} class="sr-only"{% endif %}>查找结果</h2>
+  <ul class="course-list">
+    {% for item in results %}
+    <li class="course-book-result">
+      <div class="book-cover" aria-hidden="true">{% include "booklist/cover_image.html" with work=item %}</div>
+      <div class="course-book-result-body">
+        <h3><a href="/works/{{ item.id }}/?from=/find-books/">{{ item.title }}</a></h3>
+        {% if item.author %}<p class="section-note">{{ item.author }}</p>{% endif %}
+        {% if item.evidence %}<ul>{% for evidence in item.evidence %}<li>{{ evidence }}</li>{% endfor %}</ul>{% endif %}
+        {% if item.missing %}<p class="section-note">未找到依据 {{ item.missing|join:'、' }}</p>{% endif %}
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  <div class="course-result-tools">
+    {% if intent %}
+    <details class="course-disclosure course-search-conditions">
+      <summary>调整检索条件</summary>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="query" value="{{ query }}">
+        <div class="course-condition-fields">
+          <label>检索词 <input name="keywords" maxlength="100" value="{{ intent.keywords|join:', ' }}"></label>
+          <label>标签 <input name="tags" maxlength="100" value="{{ intent.tags|join:', ' }}"></label>
+          <label>排除词 <input name="exclude" maxlength="100" value="{{ intent.exclude|join:', ' }}"></label>
+        </div>
+        <p class="section-note">每组最多 4 个词，用逗号分隔。排除词只依据作品资料，资料未提及的特征无法判断。</p>
+        <button name="mode" value="conditions">按调整后的条件查找</button>
+      </form>
+    </details>
+    {% endif %}
+    {% if ordinary_url %}<a class="course-shelf-search" href="{{ ordinary_url }}">在公共书架继续检索</a>{% endif %}
+  </div>
 </section>
 {% endif %}
 {% endblock %}
