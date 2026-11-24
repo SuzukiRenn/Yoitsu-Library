@@ -1,8 +1,63 @@
 /* One fixed anchor; the return-to-top slot is outside the reorderable tools. */
 .floating-controls,.floating-primary{display:flex;flex-direction:column;align-items:center;gap:12px}
-.floating-controls{position:fixed;right:max(24px,env(safe-area-inset-right));bottom:calc(min(33.333vh,max(12px,100dvh - 244px)) + env(safe-area-inset-bottom));z-index:3}
+.floating-controls{position:fixed;right:max(24px,env(safe-area-inset-right));bottom:calc(min(33.333vh,max(12px,100dvh - 300px)) + env(safe-area-inset-bottom));z-index:3}
 #floating-controls :is(.random-book,.back-to-top,.shelf-view-toggle){position:relative;inset:auto;flex:none}
-@media(max-width:700px){.floating-controls{right:calc(12px + env(safe-area-inset-right))}}
+.course-tools { position: relative; flex: none; }
+.course-tools > summary {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1px;
+  font-size: 10px;
+  line-height: 1.2;
+  list-style: none;
+  cursor: pointer;
+}
+.course-tools > summary::-webkit-details-marker { display: none; }
+.course-tools > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.course-tools[open] > summary { border-color: var(--accent); background: var(--wash); }
+.course-tools-dots { font-size: 20px; line-height: .7; }
+.course-tool-links {
+  position: absolute;
+  inset-inline-end: calc(100% + 10px);
+  inset-block-end: 0;
+  display: grid;
+  gap: 2px;
+  width: 10rem;
+  max-width: calc(100vw - 32px);
+  max-height: min(14rem, calc(100dvh - 80px));
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 4px 16px #22222226;
+}
+.course-tool-links a {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: .45rem .7rem;
+  border-radius: 5px;
+  font-size: .9rem;
+  text-decoration: none;
+}
+.course-tool-links a:focus-visible { outline-offset: -2px; }
+.course-tool-links a:hover { background: var(--wash-hover); }
+.course-tool-links a[aria-current] { background: var(--solid); color: var(--on-solid); font-weight: 600; }
+@media (max-width: 700px) {
+  .floating-controls {
+    right: calc(12px + env(safe-area-inset-right));
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    gap: 8px;
+    flex-direction: row-reverse;
+  }
+  .floating-primary { gap: 8px; flex-direction: row-reverse; }
+  .course-tools { position: static; }
+  .course-tool-links { inset-inline-end: 0; inset-block-end: calc(100% + 8px); }
+  .legal-footer { padding-bottom: calc(68px + env(safe-area-inset-bottom)); }
+}
 #floating-controls [data-touch-tooltip=visible]>.control-tooltip{opacity:1;visibility:visible;transition:opacity 120ms ease,visibility 0s}
 #floating-controls [data-touch-tooltip=hidden]>.control-tooltip{opacity:0;visibility:hidden;transition:opacity 120ms ease,visibility 0s linear 120ms}
 @media(prefers-reduced-motion:reduce){#floating-controls [data-touch-tooltip]>.control-tooltip{transition:none}}

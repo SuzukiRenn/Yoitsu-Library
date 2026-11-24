@@ -1,5 +1,11 @@
-<nav class="course-links" aria-label="读者工具">
-  <a href="/find-books/"{% if course_section == 'find-books' %} aria-current="page"{% endif %}>自然语言找书</a>
-  <a href="/curated/"{% if course_section == 'curated' %} aria-current="{{ course_current }}"{% endif %}>协作书单</a>
-  <a href="/book-help/"{% if course_section == 'book-help' %} aria-current="{{ course_current }}"{% endif %}>找书互助</a>
-</nav>
+<details class="course-tools" data-course-tools>
+  <summary class="shelf-view-toggle" aria-controls="course-tool-links">
+    <span class="course-tools-dots" aria-hidden="true">⋯</span>
+    <span>其他功能</span>
+  </summary>
+  <nav class="course-tool-links" id="course-tool-links" aria-label="其他功能">
+    <a href="/find-books/"{% if course_section == 'find-books' %} aria-current="page"{% endif %}>找书</a>
+    <a href="/curated/"{% if course_section == 'curated' %} aria-current="{{ course_current }}"{% endif %}>协作书单</a>
+    <a href="/book-help/"{% if course_section == 'book-help' %} aria-current="{{ course_current }}"{% endif %}>找书互助</a>
+  </nav>
+</details>
