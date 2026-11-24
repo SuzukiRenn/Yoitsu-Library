@@ -36,3 +36,17 @@ RUN groupadd --gid 10001 booklist && useradd --uid 10001 --gid 10001 --no-create
 USER 10001:10001
 ENV BOOKLIST_ENV=test BOOKLIST_DATA_DIR=/tmp/verification BOOKLIST_LEGACY_TESTS=1
 CMD ["python", "manage.py", "test", "booklist.tests", "--noinput"]
+
+FROM runtime AS course-app
+USER root
+RUN install -d -m 0700 -o 10001 -g 10001 /data /backups \
+ && install -m 0600 -o 10001 -g 10001 /dev/null /data/.course-volume \
+ && install -m 0600 -o 10001 -g 10001 /dev/null /backups/.course-volume
+USER 10001:10001
+
+FROM nginx:1.30.4-alpine@sha256:dc5069ad14f19660b141b21236140b91656bf89bbc3e2417c70ae650cd66104c AS course-gateway
+COPY --from=runtime /app/staticfiles /srv/static
+COPY deploy/course-gateway.conf /etc/nginx/nginx.conf
+USER 10001:10001
+ENTRYPOINT ["nginx"]
+CMD ["-g", "daemon off;"]

@@ -1,0 +1,20 @@
+# Install using a distinct course site include only after acceptance and approval.
+server {
+    listen 80;
+    server_name course.sharedbooklist.xyz;
+    return 301 https://course.sharedbooklist.xyz$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name course.sharedbooklist.xyz;
+    ssl_certificate /etc/shared-booklist-course/tls/fullchain.pem;
+    ssl_certificate_key /etc/shared-booklist-course/tls/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8908;
+        proxy_set_header Host course.sharedbooklist.xyz;
+        proxy_set_header X-Course-Client-IP $remote_addr;
+        proxy_read_timeout 25s;
+    }
+}

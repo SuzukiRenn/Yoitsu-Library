@@ -1,0 +1,14 @@
+# Append last to the existing public proxy's real Compose invocation.
+# Confirm its service is named proxy and retain its existing volumes/networks.
+services:
+  proxy:
+    networks:
+      course_edge:
+        ipv4_address: 172.30.32.3
+    volumes:
+      - /etc/shared-booklist-course/tls:/etc/nginx/course-tls:ro
+      - /etc/shared-booklist-course/public-vhost.conf:/etc/nginx/course-vhost.conf:ro
+networks:
+  course_edge:
+    external: true
+    name: shared-booklist-course_edge

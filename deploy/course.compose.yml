@@ -1,0 +1,82 @@
+name: shared-booklist-course
+x-course-app: &course-app
+  image: shared-booklist-course-app:${COURSE_RELEASE:-local}
+  build:
+    context: ..
+    dockerfile: deploy/Dockerfile
+    target: course-app
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs:
+    - /tmp:size=32m,mode=1777
+  env_file:
+    - ${COURSE_CONFIG_DIR:-/etc/shared-booklist-course}/app.env
+  environment:
+    BOOKLIST_ENV: production
+    BOOKLIST_DATA_DIR: /data
+    BOOKLIST_ALLOWED_HOSTS: course.sharedbooklist.xyz,localhost
+    BOOKLIST_TRUSTED_PROXY_IPS: 172.30.31.2
+    BOOKLIST_COURSE_ISOLATED_PRODUCTION: '1'
+  volumes:
+    - course_data:/data
+  networks: [course_private]
+services:
+  app:
+    <<: *course-app
+    env_file:
+      - ${COURSE_CONFIG_DIR:-/etc/shared-booklist-course}/app.env
+      - path: ${COURSE_CONFIG_DIR:-/etc/shared-booklist-course}/ai.env
+        required: false
+    networks: [course_private, course_outbound]
+    healthcheck:
+      test: ["CMD", "python", "scripts/predeploy_health.py"]
+      interval: 20s
+      timeout: 10s
+      retries: 4
+  scheduler:
+    <<: *course-app
+    command: ["python", "scripts/production_tasks.py", "scheduler"]
+    depends_on:
+      app:
+        condition: service_healthy
+  backup:
+    <<: *course-app
+    command: ["python", "scripts/production_tasks.py", "backup"]
+    volumes:
+      - course_data:/data:ro
+      - course_backups:/backups
+    depends_on:
+      app:
+        condition: service_healthy
+  gateway:
+    image: shared-booklist-course-gateway:${COURSE_RELEASE:-local}
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: course-gateway
+    user: "10001:10001"
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    ports:
+      - "127.0.0.1:8908:8080"
+    networks:
+      course_private:
+        ipv4_address: 172.30.31.2
+    depends_on:
+      app:
+        condition: service_healthy
+volumes:
+  course_data:
+  course_backups:
+networks:
+  course_private:
+    ipam:
+      config:
+        - subnet: 172.30.31.0/28
+  course_outbound: {}

@@ -1,0 +1,26 @@
+# Include within the existing edge's http block, after managing a course-only certificate.
+server {
+    listen 8080;
+    server_name course.sharedbooklist.xyz;
+    return 308 https://course.sharedbooklist.xyz$request_uri;
+}
+server {
+    listen 8443 ssl;
+    server_name course.sharedbooklist.xyz;
+    if ($host != course.sharedbooklist.xyz) { return 421; }
+
+    ssl_certificate /etc/nginx/course-tls/fullchain.pem;
+    ssl_certificate_key /etc/nginx/course-tls/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    location / {
+        proxy_pass http://172.30.32.2:8081;
+        proxy_set_header Host course.sharedbooklist.xyz;
+        proxy_set_header X-Course-Client-IP $remote_addr;
+        proxy_set_header X-Forwarded-For "";
+        proxy_set_header Forwarded "";
+        proxy_set_header X-Real-IP "";
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 25s;
+    }
+}

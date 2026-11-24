@@ -1,0 +1,10 @@
+# Optional overlay for the new site when the public edge runs in Docker.
+services:
+  gateway:
+    networks:
+      course_edge:
+        ipv4_address: 172.30.32.2
+networks:
+  course_edge:
+    external: true
+    name: shared-booklist-course_edge
