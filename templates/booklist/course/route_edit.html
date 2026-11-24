@@ -1,0 +1,22 @@
+{% extends 'booklist/course/base.html' %}
+{% block course_title %}编辑阅读路线{% endblock %}
+{% block course_content %}
+<p><a href="/works/{{ route_work.pk }}/#reading-routes">← 返回作品</a></p>
+<h1>{{ route_work.display_title }}的阅读路线</h1>
+<form method="post" data-course-route-editor data-exclude="{{ route_work.pk }}">
+  {% include 'booklist/course/version.html' %}
+  <div class="reason-editor">
+    <label for="recommend-reason">阅读建议</label>
+    <textarea id="recommend-reason" name="reason" maxlength="200" placeholder="可以写阅读顺序、适合的读者和原因">{{ route.reason|default:'' }}</textarea>
+    <p id="reason-writing-hint" class="section-note">输入 / 加书名可引用站内作品。</p>
+    {{ route_refs|json_script:"reason-reference-data" }}
+    <input type="hidden" name="references" value="">
+    <p id="reason-length" role="status"></p>
+  </div>
+  <label><input type="checkbox" name="spoilers"{% if route.contains_spoilers %} checked{% endif %}> 含剧透</label>
+  <div class="course-actions">
+    <button class="primary" name="action" value="save">保存阅读路线</button>
+    {% if route and not route.withdrawn %}<button name="action" value="withdraw" formnovalidate>撤回路线</button>{% endif %}
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends 'booklist/base.html' %}{% load static %}
+{% block scripts %}<script type="module" src="{% static 'course.mjs' %}?v=1"></script>{% endblock %}
+{% block title %}{% block course_title %}读者交流{% endblock %} · {% endblock %}
+{% block content %}
+<nav class="course-nav" aria-label="书单与互助">
+  <a href="/">公共书架</a>
+  <a href="/find-books/">自然语言找书</a>
+  <a href="/curated/">协作书单</a>
+  <a href="/book-help/">找书互助</a>
+</nav>
+<article class="course-page">{% block course_content %}{% endblock %}</article>
+{% endblock %}

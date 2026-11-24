@@ -1,0 +1,59 @@
+{% extends 'booklist/course/base.html' %}
+{% block course_title %}{{ shelf.title }}{% endblock %}
+{% block course_content %}
+<p><a href="/curated/">← 协作书单</a></p>
+<h1>{{ shelf.title }}</h1>
+{% if has_admin_access %}<form method="post">{% include 'booklist/course/version.html' with version=shelf.version %}<button name="action" value="{% if shelf.hidden %}restore{% else %}hide{% endif %}">{% if shelf.hidden %}恢复书单{% else %}隐藏书单{% endif %}</button></form>{% endif %}
+{% if edition %}
+<section><h2>公开版本 {{ edition.number }}</h2>
+<nav class="course-nav" aria-label="已发布版本">{% for item in editions %}<a href="?edition={{ item.number }}"{% if item.pk == edition.pk %} aria-current="page"{% endif %}>第 {{ item.number }} 版</a>{% endfor %}</nav>
+<ol class="course-list">{% for row in snapshot %}<li>
+{% if row.visible %}<h3><a href="/works/{{ row.work_id }}/?from=/curated/{{ shelf.pk }}/%3Fedition%3D{{ edition.number }}">{{ row.title }}</a></h3><p class="course-prose">{{ row.reason }}</p>
+{% else %}<p>作品暂不可见</p>{% endif %}</li>{% endfor %}</ol>
+{% if edition.number > 1 %}<details><summary>与上一版对比</summary><ul>{% for title, label in changes %}<li>{{ label }} · {{ title }}</li>{% endfor %}</ul></details>{% endif %}
+</section>
+{% endif %}
+{% if role and not shelf.hidden %}
+<section><h2>协作草稿</h2>
+<form method="post" class="course-panel">
+  {% include 'booklist/course/version.html' with version=shelf.version %}
+  {% include 'booklist/course/pick_work.html' %}
+  <label>提名理由 <textarea name="reason" maxlength="200" required></textarea></label>
+  <button class="primary" name="action" value="nominate">提名作品</button>
+</form>
+<ol class="course-list">
+{% for row in nominations %}{% with item=row.item %}
+<li><h3>{% if row.visible %}<a href="/works/{{ item.work_id }}/">{{ item.work.display_title }}</a>{% else %}作品暂不可见{% endif %}</h3>
+  <p>{{ item.author.display_name }} · {% if item.approved %}已通过{% else %}待审核{% endif %}</p>
+  <p class="course-prose">{{ item.reason }}</p>
+  {% if can_edit_draft or item.author_id == current_account.id %}
+  <form method="post" class="course-compact">
+    {% include 'booklist/course/version.html' with version=shelf.version %}
+    <input type="hidden" name="item" value="{{ item.pk }}">
+    {% if item.author_id == current_account.id and row.visible %}<label>理由 <textarea name="reason" maxlength="200">{{ item.reason }}</textarea></label>{% endif %}
+    {% if row.visible %}
+    <label>顺序 <input type="number" name="position" min="0" max="999" value="{{ item.position }}" required></label>
+    {% if can_review %}<label><input type="checkbox" name="approved"{% if item.approved %} checked{% endif %}> 审核通过</label>{% endif %}
+    {% endif %}
+    <div class="course-actions">{% if row.visible %}<button name="action" value="{% if can_review %}review{% else %}edit_item{% endif %}">保存修改</button>{% endif %}<button name="action" value="remove" formnovalidate>移除提名</button></div>
+  </form>{% endif %}
+</li>
+{% endwith %}{% empty %}<li>草稿中还没有作品。</li>{% endfor %}</ol>
+{% if role == 'owner' %}
+<form method="post">{% include 'booklist/course/version.html' with version=shelf.version %}<button class="primary" name="action" value="publish">发布已通过提名</button></form>
+<h2>协作者</h2>
+<form method="post" class="course-compact">
+  {% include 'booklist/course/version.html' with version=shelf.version %}
+  <label>读者编号 <input name="reader_id" type="number" min="1" required></label><p class="section-note">可请对方从账户设置复制自己的读者编号。</p>
+  <label>角色 <select name="role"><option value="member">成员</option><option value="editor">策展者</option></select></label>
+  <button name="action" value="invite">添加或更新成员</button>
+</form>
+{% for member in memberships %}
+<form method="post" class="course-compact">
+  {% include 'booklist/course/version.html' with version=shelf.version %}<input type="hidden" name="member" value="{{ member.pk }}">
+  <span>{{ member.account.display_name }} · {{ member.get_role_display }}</span><button name="action" value="remove_member">移除成员</button>
+</form>{% endfor %}
+{% endif %}
+</section>
+{% endif %}
+{% endblock %}

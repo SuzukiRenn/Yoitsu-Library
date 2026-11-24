@@ -1,0 +1,27 @@
+{% extends 'booklist/course/base.html' %}
+{% block course_title %}自然语言找书{% endblock %}
+{% block course_content %}
+<h1>自然语言找书</h1>
+<form method="post">
+  {% csrf_token %}
+  <label for="find-query">你想找什么样的小说？</label>
+  <textarea id="find-query" name="query" maxlength="180" required placeholder="想读带点旅行元素的奇幻故事">{{ query }}</textarea>
+  {% if ai_available %}<p class="section-note">点击智能查找会将这段查询发送给 DeepSeek。请勿填写个人信息。</p>{% else %}<p class="section-note">智能解析暂未配置，仍可使用普通检索。</p>{% endif %}
+  <div class="course-actions"><button class="primary" name="mode" value="ai">智能查找</button><button name="mode" value="plain">按关键词查找</button></div>
+</form>
+{% if searched %}
+<section aria-label="找书结果"><p role="status">{{ status }}</p>
+{% if intent %}<p>检索词 {% for term in intent.keywords %}{{ term }}{% if not forloop.last %}、{% endif %}{% endfor %}　标签 {% for tag in intent.tags %}{{ tag }}{% if not forloop.last %}、{% endif %}{% endfor %}</p>
+{% if intent.exclude %}<p>已排除资料中明确出现的词 {% for term in intent.exclude %}{{ term }}{% if not forloop.last %}、{% endif %}{% endfor %}。资料未提及的特征无法判断。</p>{% endif %}
+<form method="post" class="course-panel">{% csrf_token %}<input type="hidden" name="query" value="{{ query }}"><p>每组最多 4 个词，用逗号分隔。</p><label>检索词 <input name="keywords" maxlength="100" value="{{ intent.keywords|join:', ' }}"></label><label>标签 <input name="tags" maxlength="100" value="{{ intent.tags|join:', ' }}"></label><label>排除词 <input name="exclude" maxlength="100" value="{{ intent.exclude|join:', ' }}"></label><button name="mode" value="conditions">按调整后的条件查找</button></form>{% endif %}
+<ul class="course-list">
+{% for item in results %}
+<li><h2><a href="/works/{{ item.id }}/?from=/find-books/">{{ item.title }}</a></h2>
+{% if item.author %}<p>{{ item.author }}</p>{% endif %}
+{% if item.evidence %}<ul>{% for evidence in item.evidence %}<li>{{ evidence }}</li>{% endfor %}</ul>{% endif %}{% if item.missing %}<p class="section-note">未找到依据 {{ item.missing|join:'、' }}</p>{% endif %}</li>
+{% empty %}<li>暂无匹配。可以试试更短的书名、作者或题材关键词。</li>{% endfor %}
+</ul>
+{% if ordinary_url %}<a href="{{ ordinary_url }}">在公共书架继续检索</a>{% endif %}
+</section>
+{% endif %}
+{% endblock %}

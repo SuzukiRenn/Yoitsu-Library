@@ -1,10 +1,16 @@
 from booklist import reason_likes, activity_export, legal_pages
-from booklist import recent_views, rankings
+from booklist import recent_views, rankings, course_find, course_curate, course_help, course_routes
 from booklist import feedback, account_views, account_admin, email_views, activity_notices
 from django.urls import path
 from booklist import views, catalog_views, public_views, activity_views, recommend_views, admin_views, metadata_views, cover_cache, live_stats
 
 urlpatterns = [
+    path('find-books/', course_find.find),
+    path('curated/', course_curate.index),
+    path('curated/<int:shelf_id>/', course_curate.detail),
+    path('book-help/', course_help.index),
+    path('book-help/<int:question_id>/', course_help.detail),
+    path('works/<int:work_id>/reading-route/', course_routes.edit),
     path('rankings/', rankings.home),
     path('api/v1/rankings/', rankings.listing),
     path('privacy/', legal_pages.information, {'section': 'privacy'}),

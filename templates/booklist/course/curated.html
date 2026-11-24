@@ -1,0 +1,16 @@
+{% extends 'booklist/course/base.html' %}
+{% block course_title %}协作书单{% endblock %}
+{% block course_content %}
+<h1>协作书单</h1>
+{% if current_account %}
+<form method="post" class="course-compact">{% csrf_token %}
+  <label>书单名称 <input name="title" maxlength="100" required></label>
+  <button class="primary">创建草稿</button>
+</form>
+{% if my_shelves %}<h2>我参与的书单</h2>
+<ul class="course-list">{% for shelf in my_shelves %}<li><a href="/curated/{{ shelf.pk }}/">{{ shelf.title }}</a></li>{% endfor %}</ul>{% endif %}
+{% else %}<a class="reason-link" href="{{ login_url }}">登录后创建书单</a>{% endif %}
+<h2>公开书单</h2>
+<ul class="course-list">{% for shelf in public_shelves %}<li><a href="/curated/{{ shelf.pk }}/">{{ shelf.title }}</a></li>{% empty %}<li>暂无发布的书单。</li>{% endfor %}</ul>
+{% if moderation_shelves %}<h2>已隐藏的书单</h2><ul class="course-list">{% for shelf in moderation_shelves %}<li><a href="/curated/{{ shelf.pk }}/">{{ shelf.title }}</a></li>{% endfor %}</ul>{% endif %}
+{% endblock %}

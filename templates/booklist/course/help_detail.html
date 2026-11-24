@@ -1,0 +1,42 @@
+{% extends 'booklist/course/base.html' %}
+{% block course_title %}{{ question.title }}{% endblock %}
+{% block course_content %}
+<p><a href="/book-help/">← 找书互助</a></p>
+<p>{% if accepted %}已解决{% else %}求助中{% endif %}</p>
+<h1>{{ question.title }}</h1>
+<p>{{ question.author.display_name }}</p>
+<p class="course-prose">{{ question.clues }}</p>
+{% if has_admin_access %}<form method="post">{% include 'booklist/course/version.html' with version=question.version %}<button name="action" value="{% if question.hidden %}restore_question{% else %}hide_question{% endif %}">{% if question.hidden %}恢复求助{% else %}隐藏求助{% endif %}</button></form>{% endif %}
+{% if additions %}<h2>补充线索</h2><ul class="course-list">{% for clue in additions %}<li class="course-prose">{{ clue.text }}</li>{% endfor %}</ul>{% endif %}
+{% if is_owner and not question.hidden %}
+<form method="post" class="course-panel">
+  {% include 'booklist/course/version.html' with version=question.version %}
+  <label>补充线索 <textarea name="clue" maxlength="500" required></textarea></label><button name="action" value="add_clue">保存线索</button>
+</form>
+{% endif %}
+<h2>候选作品</h2>
+<ul class="course-list">
+{% for item in candidates %}
+<li>
+  <h3><a href="/works/{{ item.work_id }}/?from=/book-help/{{ question.pk }}/">{{ item.work.display_title }}</a></h3>
+  {% if item.pk == accepted.pk %}<strong>已采纳</strong>{% endif %}
+  <p class="course-prose">{{ item.reason }}</p><p>{{ item.author.display_name }}</p>
+  {% if is_owner and not question.hidden %}
+  <form method="post">
+    {% include 'booklist/course/version.html' with version=question.version %}<input type="hidden" name="candidate" value="{{ item.pk }}">
+    {% if item.pk == accepted.pk %}<button name="action" value="unaccept">撤销采纳</button>{% elif not accepted %}<button name="action" value="accept">采纳</button>{% endif %}
+  </form>{% endif %}
+  {% if has_admin_access %}<form method="post">{% include 'booklist/course/version.html' with version=question.version %}<input type="hidden" name="candidate" value="{{ item.pk }}"><button name="action" value="hide_candidate">隐藏候选</button></form>{% endif %}
+</li>{% empty %}<li>暂无候选作品。</li>{% endfor %}
+</ul>
+{% for item in hidden_candidates %}
+<form method="post" class="course-panel">{% include 'booklist/course/version.html' with version=question.version %}<input type="hidden" name="candidate" value="{{ item.pk }}"><p>已隐藏 · {{ item.work.display_title }}</p><p>{{ item.reason }}</p><button name="action" value="restore_candidate">恢复候选</button></form>
+{% endfor %}
+{% if current_account and not accepted and not question.hidden %}
+<form method="post" class="course-panel">
+  {% include 'booklist/course/version.html' with version=question.version %}
+  {% include 'booklist/course/pick_work.html' %}
+  <label>辨认依据 <textarea name="reason" maxlength="200" required></textarea></label><button class="primary" name="action" value="candidate">提交候选</button>
+</form>
+{% elif not current_account and not accepted %}<a class="reason-link" href="{{ login_url }}">登录后提交候选</a>{% endif %}
+{% endblock %}

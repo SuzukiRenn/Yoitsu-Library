@@ -75,6 +75,20 @@ def snapshot_cover(work):
         work.cover_url_override if work.cover_url_overridden else work.wenku8_cover_url, cached=False) or ''
 
 
+def manual_display_metadata(works):
+    ids = [work.pk for work in works if work.wenku8_book_id is None or work.source_metadata.get('preserve_user_description')]
+    return {row.work_id: row for row in UserWorkMetadata.objects.filter(work_id__in=ids, archived_at__isnull=True)} if ids else {}
+
+
+def display_text(work, manual=None):
+    author = work.author_override if work.author_overridden else work.wenku8_author or ''
+    if manual and work.wenku8_book_id is None and not work.author_overridden:
+        author = manual.author or author
+    description = work.description_override if work.description_overridden else (
+        manual.description if manual and manual.description else work.wenku8_description or '')
+    return work.display_title, author, description
+
+
 def serialize_works(works, detail=False):
     ids = [work.pk for work in works]
     public_ids = set(public_works().filter(pk__in=ids).values_list('pk', flat=True))
@@ -87,22 +101,18 @@ def serialize_works(works, detail=False):
     for work, tag, name, origin in rows:
         if (work, tag) not in all_bans and not (origin == 'source' and (work, tag) in source_bans):
             tags[work][tag] = {'id': tag, 'name': name}
-    manual_ids = [work.pk for work in works if work.wenku8_book_id is None or work.source_metadata.get('preserve_user_description')]
-    manuals = {row.work_id: row for row in UserWorkMetadata.objects.filter(work_id__in=manual_ids, archived_at__isnull=True)} if manual_ids else {}
+    manuals = manual_display_metadata(works)
     results = []
     for work in works:
-        manual = manuals.get(work.pk)
-        author = work.author_override if work.author_overridden else work.wenku8_author or ''
-        if manual and work.wenku8_book_id is None and not work.author_overridden:
-            author = manual.author or author
-        row = {**edition_info(work.source_metadata), 'id': work.pk, 'title': work.display_title,
+        title, author, description = display_text(work, manuals.get(work.pk))
+        row = {**edition_info(work.source_metadata), 'id': work.pk, 'title': title,
                'author': author,
                'cover_url': versioned_cover(work) or cover_url(work.cover_url_override if work.cover_url_overridden else work.wenku8_cover_url),
                'is_public': work.pk in public_ids,
                'source_book_id': work.wenku8_book_id,
                'tags': sorted(tags[work.pk].values(), key=lambda tag: (tag['name'], tag['id']))}
         if detail:
-            row['description'] = work.description_override if work.description_overridden else (manual.description if manual and manual.description else work.wenku8_description or '')
+            row['description'] = description
             row['metadata'] = {key: work.source_metadata.get(key) for key in ('publisher_category', 'status', 'last_updated', 'word_count')}
         results.append(row)
     return results

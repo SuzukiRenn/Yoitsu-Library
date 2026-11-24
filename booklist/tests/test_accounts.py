@@ -423,7 +423,8 @@ class AccountTests(TestCase):
 
     def test_original_product_cookie_names_are_never_issued_or_deleted(self):
         visitor = self.browser()
-        originals = {'booklist_anonymous': 'original-anonymous-value', 'booklist_admin': 'original-admin-value', 'csrftoken': 'original-csrf-value'}
+        originals = {'booklist_anonymous': 'original-anonymous-value', 'booklist_admin': 'original-admin-value', 'csrftoken': 'original-csrf-value',
+                     **{f'identity_booklist_{suffix}': f'identity-{suffix}' for suffix in ('account', 'admin', 'anonymous', 'csrf')}}
         for name, value in originals.items():
             visitor.cookies[name] = value
         for path, data in [('/api/v1/account/login/', {'username': 'alice', 'password': PASSWORD}),
@@ -432,7 +433,7 @@ class AccountTests(TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertFalse(set(response.cookies) & set(originals))
         self.assertEqual({name: visitor.cookies[name].value for name in originals}, originals)
-        self.assertTrue(all(name.startswith('identity_booklist_') for name in
+        self.assertTrue(all(name.startswith('course_booklist_') for name in
             (settings.ACCOUNT_COOKIE, settings.ADMIN_COOKIE, settings.ANONYMOUS_COOKIE, settings.CSRF_COOKIE_NAME)))
 
     def test_notification_unread_endpoint_is_private_and_tracks_read_state(self):

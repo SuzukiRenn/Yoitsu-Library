@@ -539,3 +539,6 @@ class Feedback(Timestamped):
             models.CheckConstraint(condition=Q(status__in=['pending', 'resolved', 'dismissed']), name='feedback_status'),
             models.CheckConstraint(condition=~Q(message='') & Q(message__length__lte=1000), name='feedback_message_limit'),
         ]
+
+# Register course models with the existing Django app.
+from .course_models import (ReadingRoute, CuratedShelf, Curator, Nomination, CuratedEdition, BookQuestion, BookClue, BookCandidate)  # noqa: E402,F401

@@ -21,6 +21,7 @@
 {% elif mode == 'settings' %}
 <div class="section-heading"><h1>修改信息</h1><a class="reason-link" href="/account/">← 返回个人主页</a></div>{% if not qq_email_login or not current_account.qq_email %}<p>账号 <strong>{{ current_account.username }}</strong></p>{% endif %}
 <form method="post" data-account-form="profile"><label>昵称<input name="display_name" required maxlength="40" value="{{ current_account.display_name }}" autocomplete="nickname"></label><button class="primary">保存昵称</button><p role="status"></p></form>
+<p class="section-note">读者编号 {{ current_account.id }}，可用于加入协作书单。</p>
 {% if qq_email_login %}<h2>QQ 邮箱</h2>{% if current_account.qq_email %}<p>{{ current_account.qq_email }}</p><p class="section-note">使用邮箱验证码登录。如需更换绑定邮箱，请联系管理员核实处理。</p>{% else %}<a class="reason-link" href="/account/bind/">绑定 QQ 邮箱</a>{% endif %}{% else %}<h2>修改密码</h2><form method="post" data-account-form="password"><label>当前密码<input name="current_password" type="password" required maxlength="1024" autocomplete="current-password"></label><label>新密码<input name="new_password" type="password" required minlength="9" maxlength="1024" autocomplete="new-password"></label><label>确认新密码<input name="confirmation" type="password" required minlength="9" maxlength="1024" autocomplete="new-password"></label><button>修改并重新登录</button><p role="status"></p></form>
 {% endif %}
 {% elif qq_email_login and mode != 'legacy' %}

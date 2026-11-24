@@ -1,0 +1,26 @@
+.course-nav {display:flex;flex-wrap:wrap;gap:.5rem 1rem;margin:1rem 0}
+.course-nav a {display:inline-block;padding:.45rem .25rem;text-decoration:underline}
+.course-page {max-width:52rem;margin:0 auto 3rem;padding:.5rem 0;color:var(--ink)}
+.course-page h1,.course-page h2,.course-page h3 {overflow-wrap:anywhere}
+.course-page h1 {margin:.5rem 0 1rem}
+.course-page h2 {margin:1.5rem 0 .75rem;font-size:1.25rem}
+.course-list h2,.course-list h3 {margin:0 0 .5rem;font-size:1.05rem}
+.course-page form,.course-panel,.course-list {display:grid;gap:.65rem}
+.course-page form {margin:.5rem 0 1rem}
+.course-page label {display:grid;gap:.3rem}
+.course-page label:has(input[type=checkbox]) {display:flex;align-items:center}
+.course-page input:not([type=checkbox]),.course-page textarea,.course-page select {box-sizing:border-box;width:100%;max-width:100%;min-width:0}
+.course-page textarea {min-height:5rem}
+.course-page button,.course-routes button {min-height:2.5rem;padding:.45rem .7rem}
+.course-page form>button {justify-self:start}
+.course-page .course-compact {display:flex;flex-wrap:wrap;align-items:end}
+.course-compact label {flex:1 1 10rem}
+.course-actions {display:flex;flex-wrap:wrap;gap:.5rem}
+.course-panel,.course-list>li {padding:1rem;border:1px solid var(--line);border-radius:.5rem;background:var(--surface)}
+.course-list {padding:0;list-style:none}
+.course-picker ul {display:grid;gap:.35rem;list-style:none;padding:0}
+.course-picker ul:empty,.course-picker [role=status]:empty {display:none}
+.course-picker li button {text-align:left;width:100%;overflow-wrap:anywhere}
+.course-prose {white-space:pre-wrap;overflow-wrap:anywhere}
+.course-routes {margin-top:2rem}
+.course-page details summary {cursor:pointer}

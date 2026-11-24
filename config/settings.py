@@ -24,12 +24,16 @@ try:
     TRUSTED_PROXY_IPS = trusted_proxy_ips(os.environ.get('BOOKLIST_TRUSTED_PROXY_IPS', ''))
 except ValueError:
     raise ImproperlyConfigured('Trusted proxies must be exact IP addresses') from None
-ICP_RECORD = os.environ.get('BOOKLIST_ICP_RECORD', '鲁ICP备2026066257号-1').strip()
+ICP_RECORD = os.environ.get('BOOKLIST_ICP_RECORD', '').strip()
 if ICP_RECORD and not re.fullmatch(r'[\u4e00-\u9fff]ICP备[0-9]{6,20}号(?:-[0-9]+)?', ICP_RECORD):
     raise ImproperlyConfigured('Invalid ICP record format')
 DATA_DIR = Path(os.environ.get('BOOKLIST_DATA_DIR') or BASE_DIR / '.runtime')
 if ENV == 'production' and (not os.environ.get('BOOKLIST_DATA_DIR') or not DATA_DIR.is_absolute() or DATA_DIR == BASE_DIR or BASE_DIR in DATA_DIR.parents):
     raise ImproperlyConfigured('Production data directory must be absolute and outside code')
+if ENV == 'production' and (os.environ.get('BOOKLIST_COURSE_ISOLATED_PRODUCTION') != '1' or DATA_DIR != Path('/data')
+                            or set(ALLOWED_HOSTS) != {'course.sharedbooklist.xyz', 'localhost'}
+                            or not (DATA_DIR / '.course-volume').is_file()):
+    raise ImproperlyConfigured('Course production requires its own marked data volume and course host')
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 COVER_CACHE_DIR = DATA_DIR / 'covers'
 # Tests keep transaction-isolated counters by default; contention tests enable the sidecar explicitly.
@@ -73,13 +77,13 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 DATA_UPLOAD_MAX_MEMORY_SIZE = 32768
 # Cookies are host-scoped, not port-scoped. This branch must coexist with the
 # anonymous product even when both previews use localhost on different ports.
-CSRF_COOKIE_NAME = 'identity_booklist_csrf'
-ANONYMOUS_COOKIE = 'identity_booklist_anonymous'
-ADMIN_COOKIE = 'identity_booklist_admin'
+CSRF_COOKIE_NAME = 'course_booklist_csrf'
+ANONYMOUS_COOKIE = 'course_booklist_anonymous'
+ADMIN_COOKIE = 'course_booklist_admin'
 ANONYMOUS_AGE = 365 * 86400
 ADMIN_AGE = 12 * 3600
 IDEMPOTENCY_AGE = 86400
-ACCOUNT_COOKIE = 'identity_booklist_account'
+ACCOUNT_COOKIE = 'course_booklist_account'
 ACCOUNT_AGE = 30 * 86400
 # Only the legacy regression suite may opt into anonymous writes.
 REQUIRE_ACCOUNT = not (ENV == 'test' and os.environ.get('BOOKLIST_LEGACY_TESTS') == '1')
@@ -116,6 +120,10 @@ def qq_limit(name, default):
     if not 1 <= value <= 100000:
         raise ImproperlyConfigured(name + ' must be between 1 and 100000')
     return value
+
+COURSE_DEEPSEEK_KEY = os.environ.get('COURSE_DEEPSEEK_KEY', '').strip()
+COURSE_DEEPSEEK_MODEL = os.environ.get('COURSE_DEEPSEEK_MODEL', 'deepseek-flash').strip()
+COURSE_DEEPSEEK_DAILY_CALLS = qq_limit('COURSE_DEEPSEEK_DAILY_CALLS', 30)
 
 QQ_CODE_EMAIL_DAILY_LIMIT = qq_limit('BOOKLIST_QQ_CODE_EMAIL_DAILY_LIMIT', 30)
 QQ_CODE_IP_HOURLY_LIMIT = qq_limit('BOOKLIST_QQ_CODE_IP_HOURLY_LIMIT', 1000)

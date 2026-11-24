@@ -65,13 +65,17 @@ def work_page(request, data, work_id):
     return_url = shelf_return_url(request.GET.get('from', ''), request.GET.get('activity'))
     from .navigation import safe_return
     source=safe_return(request.GET.get('from',''),'')
-    if source.split('?',1)[0] in ('/notifications/','/account/','/rankings/'):
+    source_path = source.split('?',1)[0]
+    if source_path in ('/notifications/','/account/','/rankings/','/find-books/') or source_path.startswith(('/curated/', '/book-help/')):
         return_url=source
     period = activities.get(positive(request.GET['activity'])) if 'activity' in request.GET else None
     if period: activities.advance_due(); period.refresh_from_db()
     historical = period is not None and period.status == 'ended'
     work = catalog.work_detail(work_id, include_retired=historical)
     current_work = catalog.visible_works().filter(pk=work_id).first()
+    from .course_routes import rows as reading_route_rows
+    route_context = {'show_reading_routes': current_work is not None,
+                     'reading_routes': reading_route_rows(work_id, include_hidden=bool(request.admin), account=request.account) if current_work else []}
     can_edit_metadata = user_metadata.editable(current_work, request.anonymous_client) if current_work else False
     if 'activity' in request.GET:
         from . import activities
@@ -101,11 +105,11 @@ def work_page(request, data, work_id):
             can_edit_metadata = False
         from .work_sequence import context as sequence_context
         sequence = sequence_context(request, work_id, return_url)
-        return page(request, 'booklist/work.html', {'work': work, 'interaction': interaction, 'activity': result['activity'], 'can_edit_metadata': can_edit_metadata, 'return_url': return_url, 'work_sequence': sequence})
+        return page(request, 'booklist/work.html', {'work': work, 'interaction': interaction, 'activity': result['activity'], 'can_edit_metadata': can_edit_metadata, 'return_url': return_url, 'work_sequence': sequence, **route_context})
     interaction = books.serialize([books.require_work(work_id)], request.anonymous_client)[0] if work['is_public'] else None
     from .work_sequence import context as sequence_context
     sequence = sequence_context(request, work_id, return_url)
-    return page(request, 'booklist/work.html', {'work': work, 'interaction': interaction, 'can_edit_metadata': can_edit_metadata, 'return_url': return_url, 'work_sequence': sequence})
+    return page(request, 'booklist/work.html', {'work': work, 'interaction': interaction, 'can_edit_metadata': can_edit_metadata, 'return_url': return_url, 'work_sequence': sequence, **route_context})
 
 
 def shelf_return_url(value, activity=None):
