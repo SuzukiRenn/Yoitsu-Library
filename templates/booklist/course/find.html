@@ -6,12 +6,11 @@
 <form method="post" class="course-panel course-search">
   {% csrf_token %}
   <label for="find-query">你想找什么样的小说？</label>
-  <textarea id="find-query"{% if ai_available %} aria-describedby="course-find-note"{% endif %} name="query" maxlength="180" required placeholder="输入书名、题材或想读的情节">{{ query }}</textarea>
+  <textarea id="find-query" name="query" maxlength="180" required placeholder="输入书名、题材或想读的情节">{{ query }}</textarea>
   <div class="course-actions">
     {% if ai_available %}<button class="primary" name="mode" value="ai">智能查找</button><button class="course-keyword-search" name="mode" value="plain">按关键词查找</button>
     {% else %}<button class="primary" name="mode" value="plain">按关键词查找</button>{% endif %}
   </div>
-  {% if ai_available %}<p class="section-note" id="course-find-note">智能查找由 DeepSeek 解析，请勿输入个人信息。</p>{% endif %}
   {% if not searched %}
   <fieldset class="course-examples" data-course-examples hidden>
     <legend class="sr-only">搜索示例</legend>

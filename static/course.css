@@ -123,14 +123,7 @@
 .course-page textarea { min-height: 6rem; resize: vertical; }
 .course-find > :is(.course-search, .course-section) { max-width: 760px; }
 .course-page .course-search textarea { min-height: 5.5rem; }
-.course-page .course-keyword-search {
-  border-color: transparent;
-  background: transparent;
-  color: var(--muted);
-  text-decoration: underline;
-  text-underline-offset: .15em;
-}
-.course-page .course-keyword-search:hover { color: var(--ink); }
+.course-page .course-keyword-search:hover { background: var(--wash-hover); }
 .course-examples {
   display: flex;
   align-items: center;
