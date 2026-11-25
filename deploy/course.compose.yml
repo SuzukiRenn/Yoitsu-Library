@@ -29,6 +29,8 @@ services:
       - ${COURSE_CONFIG_DIR:-/etc/shared-booklist-course}/app.env
       - path: ${COURSE_CONFIG_DIR:-/etc/shared-booklist-course}/ai.env
         required: false
+      - path: ${COURSE_CONFIG_DIR:-/etc/shared-booklist-course}/mail.env
+        required: false
     networks: [course_private, course_outbound]
     healthcheck:
       test: ["CMD", "python", "scripts/predeploy_health.py"]
