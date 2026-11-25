@@ -48,7 +48,7 @@ def main():
             if response.status_code != 200:
                 raise RuntimeError(f'Unexpected HTTP {response.status_code}')
             html = response.content.decode()
-            titles = re.findall(r'<h2><a href="/works/[^"]+">([^<]+)</a></h2>', html)
+            titles = re.findall(r'<h3><a href="/works/[^"]+">([^<]+)</a></h3>', html)
             return {'top3': [unescape(title) for title in titles[:3]],
                     'fallback': '已执行普通检索' in html}
         full_sentence = search('plain')

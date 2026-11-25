@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from booklist import accounts, public_booklist
 from booklist.course_models import BookCandidate, BookQuestion, CuratedShelf, Nomination, ReadingRoute
-from booklist.models import Work
+from booklist.models import Admin, Tag, TagSuppression, UserWorkMetadata, Work, WorkAlias, WorkTag
 
 
 class CourseTests(TestCase):
@@ -20,7 +20,7 @@ class CourseTests(TestCase):
         cls.member = member_session.account
         cls.work = Work.objects.create(original_submitted_title='山间来信',
             wenku8_description='旅人在庭院学习了魔、法。随后前往北方。')
-        cls.unlisted = Work.objects.create(original_submitted_title='未上架机密',
+        cls.unlisted = Work.objects.create(original_submitted_title='未推荐的目录作品',
             wenku8_description='魔法和旅行。')
         cls.hidden = Work.objects.create(original_submitted_title='隐藏机密', wenku8_description='魔法。',
             hidden_at=timezone.now())
@@ -45,13 +45,67 @@ class CourseTests(TestCase):
         self.assertContains(response, '旅人在庭院学习了魔、法。')
         self.assertContains(response, '未找到依据 学院')
         self.assertContains(response, '资料未提及的特征无法判断')
-        self.assertNotContains(response, '未上架机密')
+        self.assertContains(response, '未推荐的目录作品')
         self.assertNotContains(response, '隐藏机密')
         self.assertContains(response, '按调整后的条件查找')
         no_match = self.post(self.client, '/find-books/', mode='conditions', query='火星', keywords='火星', tags='', exclude='')
         self.assertContains(no_match, '暂无匹配作品。', count=1)
         self.assertNotContains(no_match, 'data-course-examples')
         self.assertNotContains(no_match, 'class="course-empty"')
+
+    @override_settings(COURSE_DEEPSEEK_KEY='fake-test-only')
+    def test_catalog_search_matches_displayed_fields_and_excludes_unavailable_records(self):
+        work = self.unlisted
+        work.wenku8_title = '已覆盖书名'
+        work.title_override = '未推荐的目录作品'
+        work.title_overridden = True
+        work.wenku8_description = '已覆盖简介'
+        work.save(update_fields=['wenku8_title', 'title_override', 'title_overridden', 'wenku8_description'])
+        UserWorkMetadata.objects.create(work=work, anonymous_client=self.owner.principal,
+            author='展示作者', description='船员循着蓝色信标回到港口。这里有范围界标。')
+        WorkAlias.objects.create(work=work, alias='星航Ａ·１', normalized_alias='星航a1')
+        WorkAlias.objects.create(work=work, alias='过期别名', normalized_alias='过期别名', archived_at=timezone.now())
+        admin = Admin.objects.create(username='course_catalog_reviewer')
+        for name in ('有效航海标签', '屏蔽标签', '停用标签'):
+            tag = Tag.objects.create(name=name, normalized_name=name, is_active=name != '停用标签')
+            WorkTag.objects.create(work=work, tag=tag, source_type='source')
+            if name == '屏蔽标签':
+                TagSuppression.objects.create(work=work, tag=tag, scope='all', admin=admin, reason='测试')
+        for label, attributes in (
+                ('隐藏', {'hidden_at': timezone.now()}), ('合并', {'merged_into': work}),
+                ('待审', {'review_status': 'pending'}), ('退役', {'source_metadata': {'manual_retired_at': '2026-11-25'}})):
+            Work.objects.create(original_submitted_title=f'{label}范围界标', **attributes)
+
+        path = '/find-books/'
+        work_url = f'/works/{work.pk}/?from={path}'
+        browser = Client(enforce_csrf_checks=True)
+        for word, evidence in (
+                ('未推荐的目录', '书名「未推荐的目录作品」'), ('星航a1', '别名「星航Ａ·１」'),
+                ('展示作者', '作者「展示作者」'), ('蓝色信标', '简介片段「船员循着蓝色信标回到港口。」'),
+                ('航海标签', '标签「有效航海标签」'), ('范围界标', '简介片段「这里有范围界标。」')):
+            with self.subTest(word=word):
+                response = self.post(browser, path, mode='plain', query=word)
+                self.assertContains(response, f'href="{work_url}"')
+                self.assertContains(response, evidence)
+                self.assertEqual([row['id'] for row in response.context['results']], [work.pk])
+        for word in ('过期别名', '已覆盖书名', '已覆盖简介', '屏蔽标签', '停用标签'):
+            self.assertContains(self.post(browser, path, mode='plain', query=word), '暂无匹配作品。', count=1)
+        edited = self.post(browser, path, mode='conditions', query='调整检索词', keywords='范围界标', tags='', exclude='')
+        self.assertEqual([row['id'] for row in edited.context['results']], [work.pk])
+        excluded = self.post(browser, path, mode='conditions', query='调整检索词', keywords='范围界标', tags='', exclude='星航a1')
+        self.assertContains(excluded, '暂无匹配作品。', count=1)
+        with patch('booklist.course_find.extract', return_value={'keywords':['范围界标'], 'tags':[], 'exclude':[]}) as parse:
+            result = self.post(browser, path, mode='ai', query='有没有相似的海上故事')
+            parse.assert_called_once_with('有没有相似的海上故事')
+            self.assertEqual([row['id'] for row in result.context['results']], [work.pk])
+        with patch('booklist.course_find.extract', side_effect=TimeoutError):
+            fallback = self.post(browser, path, mode='ai', query='范围界标')
+            self.assertContains(fallback, '已执行普通检索')
+            self.assertEqual([row['id'] for row in fallback.context['results']], [work.pk])
+        self.assertContains(browser.get(work_url), '船员循着蓝色信标回到港口。')
+        shelf = browser.get('/api/v1/public/works/', {'q':'未推荐的目录作品'})
+        self.assertEqual(shelf.status_code, 200)
+        self.assertEqual(shelf.json()['results'], [])
 
     @override_settings(COURSE_DEEPSEEK_KEY='fake-test-only')
     def test_mocked_provider_success_blank_timeout_invalid_and_budget(self):

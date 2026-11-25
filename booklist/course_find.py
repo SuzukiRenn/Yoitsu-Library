@@ -1,4 +1,5 @@
-"""Bounded intent extraction. All matching and evidence stay on this server."""
+"""Bounded intent extraction and local matching over the visible catalog."""
+from collections import defaultdict
 import json
 import logging
 import re
@@ -15,7 +16,7 @@ from django.views.decorators.csrf import csrf_protect
 from . import catalog, public_booklist, services
 from .catalog_views import page, read_limit
 from .course_common import clean, page_error
-from .shelf_filters import search_public
+from .models import WorkAlias
 from .views import database_unavailable
 
 logger = logging.getLogger(__name__)
@@ -106,14 +107,22 @@ def entered_intent(post):
 
 
 def match(intent):
-
-    eligible = public_booklist.public_works()
-    tags = {}
-    links = public_booklist.effective_tags().filter(work_id__in=eligible.values('id'))
+    terms = {}
+    for value in intent['keywords'] + intent['tags']:
+        if key := catalog.search_key(value):
+            terms.setdefault(key, value)
+    if not terms:
+        return []
+    eligible = catalog.visible_works()
+    tags = defaultdict(set)
+    links = public_booklist.effective_tags().filter(work_id__in=eligible.values('pk'))
     for work_id, name in links.values_list('work_id', 'tag__name'):
-        tags.setdefault(work_id, set()).add(name)
-    exclusions = [catalog.search_key(value) for value in intent['exclude']]
-    terms = {value: catalog.search_key(value) for value in intent['keywords'] + intent['tags']}
+        tags[work_id].add(name)
+    aliases = defaultdict(list)
+    rows = WorkAlias.objects.filter(work_id__in=eligible.values('pk'), archived_at__isnull=True).order_by('pk')
+    for work_id, value in rows.values_list('work_id', 'alias'):
+        aliases[work_id].append((value, catalog.search_key(value)))
+    exclusions = set(filter(None, map(catalog.search_key, intent['exclude'])))
     ranked = []
     works = list(eligible)
     manuals = catalog.manual_display_metadata(works)
@@ -125,40 +134,46 @@ def match(intent):
         title_key = catalog.search_key(title)
         author_key = catalog.search_key(author or '')
         description_key = catalog.search_key(description)
-        haystack = (title_key, author_key, description_key, *tag_keys)
-        if any(value and any(value in field for field in haystack) for value in exclusions):
-            continue
+        work_aliases = aliases.get(work.pk, ())
+        if exclusions:
+            haystack = (title_key, author_key, description_key, *tag_keys, *(key for _, key in work_aliases))
+            if any(value in field for value in exclusions for field in haystack):
+                continue
         evidence = []
         score = 0
         missing = []
-        for key in dict.fromkeys(terms.values()):
-            if not key:
-                continue
+        for key, term in terms.items():
             if key in tag_keys:
                 score += 4
-                evidence.append(f'标签「{tag_keys[key]}」')
+                evidence.append(('标签', tag_keys[key], ''))
             elif key in title_key:
                 score += 5
-                evidence.append(f'书名「{title}」')
+                evidence.append(('书名', title, ''))
+            elif alias := next((value for value, alias_key in work_aliases if key in alias_key), None):
+                score += 4
+                evidence.append(('别名', alias, ''))
             elif key in author_key:
                 score += 4
-                evidence.append(f'作者「{author}」')
+                evidence.append(('作者', author, ''))
+            elif tag := next((name for tag_key, name in tag_keys.items() if key in tag_key), None):
+                score += 3
+                evidence.append(('标签', tag, ''))
             elif key in description_key:
                 score += 1
-                evidence.append(f'简介片段「{excerpt(description, key)}」')
+                evidence.append(('简介片段', description, key))
             else:
-                missing.append(next(term for term, term_key in terms.items() if term_key == key))
+                missing.append(term)
         if score:
             ranked.append((score, work, title, author, evidence, missing))
     ranked.sort(key=lambda row: (-row[0], row[1].pk))
     return [{'id': work.pk, 'title': title, 'author': author, 'cover_url': catalog.display_cover(work),
-             'evidence': evidence, 'missing': missing}
+             'evidence': [f'{label}「{excerpt(value, key) if key else value}」' for label, value, key in evidence],
+             'missing': missing}
             for _, work, title, author, evidence, missing in ranked[:15]]
 
 
 def ordinary(query):
-    works = list(search_public(public_booklist.public_works(), query[:100]).order_by('id')[:15])
-    return catalog.serialize_works(works)
+    return match({'keywords': [query], 'tags': [], 'exclude': []})
 
 
 @csrf_protect
