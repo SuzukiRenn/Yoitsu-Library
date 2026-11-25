@@ -32,7 +32,7 @@
       <h2><a href="/book-help/{{ item.pk }}/">{{ item.title }}</a></h2>
       <span class="course-badge{% if item.solved %} course-badge-resolved{% endif %}">{% if item.solved %}已解决{% else %}求助中{% endif %}</span>
     </div>
-    <p class="course-help-excerpt">{{ item.clues|truncatechars:140 }}</p>
+    <p class="course-help-excerpt">{{ item.clues|truncatechars:240 }}</p>
     <footer class="course-post-meta">
       <span>{{ item.author.display_name }}</span><time datetime="{{ item.created_at|date:'c' }}">{{ item.created_at|date:'Y-m-d H:i' }}</time>
       <span class="course-reply-count">{{ item.reply_count }} 条回复</span>

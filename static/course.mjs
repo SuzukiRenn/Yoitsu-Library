@@ -1,5 +1,32 @@
 import {createReasonReferenceEditor} from './reason-reference-editor.mjs?v=20261025-keyboard-1';
 
+const helpList = document.querySelector('.course-help-list');
+const helpCards = helpList?.querySelectorAll(':scope > .course-help-card');
+if (helpCards?.length && typeof ResizeObserver === 'function') {
+  let frame;
+  const resize = new ResizeObserver(() => {
+    if (frame !== undefined) return;
+    frame = requestAnimationFrame(() => {
+      frame = undefined;
+      const style = getComputedStyle(helpList);
+      const multipleColumns = style.gridTemplateColumns.trim().split(/\s+/).length > 1;
+      if (multipleColumns) {
+        const row = parseFloat(style.getPropertyValue('--course-help-row'));
+        const gap = parseFloat(style.columnGap);
+        // Read all heights before writing spans. Grid places cards in reading order.
+        const spans = Array.from(helpCards, card => Math.ceil((card.getBoundingClientRect().height + gap) / row));
+        helpCards.forEach((card, index) => {
+          const span = String(spans[index]);
+          if (card.style.getPropertyValue('--course-help-span') !== span) card.style.setProperty('--course-help-span', span);
+        });
+      }
+      helpList.toggleAttribute('data-help-masonry', multipleColumns);
+    });
+  });
+  resize.observe(helpList);
+  helpCards.forEach(card => resize.observe(card));
+}
+
 const examples = document.querySelector('[data-course-examples]');
 if (examples) {
   const query = examples.form.elements.query;
