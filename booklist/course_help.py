@@ -1,6 +1,8 @@
 """Book identification discussions and version-checked acceptance."""
+from urllib.parse import urlencode
+
 from django.core.exceptions import ValidationError
-from django.db.models import Q
+from django.db.models import BooleanField, Case, Count, Q, Value, When
 from django.shortcuts import get_object_or_404, redirect
 
 from . import catalog, services
@@ -9,10 +11,11 @@ from .course_common import bump, clean, conflict, course_page, deny, integer, re
 from .course_models import BookCandidate, BookClue, BookQuestion
 
 
-def questions():
-    visible = catalog.visible_works().values('pk')
-    return BookQuestion.objects.filter(hidden=False).exclude(
-        Q(accepted__hidden=True) | (Q(accepted__isnull=False) & ~Q(accepted__work_id__in=visible)))
+STATES = {'all': '全部', 'open': '求助中', 'solved': '已解决'}
+
+
+def visible_replies(candidates):
+    return candidates.filter(hidden=False, work_id__in=catalog.visible_works().values('pk'))
 
 
 def question_url(question):
@@ -30,21 +33,27 @@ def index(request):
         return redirect(question_url(question))
     term = clean(request.GET.get('q', ''), 100, required=False)
     mode = request.GET.get('status', 'all')
-    if mode not in ('all', 'open', 'solved'):
+    if mode not in STATES:
         raise ValidationError('请选择有效的求助状态。')
-    results = BookQuestion.objects.filter(hidden=False).select_related('author', 'accepted__work')
-    solved = questions().filter(accepted__isnull=False).values('pk')
+    results = BookQuestion.objects.filter(hidden=False).select_related('author')
+    replies = visible_replies(BookCandidate.objects.all()).values('pk')
+    solved = Q(accepted_id__in=replies)
     if mode == 'solved':
-        results = results.filter(pk__in=solved)
+        results = results.filter(solved)
     elif mode == 'open':
-        results = results.exclude(pk__in=solved)
+        results = results.exclude(solved)
     if term:
-        results = results.filter(Q(title__icontains=term) | Q(clues__icontains=term) | Q(additions__text__icontains=term)).distinct()
-    from django.db.models import Case, When, Value, BooleanField
-    results = results.annotate(solved=Case(When(pk__in=solved, then=Value(True)), default=Value(False), output_field=BooleanField()))
+        results = results.filter(Q(title__icontains=term) | Q(clues__icontains=term) | Q(additions__text__icontains=term))
+    results = results.annotate(
+        solved=Case(When(solved, then=Value(True)), default=Value(False), output_field=BooleanField()),
+        reply_count=Count('candidates', filter=Q(candidates__in=replies), distinct=True),
+    )
+    query = {'q': term} if term else {}
+    tabs = [{'key': key, 'label': label, 'url': '?' + urlencode({**query, 'status': key})}
+            for key, label in STATES.items()]
     hidden = BookQuestion.objects.filter(hidden=True).order_by('-id')[:50] if request.admin else []
     return page(request, 'booklist/course/help.html', {'questions': results.order_by('-updated_at', '-id')[:50],
-        'q': term, 'mode': mode, 'hidden_questions': hidden})
+        'q': term, 'mode': mode, 'tabs': tabs, 'hidden_questions': hidden})
 
 
 @course_page
@@ -54,7 +63,7 @@ def detail(request, question_id):
         from django.http import Http404
         raise Http404
     candidates = question.candidates.select_related('author', 'work').order_by('id')
-    visible_candidates = candidates.filter(hidden=False, work_id__in=catalog.visible_works().values('pk'))
+    visible_candidates = visible_replies(candidates)
     accepted = visible_candidates.filter(pk=question.accepted_id).first() if question.accepted_id else None
     owner = request.account is not None and question.author_id == request.account.pk
     if request.method == 'POST':

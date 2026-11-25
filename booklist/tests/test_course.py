@@ -161,3 +161,23 @@ class CourseTests(TestCase):
         self.assertEqual(self.post(owner, path, version=4, action='unaccept').status_code, 302)
         self.assertNotContains(self.client.get('/book-help/', {'status':'solved'}), question.title)
         self.assertContains(self.client.get(path), '场景相符')
+
+        question.additions.create(text='庭院的另一条线索')
+        BookCandidate.objects.create(question=question, work=self.second, author=self.member,
+                                     reason='已隐藏的回复', hidden=True)
+        BookCandidate.objects.create(question=question, work=self.hidden, author=self.member,
+                                     reason='作品不可见')
+        filtered = self.client.get('/book-help/', {'status':'open', 'q':'庭院'})
+        self.assertContains(filtered, question.title, count=1)
+        self.assertContains(filtered, '1 条回复', count=1)
+        self.assertContains(filtered, 'q=%E5%BA%AD%E9%99%A2&amp;status=solved')
+        detail = self.client.get(path)
+        self.assertContains(detail, '1 条回复', count=1)
+        self.assertNotContains(detail, '已隐藏的回复')
+        self.assertNotContains(detail, '作品不可见')
+
+        BookQuestion.objects.filter(pk=question.pk).update(accepted=candidate)
+        self.work.hidden_at = timezone.now()
+        self.work.save(update_fields=['hidden_at'])
+        self.assertNotContains(self.client.get('/book-help/', {'status':'solved'}), question.title)
+        self.assertContains(self.client.get('/book-help/', {'status':'open'}), '0 条回复', count=1)

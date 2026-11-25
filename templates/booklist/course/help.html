@@ -6,22 +6,45 @@
   {% if current_account %}
   <details class="course-create course-disclosure">
     <summary class="primary">发布求助</summary>
-    <form method="post" class="course-panel course-stack">{% csrf_token %}
-      <label>标题 <input name="title" maxlength="100" required></label>
-      <label>想得起来的线索 <textarea name="clues" maxlength="1000" required></textarea></label>
+    <form method="post" class="course-panel">{% csrf_token %}
+      <label>用一句话概括线索 <input name="title" maxlength="100" placeholder="例：主角在雪夜收到一封信" required></label>
+      <label>记得的情节、人物或对白 <textarea name="clues" maxlength="1000" required></textarea></label>
       <button class="primary">提交求助</button>
     </form>
   </details>
   {% else %}<a class="primary" href="{{ login_url }}">登录后发布求助</a>{% endif %}
 </header>
-<form method="get" class="course-filter">
-  <label>搜索线索 <input type="search" name="q" placeholder="输入作品名或记得的情节" maxlength="100" value="{{ q }}"></label>
-  <label>状态 <select name="status"><option value="all">全部</option><option value="open"{% if mode == 'open' %} selected{% endif %}>求助中</option><option value="solved"{% if mode == 'solved' %} selected{% endif %}>已解决</option></select></label>
-  <button>搜索</button>
-</form>
-<ul class="course-list">{% for item in questions %}<li>
-  <div class="course-row-heading"><h2><a href="/book-help/{{ item.pk }}/">{{ item.title }}</a></h2><span class="course-badge{% if item.solved %} course-badge-resolved{% endif %}">{% if item.solved %}已解决{% else %}求助中{% endif %}</span></div>
-  <p class="section-note">{{ item.author.display_name }}</p><p class="course-prose">{{ item.clues|truncatechars:140 }}</p>
-  </li>{% empty %}<li class="course-empty">暂无符合条件的求助。</li>{% endfor %}</ul>
-{% if hidden_questions %}<h2>已隐藏的求助</h2><ul class="course-list">{% for item in hidden_questions %}<li><a href="/book-help/{{ item.pk }}/">{{ item.title }}</a></li>{% endfor %}</ul>{% endif %}
+<div class="course-help-toolbar">
+  <nav class="course-help-tabs" aria-label="求助状态">
+    {% for tab in tabs %}<a href="{{ tab.url }}"{% if mode == tab.key %} aria-current="page"{% endif %}>{{ tab.label }}</a>{% endfor %}
+  </nav>
+  <form method="get" class="course-help-search" role="search" aria-label="搜索求助">
+    <input type="hidden" name="status" value="{{ mode }}">
+    <label for="help-search" class="sr-only">搜索求助线索</label>
+    <input id="help-search" type="search" name="q" placeholder="搜情节、人物或对白" maxlength="100" value="{{ q }}">
+    <button>搜索</button>
+  </form>
+</div>
+<ul class="course-list course-help-list" aria-label="求助帖子">
+  {% for item in questions %}
+  <li class="course-help-card">
+    <div class="course-row-heading">
+      <h2><a href="/book-help/{{ item.pk }}/">{{ item.title }}</a></h2>
+      <span class="course-badge{% if item.solved %} course-badge-resolved{% endif %}">{% if item.solved %}已解决{% else %}求助中{% endif %}</span>
+    </div>
+    <p class="course-help-excerpt">{{ item.clues|truncatechars:140 }}</p>
+    <footer class="course-post-meta">
+      <span>{{ item.author.display_name }}</span><time datetime="{{ item.created_at|date:'c' }}">{{ item.created_at|date:'Y-m-d H:i' }}</time>
+      <span class="course-reply-count">{{ item.reply_count }} 条回复</span>
+    </footer>
+  </li>
+  {% empty %}<li class="course-empty">暂无符合条件的求助。</li>{% endfor %}
+</ul>
+{% if hidden_questions %}
+<section class="course-section"><h2>已隐藏的求助</h2>
+  <ul class="course-list">{% for item in hidden_questions %}
+    <li class="course-link-row"><a href="/book-help/{{ item.pk }}/">{{ item.title }}</a></li>
+  {% endfor %}</ul>
+</section>
+{% endif %}
 {% endblock %}
