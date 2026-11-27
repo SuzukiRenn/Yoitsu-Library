@@ -70,8 +70,6 @@ def detail(request, question_id):
         if not owner or question.hidden:
             deny()
         require_version(request.POST, question)
-        if request.POST.get('confirm') != 'on':
-            raise ValidationError('请确认删除这条求助。')
         question.deleted_at = timezone.now()
         bump(question, 'deleted_at')
         course_reply_likes.retract_question_likes(question.pk)

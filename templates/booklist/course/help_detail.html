@@ -37,7 +37,6 @@
     <form method="post" action="/book-help/{{ question.pk }}/">
       {% include 'booklist/course/version.html' with version=question.version %}
       <p class="section-note">删除后原链接将无法打开，已有回复也会下架。</p>
-      <label><input type="checkbox" name="confirm" required> 我确认删除这条求助</label>
       <button name="action" value="delete_question">确认删除</button>
     </form>
   </details>
