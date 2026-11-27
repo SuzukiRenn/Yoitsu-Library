@@ -1,4 +1,4 @@
-import {localReturn,returnTo} from './navigation-context.mjs?v=20261127-course-find-2';
+import {localReturn,returnTo} from './navigation-context.mjs?v=20261127-course-curate-1';
 export function finishAccountLogin(result,next,win=window){
  const destination=localReturn(next,win.location.origin);
  if(result?.nickname_required===true){

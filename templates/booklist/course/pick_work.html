@@ -1,7 +1,16 @@
-<div class="course-picker" data-course-picker>
-  <div class="course-picker-search"><label>查找作品 <input type="search" maxlength="100" autocomplete="off" data-course-query placeholder="输入书名或作者"></label>
+<div class="course-picker" data-course-picker{% if choose_only %} data-course-draft-works="{% for row in nominations %}{% if row.visible %}{{ row.item.work_id }} {% endif %}{% endfor %}"{% endif %}>
+  <div class="course-picker-search" data-course-picker-search><label>查找作品 <input type="search" maxlength="100" autocomplete="off" data-course-query placeholder="{% if choose_only %}输入书名或别名{% else %}输入书名或作者{% endif %}"></label>
   <button type="button" data-course-search>查找</button></div>
   <p class="section-note" role="status" data-course-status></p>
   <ul data-course-results></ul>
+  {% if choose_only %}
+  <div class="course-picked-work" data-course-selection hidden>
+    <div><span class="section-note">已选作品</span><strong data-course-selected-title></strong></div>
+    <button type="button" data-course-change-work>更换作品</button>
+  </div>
+  <input type="hidden" name="work" data-course-work>
+  <noscript><p class="section-note">请启用浏览器脚本以搜索并选择作品。</p></noscript>
+  {% else %}
   <label>所选作品编号 <input type="number" name="work" required min="1" inputmode="numeric" data-course-work></label>
+  {% endif %}
 </div>

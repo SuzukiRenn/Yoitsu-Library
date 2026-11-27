@@ -107,7 +107,27 @@ for (const picker of document.querySelectorAll('[data-course-picker]')) {
   const status = picker.querySelector('[data-course-status]');
   const results = picker.querySelector('[data-course-results]');
   const selected = picker.querySelector('[data-course-work]');
+  const selection = picker.querySelector('[data-course-selection]');
+  const searchFields = picker.querySelector('[data-course-picker-search]');
+  const submitChoice = selection && trigger.form.querySelector('button[value="nominate"]');
+  const draftWorks = new Set((picker.dataset.courseDraftWorks || '').trim().split(/\s+/));
   let previous;
+  const choose = work => {
+    selected.value = String(work.id);
+    results.replaceChildren();
+    if (!selection) {
+      status.textContent = '已选 ' + work.title;
+      trigger.focus();
+      return;
+    }
+    selection.querySelector('[data-course-selected-title]').textContent =
+      work.author ? work.title + ' · ' + work.author : work.title;
+    status.textContent = '';
+    searchFields.hidden = true;
+    selection.hidden = false;
+    submitChoice.disabled = false;
+    trigger.form.elements.reason.focus();
+  };
   const search = async () => {
     if (!query.value.trim()) {
       status.textContent = '请输入书名或作者。';
@@ -130,20 +150,41 @@ for (const picker of document.querySelectorAll('[data-course-picker]')) {
         const button = document.createElement('button');
         button.type = 'button';
         button.textContent = work.author ? work.title + ' · ' + work.author : work.title;
-        button.addEventListener('click', () => {
-          selected.value = String(work.id);
-          status.textContent = '已选 ' + work.title;
-          trigger.focus();
-          results.replaceChildren();
-        });
+        if (draftWorks.has(String(work.id))) {
+          button.disabled = true;
+          button.textContent += '（已在草稿）';
+        } else button.addEventListener('click', () => choose(work));
         item.append(button);
         results.append(item);
       }
-      status.textContent = payload.results.length ? '请选择一部作品。' : '未找到匹配作品。';
+      if (!payload.results.length) status.textContent = '未找到匹配作品。';
+      else if (payload.results.every(work => draftWorks.has(String(work.id)))) status.textContent = '匹配作品已在草稿中。';
+      else status.textContent = '选择要加入的作品。';
     } catch (error) {
       if (!controller.signal.aborted) status.textContent = '搜索失败，请重试。';
     }
   };
+  if (selection) {
+    selection.querySelector('[data-course-change-work]').addEventListener('click', () => {
+      selected.value = '';
+      submitChoice.disabled = true;
+      selection.hidden = true;
+      searchFields.hidden = false;
+      query.focus();
+      query.select();
+    });
+    query.addEventListener('input', () => {
+      previous?.abort();
+      results.replaceChildren();
+      status.textContent = '';
+    });
+    trigger.form.addEventListener('submit', event => {
+      if (selected.value) return;
+      event.preventDefault();
+      status.textContent = '请先搜索并选择一部作品。';
+      query.focus();
+    });
+  }
   trigger.addEventListener('click', search);
   query.addEventListener('keydown', event => {
     if (event.key === 'Enter' && !event.isComposing) {

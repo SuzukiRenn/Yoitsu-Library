@@ -3,6 +3,8 @@ import {localReturn,returnTo,installNavigationContext} from '../static/navigatio
 const origin='http://local';
 for(const bad of ['https://evil.test/','//evil.test/','/\\evil.test/','/%5cevil.test/','javascript:alert(1)','/api/v1/csrf/','/manage/','/random-book/','/?q=%0aInjected','/account/login/'])assert.equal(localReturn(bad,origin),'/',bad);
 assert.equal(localReturn('/works/7/?from=%2F%3Ftag%3D9#reasons',origin),'/works/7/?from=%2F%3Ftag%3D9#reasons');
+assert.equal(localReturn('/curated/',origin),'/curated/');
+assert.equal(localReturn('/curated/7/?edition=2',origin),'/curated/7/?edition=2');
 const storage=new Map();
 function fixture(href,y=700,{blocked=false,back=false,resultTop,reload=false}={}) {
  const events={},winEvents={},frames=[],scrolls=[],assigns=[],timers=new Map(),rootAttrs=new Set();let serial=0;

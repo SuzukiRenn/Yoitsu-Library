@@ -282,6 +282,91 @@ class CourseTests(TestCase):
         self.assertNotContains(shelf_index, self.work.display_title)
         self.assertEqual(shelf.editions.count(), 2)
 
+    def test_curated_add_review_publish_workflow(self):
+        owner, member = self.browser(self.owner_token), self.browser(self.member_token)
+        path = self.post(owner, '/curated/', title='冬日书单').url
+        shelf = CuratedShelf.objects.get()
+
+        def action(client, **data):
+            shelf.refresh_from_db()
+            response = self.post(client, path, version=shelf.version, **data)
+            self.assertEqual(response.status_code, 302, response.content)
+            return client.get(response.url)
+
+        empty = owner.get(path)
+        self.assertContains(empty, '添加作品')
+        self.assertContains(empty, 'value="publish" disabled')
+        self.assertContains(empty, '<input type="hidden" name="work" data-course-work>')
+        self.assertNotContains(empty, '所选作品编号')
+        self.assertNotContains(member.get('/curated/'), '冬日书单')
+
+        invited = action(owner, action='invite', display_name=self.member.display_name, role='member')
+        self.assertContains(invited, '协作者已添加或更新。')
+        self.assertNotContains(invited, self.member.username)
+        self.assertContains(member.get('/curated/'), '成员 · 草稿')
+        self.assertContains(owner.get('/curated/'), '创建者 · 草稿')
+
+        added = action(owner, action='nominate', work=self.work.pk, reason='创建者的收录理由')
+        own = shelf.nominations.get(work=self.work)
+        self.assertTrue(own.approved)
+        self.assertEqual((added.context['ready_count'], added.context['pending_count']), (1, 0))
+        self.assertContains(added, '作品已加入草稿。')
+        self.assertNotContains(added, 'value="publish" disabled')
+        proposed = action(member, action='nominate', work=self.second.pk, reason='成员的提议理由')
+        item = shelf.nominations.get(work=self.second)
+        self.assertFalse(item.approved)
+        self.assertContains(proposed, '提议已提交，等待创建者审核。')
+        self.assertNotContains(proposed, '发布书单')
+        self.assertNotContains(proposed, '接纳作品')
+        self.assertEqual((proposed.context['ready_count'], proposed.context['pending_count']), (1, 1))
+
+        accepted = action(owner, action='review', item=item.pk, approved='on')
+        self.assertContains(accepted, '已接纳这部作品。')
+        self.assertContains(accepted, '退回待审核')
+        self.assertEqual((accepted.context['ready_count'], accepted.context['pending_count']), (2, 0))
+        returned = action(owner, action='review', item=item.pk)
+        self.assertContains(returned, '作品已退回待审核。')
+        item.refresh_from_db()
+        self.assertFalse(item.approved)
+        self.assertEqual(item.reason, '成员的提议理由')
+
+        published = action(owner, action='publish')
+        self.assertContains(published, '新版本已发布。')
+        self.assertContains(published, '可发布内容与最新公开版一致。')
+        self.assertContains(published, 'value="publish" disabled')
+        self.assertEqual(shelf.editions.get(number=1).entries[0]['work_id'], self.work.pk)
+        self.assertNotContains(self.client.get(path), '成员的提议理由')
+        self.assertNotContains(owner.get(path+'?edition=1'), '添加作品')
+        self.assertContains(owner.get(path+'?edition=1'), '创建者的收录理由')
+
+        action(owner, action='review', item=item.pk, approved='on')
+        edited = action(owner, action='edit_item', item=item.pk, order=1)
+        self.assertEqual([row['item'].pk for row in edited.context['nominations']], [item.pk, own.pk])
+        item.refresh_from_db()
+        self.assertTrue(item.approved)
+        item.reason = '应被隐藏的私有理由'
+        item.save(update_fields=['reason'])
+        Work.objects.filter(pk=item.work_id).update(hidden_at=timezone.now())
+        hidden = owner.get(path)
+        self.assertContains(hidden, '请先移除不可见的已接纳作品。')
+        self.assertContains(hidden, 'value="publish" disabled')
+        self.assertNotContains(hidden, item.reason)
+        self.assertNotContains(hidden, self.second.display_title)
+        shelf.refresh_from_db()
+        self.assertEqual(self.post(owner, path, action='publish', version=shelf.version).status_code, 409)
+        self.assertEqual(shelf.editions.count(), 1)
+
+    def test_curated_invite_requires_an_unambiguous_public_nickname(self):
+        accounts.register('another_curator', self.member.display_name, 'CourseDemo!another42')
+        owner = self.browser(self.owner_token)
+        path = self.post(owner, '/curated/', title='只邀请确认的读者').url
+        shelf = CuratedShelf.objects.get()
+        ambiguous = self.post(owner, path, action='invite', version=1, display_name=self.member.display_name, role='member')
+        self.assertContains(ambiguous, '有多位读者使用这个昵称，请按读者编号邀请。', status_code=409)
+        self.assertFalse(shelf.memberships.exists())
+        self.assertEqual(self.post(owner, path, action='invite', version=1, reader_id=self.member.pk, role='member').status_code, 302)
+        self.assertEqual(shelf.memberships.get().account_id, self.member.pk)
+
     def test_work_page_routes_own_edits_spoilers_and_reference_visibility(self):
         owner, member = self.browser(self.owner_token), self.browser(self.member_token)
         work_path = f'/works/{self.work.pk}/'
