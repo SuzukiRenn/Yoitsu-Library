@@ -438,6 +438,13 @@ html[data-course-search-check] .course-find { visibility: hidden; }
 .course-topic-additions h2 { font-size: 1rem; }
 .course-topic-additions ul { display: grid; gap: .65rem; margin: .45rem 0 0; padding: 0; list-style: none; }
 .course-list > .course-reply-accepted { border-inline-start: 3px solid var(--accent); }
+.course-reply { scroll-margin-top: 1rem; }
+.course-reply:target { outline: 2px solid var(--accent); outline-offset: 2px; }
+.course-reply-actions { align-items: center; }
+.course-reply-actions button span { margin-inline-start: .25rem; }
+.course-reply-actions button[aria-pressed="true"] { background: var(--wash); }
+.course-reply-like-count { color: var(--muted); font-size: .85rem; }
+.course-topic-delete > summary { width: fit-content; color: var(--muted); }
 
 @media (max-width: 600px) {
   .course-list.course-shelf-grid, .course-list.course-help-list { grid-template-columns: minmax(0, 1fr); }

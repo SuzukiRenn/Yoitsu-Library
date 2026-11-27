@@ -687,3 +687,34 @@ class ConcurrentAccountTests(TransactionTestCase):
         self.assertEqual(PublicLike.objects.count(), 1)
         self.assertEqual(WorkLikeEvent.objects.filter(kind='work_like').count(), 1)
         self.assertEqual(Notification.objects.filter(event__kind='work_like').count(), 1)
+
+    def test_concurrent_help_reply_likes_create_one_reaction_and_notification(self):
+        from concurrent.futures import ThreadPoolExecutor
+        from threading import Barrier
+        from django.db import connections
+        from booklist.course_models import BookCandidate, BookCandidateLike, BookQuestion
+
+        token, author = accounts.register('thread_owner', '楼主', PASSWORD)
+        _, writer = accounts.register('thread_writer', '回复读者', PASSWORD)
+        work = Work.objects.create(original_submitted_title='并发验证作品')
+        question = BookQuestion.objects.create(author=author.account, title='并发点赞', clues='初始线索')
+        item = BookCandidate.objects.create(question=question, work=work, author=writer.account, reason='辨认依据')
+        barrier = Barrier(2)
+
+        def like():
+            connections.close_all()
+            try:
+                client = Client()
+                client.cookies[settings.ACCOUNT_COOKIE] = token
+                barrier.wait(timeout=10)
+                return client.post(f'/book-help/{question.pk}/',
+                    {'action': 'like_reply', 'enabled': '1', 'candidate': item.pk}).status_code
+            finally:
+                connections.close_all()
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [pool.submit(like) for _ in range(2)]
+            self.assertEqual([future.result(timeout=20) for future in futures], [302, 302])
+        self.assertEqual(BookCandidateLike.objects.filter(candidate=item).count(), 1)
+        self.assertEqual(WorkLikeEvent.objects.filter(kind='reply_like', subject_id=item.pk).count(), 1)
+        self.assertEqual(Notification.objects.filter(event__kind='reply_like', recipient=writer.account).count(), 1)

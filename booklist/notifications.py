@@ -1,5 +1,6 @@
 """Account interaction notices, deduplicated independently by kind and scope."""
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from .models import Account, WorkLikeEvent, Notification, Work
 
@@ -14,7 +15,9 @@ def merged_family(work):
 
 
 def visible_inbox(account):
-    return Notification.objects.filter(recipient=account, retracted_at__isnull=True)
+    from .course_reply_likes import public_replies
+    return Notification.objects.filter(recipient=account, retracted_at__isnull=True).filter(
+        ~Q(event__kind=WorkLikeEvent.REPLY_LIKE) | Q(event__subject_id__in=public_replies().values('pk')))
 
 
 def retract_co_recommendation(work, client, activity=None):

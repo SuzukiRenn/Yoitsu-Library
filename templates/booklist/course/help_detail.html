@@ -1,7 +1,8 @@
 {% extends 'booklist/course/base.html' %}
 {% block course_title %}{{ question.title }}{% endblock %}
 {% block course_content %}
-<a class="back-link course-back" href="/book-help/">← 返回找书互助</a>
+{% if messages_source %}<a class="back-link course-back" href="{{ messages_source }}" data-context-return>← 返回消息</a>
+{% else %}<a class="back-link course-back" href="/book-help/">← 返回找书互助</a>{% endif %}
 <section class="course-panel course-topic" aria-labelledby="course-topic-title">
   <header class="course-topic-header">
     <div class="course-row-heading">
@@ -31,6 +32,15 @@
       <button name="action" value="add_clue">保存线索</button>
     </form>
   </details>
+  <details class="course-disclosure course-topic-delete">
+    <summary>删除求助</summary>
+    <form method="post" action="/book-help/{{ question.pk }}/">
+      {% include 'booklist/course/version.html' with version=question.version %}
+      <p class="section-note">删除后原链接将无法打开，已有回复也会下架。</p>
+      <label><input type="checkbox" name="confirm" required> 我确认删除这条求助</label>
+      <button name="action" value="delete_question">确认删除</button>
+    </form>
+  </details>
   {% endif %}
   {% if has_admin_access %}
   <form method="post">
@@ -43,7 +53,7 @@
   <header class="course-row-heading"><h2 id="course-replies-title">读者回复</h2><span class="course-post-meta">{{ candidates|length }} 条回复</span></header>
   <ol class="course-list">
     {% for item in candidates %}
-    <li class="course-reply{% if item.pk == accepted.pk %} course-reply-accepted{% endif %}">
+    <li id="reply-{{ item.pk }}" class="course-reply{% if item.pk == accepted.pk %} course-reply-accepted{% endif %}">
       <header class="course-row-heading">
         <div class="course-post-meta">
           <span>{{ item.author.display_name }}</span><time datetime="{{ item.created_at|date:'c' }}">{{ item.created_at|date:'Y-m-d H:i' }}</time>
@@ -52,6 +62,15 @@
       </header>
       <h3><a href="/works/{{ item.work_id }}/?from=/book-help/{{ question.pk }}/">{{ item.work.display_title }}</a></h3>
       <p class="course-prose">{{ item.reason }}</p>
+      <div class="course-actions course-reply-actions">
+        {% if current_account and current_account.pk != item.author_id and not question.hidden %}
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="candidate" value="{{ item.pk }}">
+          <input type="hidden" name="action" value="like_reply">
+          <button name="enabled" value="{% if item.liked %}0{% else %}1{% endif %}" aria-label="点赞回复，当前 {{ item.like_count }} 个赞" aria-pressed="{{ item.liked|yesno:'true,false' }}">{% if item.liked %}已点赞{% else %}点赞{% endif %} <span>{{ item.like_count }}</span></button>
+        </form>
+        {% else %}<span class="course-reply-like-count">点赞 {{ item.like_count }}</span>{% endif %}
       {% if is_owner and not question.hidden %}
         {% if not accepted or item.pk == accepted.pk %}
         <form method="post">
@@ -68,10 +87,11 @@
         <button name="action" value="hide_candidate">隐藏候选</button>
       </form>
       {% endif %}
+      </div>
     </li>
     {% empty %}<li class="course-empty">暂无读者回复。</li>{% endfor %}
   </ol>
-  {% if current_account and not accepted and not question.hidden %}
+  {% if current_account and not is_owner and not accepted and not question.hidden %}
   <form method="post" class="course-panel">
     {% include 'booklist/course/version.html' with version=question.version %}
     <h2>回复求助</h2>

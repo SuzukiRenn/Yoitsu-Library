@@ -109,9 +109,11 @@ class WorkLikeEvent(models.Model):
     actor = models.ForeignKey(Account, on_delete=P)
     scope_key = models.CharField(max_length=40)
     # Keep the existing ledger and its IDs; older rows remain work-like events.
+    REPLY_LIKE = 'reply_like'
     kind = models.CharField(max_length=20, default='work_like', choices=[
-        ('work_like', '作品点赞'), ('reason_like', '理由赞同'), ('co_recommendation', '共同推荐')])
-    # Permanent reason ID, intentionally not a cascading FK when a reason is removed.
+        ('work_like', '作品点赞'), ('reason_like', '理由赞同'), ('co_recommendation', '共同推荐'),
+        (REPLY_LIKE, '求助回复点赞')])
+    # Permanent subject ID, intentionally not a cascading FK when the subject is removed.
     subject_id = models.PositiveBigIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -129,13 +131,18 @@ class Notification(models.Model):
     retracted_at = models.DateTimeField(null=True)
 
     @property
+    def is_reply_like(self):
+        return self.event.kind == WorkLikeEvent.REPLY_LIKE
+
+    @property
     def action_label(self):
         return {'reason_like': '赞同了你为',
+                'reply_like': '赞了你在',
                 'co_recommendation': '也推荐了你推荐的'}.get(self.event.kind, '赞了你推荐的')
 
     @property
     def action_suffix(self):
-        return '写的推荐理由' if self.event.kind == 'reason_like' else ''
+        return {'reason_like': '写的推荐理由', 'reply_like': '中的回复'}.get(self.event.kind, '')
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['event', 'recipient'], name='notification_recipient_event_unique')]
@@ -541,4 +548,4 @@ class Feedback(Timestamped):
         ]
 
 # Register course models with the existing Django app.
-from .course_models import (ReadingRoute, CuratedShelf, Curator, Nomination, CuratedEdition, BookQuestion, BookClue, BookCandidate)  # noqa: E402,F401
+from .course_models import (ReadingRoute, CuratedShelf, Curator, Nomination, CuratedEdition, BookQuestion, BookClue, BookCandidate, BookCandidateLike)  # noqa: E402,F401

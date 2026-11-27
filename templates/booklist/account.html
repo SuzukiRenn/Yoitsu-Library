@@ -7,8 +7,8 @@
 <div class="section-heading"><h1>消息</h1><div class="notification-actions"><a class="reason-link notification-action" data-context-return href="{{ return_url }}">← 返回</a><button type="button" class="primary notification-action" data-read-all>全部已读</button></div></div>
 <ol class="notification-list" data-notifications{% if notification_page > 1 %} data-navigation-loading{% endif %}>{% for item in notifications %}<li class="notification{% if not item.read_at %} unread{% endif %}" data-notification="{{ item.id }}">
 <p><strong>{{ item.event.actor.display_name }}</strong> {{ item.action_label }}《{{ item.work_title }}》{{ item.action_suffix }}</p>
-<p class="section-note">{% if item.activity_title %}{{ item.activity_title }}{% else %}公共书架{% endif %} · {{ item.created_at|date:'Y-m-d H:i' }}</p>
-<div class="notification-actions"><a class="primary notification-action" data-notification-work href="/notifications/{{ item.id }}/work/?from={{ notification_source|urlencode }}">查看作品</a>
+<p class="section-note">{% if item.is_reply_like %}找书互助{% elif item.activity_title %}{{ item.activity_title }}{% else %}公共书架{% endif %} · {{ item.created_at|date:'Y-m-d H:i' }}</p>
+<div class="notification-actions"><a class="primary notification-action" data-notification-work href="/notifications/{{ item.id }}/work/?from={{ notification_source|urlencode }}">{% if item.is_reply_like %}查看回复{% else %}查看作品{% endif %}</a>
 {% if not item.read_at %}<button type="button" class="reason-link notification-action" data-read="{{ item.id }}">标为已读</button>{% endif %}</div></li>{% empty %}<li class="empty-state">暂无消息</li>{% endfor %}</ol>
 <button type="button" class="reason-link notification-action" data-more-notifications hidden>加载更多</button>
 {% elif mode == 'nickname' %}

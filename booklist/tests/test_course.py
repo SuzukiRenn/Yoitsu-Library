@@ -10,9 +10,9 @@ from django.conf import settings
 from django.test import Client, TestCase, override_settings
 from django.utils import timezone
 
-from booklist import accounts, activities, public_booklist
-from booklist.course_models import BookCandidate, BookQuestion, CuratedEdition, CuratedShelf, Nomination, ReadingRoute
-from booklist.models import Account, Activity, Admin, Tag, TagSuppression, UserWorkMetadata, Work, WorkAlias, WorkTag
+from booklist import accounts, activities, public_booklist, services
+from booklist.course_models import BookCandidate, BookCandidateLike, BookQuestion, CuratedEdition, CuratedShelf, Nomination, ReadingRoute
+from booklist.models import Account, Activity, Admin, Notification, Tag, TagSuppression, UserWorkMetadata, Work, WorkAlias, WorkLikeEvent, WorkTag
 
 
 class CourseTests(TestCase):
@@ -491,3 +491,106 @@ class CourseTests(TestCase):
         self.work.save(update_fields=['hidden_at'])
         self.assertNotContains(self.client.get('/book-help/', {'status':'solved'}), question.title)
         self.assertContains(self.client.get('/book-help/', {'status':'open'}), '0 条回复', count=1)
+
+    def test_help_owner_cannot_reply_and_confirmed_deletion_preserves_history(self):
+        owner, member = self.browser(self.owner_token), self.browser(self.member_token)
+        question = BookQuestion.objects.create(author=self.owner, title='保留旧回复测试', clues='仅此删除验证线索')
+        path = f'/book-help/{question.pk}/'
+        old = BookCandidate.objects.create(question=question, work=self.second, author=self.owner, reason='历史楼主回复')
+        question.accepted = old
+        question.save(update_fields=['accepted'])
+        self.assertContains(owner.get(path), '补充线索')
+        self.assertNotContains(owner.get(path), '提交候选作品')
+        self.assertContains(member.get(path), '历史楼主回复')
+        self.assertContains(member.get(path), '已采纳')
+        self.assertEqual(self.post(owner, path, action='unaccept', version=1).status_code, 302)
+        self.assertNotContains(owner.get(path), '提交候选作品')
+        self.assertContains(member.get(path), '提交候选作品')
+        self.assertEqual(self.post(owner, path, action='candidate', version=2, work=self.work.pk, reason='伪造回复').status_code, 403)
+        self.assertEqual(self.post(owner, path, action='add_clue', version=2, clue='仍可补充').status_code, 302)
+        self.assertEqual(self.post(member, path, action='candidate', version=3, work=self.work.pk, reason='读者的回复').status_code, 302)
+        item = question.candidates.get(author=self.member)
+        self.assertEqual(self.post(owner, path, action='accept', version=4, candidate=item.pk).status_code, 302)
+        self.assertEqual(self.post(member, path, action='delete_question', version=5, confirm='on').status_code, 403)
+        self.assertEqual(self.post(owner, path, action='delete_question', version=4, confirm='on').status_code, 409)
+        self.assertEqual(self.post(owner, path, action='delete_question', version=5).status_code, 400)
+
+        self.assertRedirects(self.post(owner, path, action='delete_question', version=5, confirm='on'), '/book-help/')
+        question.refresh_from_db()
+        self.assertIsNotNone(question.deleted_at)
+        self.assertFalse(question.hidden)
+        self.assertEqual(question.accepted_id, item.pk)
+        self.assertEqual(question.candidates.count(), 2)
+        self.assertEqual(question.additions.get().text, '仍可补充')
+        for client in (owner, member, self.client):
+            self.assertEqual(client.get(path).status_code, 404)
+            self.assertNotContains(client.get('/book-help/?q=仅此删除验证线索'), question.title)
+        admin_name, password = 'help_delete_admin', 'CourseHelp!DeleteAdmin42'
+        services.initialize_admin(admin_name, password)
+        admin_token, _ = services.login(admin_name, password)
+        client = Client()
+        client.cookies[settings.ADMIN_COOKIE] = admin_token
+        self.assertEqual(client.get(path).status_code, 404)
+        self.assertEqual(client.post(path, {'action': 'restore_question', 'version': question.version}).status_code, 404)
+
+    def test_reply_likes_notify_reply_author_link_and_retract_independently(self):
+        owner, member = self.browser(self.owner_token), self.browser(self.member_token)
+        question = BookQuestion.objects.create(author=self.owner, title='回复点赞通知题', clues='题干')
+        item = BookCandidate.objects.create(question=question, work=self.work, author=self.member, reason='理由')
+        path = f'/book-help/{question.pk}/'
+        action = {'action': 'like_reply', 'enabled': '1', 'candidate': item.pk}
+        self.assertEqual(self.post(member, path, **action).status_code, 403)
+        self.assertIn('/account/login/', self.client.post(path, action).url)
+        other = BookQuestion.objects.create(author=self.owner, title='第二个求助', clues='另一段线索')
+        self.assertEqual(self.post(owner, f'/book-help/{other.pk}/', **action).status_code, 404)
+        self.assertRedirects(self.post(owner, path, **action), f'{path}#reply-{item.pk}')
+        self.assertEqual(self.post(owner, path, **action).status_code, 302)
+        question.refresh_from_db()
+        self.assertEqual(question.version, 1)
+        self.assertEqual(BookCandidateLike.objects.filter(candidate=item, cancelled_at__isnull=True).count(), 1)
+        self.assertContains(owner.get(path), 'aria-pressed="true">已点赞 <span>1</span>')
+        self.assertContains(member.get(path), '点赞 1')
+        notice = Notification.objects.get(event__kind='reply_like')
+        self.assertEqual(notice.recipient_id, self.member.pk)
+        self.assertEqual(owner.get('/api/v1/notifications/unread/').json()['unread_count'], 0)
+        self.assertEqual(member.get('/api/v1/notifications/unread/').json()['unread_count'], 1)
+        inbox = member.get('/api/v1/notifications/').json()['results']
+        self.assertEqual((inbox[0]['kind'], inbox[0]['work_id']), ('reply_like', None))
+        self.assertEqual(inbox[0]['actor'], {'display_name': self.owner.display_name})
+        self.assertContains(member.get('/notifications/'), '查看回复')
+        target = f'/notifications/{notice.pk}/work/'
+        self.assertEqual(owner.get(target).status_code, 404)
+        source = '/notifications/?from=%2F&page=2'
+        params = urlencode({'from': source})
+        self.assertRedirects(member.get(target+'?'+params), f'{path}?{params}#reply-{item.pk}')
+        self.assertContains(member.get(path+'?'+params), '← 返回消息')
+        self.assertContains(member.get(path), f'id="reply-{item.pk}"')
+
+        event = WorkLikeEvent.objects.create(work=self.work, actor=self.owner, scope_key='public')
+        regular = Notification.objects.create(event=event, recipient=self.member, work_title='旧作品消息')
+        for row, field in ((item, 'hidden'), (question, 'hidden'), (self.work, 'hidden_at')):
+            hide, restore = (timezone.now(), None) if field == 'hidden_at' else (True, False)
+            type(row).objects.filter(pk=row.pk).update(**{field: hide})
+            self.assertEqual(member.get(target).status_code, 404)
+            status = member.get('/api/v1/notifications/unread/', {'since': notice.pk}).json()
+            self.assertEqual(status, {'unread_count': 1, 'retracted_ids': [notice.pk]})
+            type(row).objects.filter(pk=row.pk).update(**{field: restore})
+            self.assertEqual(member.get(target).status_code, 302)
+
+        self.assertEqual(self.post(owner, path, **{**action, 'enabled': '0'}).status_code, 302)
+        self.assertEqual(self.post(owner, path, **action).status_code, 302)
+        self.assertEqual(Notification.objects.filter(event__kind='reply_like').count(), 1)
+        self.assertEqual(member.get(target).status_code, 404)
+        self.assertEqual(member.get('/api/v1/notifications/unread/').json()['unread_count'], 1)
+        regular.refresh_from_db()
+        self.assertIsNone(regular.retracted_at)
+        self.assertEqual(member.get(f'/notifications/{regular.pk}/work/').url, f'/works/{self.work.pk}/')
+
+        third_token, third = accounts.register('third_reply_reader', '另一位读者', 'CourseDemo!reply310')
+        self.assertEqual(self.post(self.browser(third_token), path, **action).status_code, 302)
+        third_notice = Notification.objects.get(event__actor=third.account, event__kind='reply_like')
+        self.assertEqual(self.post(owner, path, action='delete_question', version=1, confirm='on').status_code, 302)
+        third_notice.refresh_from_db()
+        self.assertIsNotNone(third_notice.retracted_at)
+        self.assertEqual(member.get(f'/notifications/{third_notice.pk}/work/').status_code, 404)
+        self.assertEqual(BookCandidateLike.objects.filter(candidate=item).count(), 2)

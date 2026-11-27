@@ -6,6 +6,7 @@ export function safeNext(value, origin) {
   catch {return '/';}
 }
 export function notificationText(item) {
+  if (item.kind === 'reply_like') return `${item.actor.display_name} 赞了你在《${item.work_title}》中的回复`;
   const action = {reason_like:'赞同了你为', co_recommendation:'也推荐了你推荐的'}[item.kind] || '赞了你推荐的';
   return `${item.actor.display_name} ${action}《${item.work_title}》${item.kind === 'reason_like' ? '写的推荐理由' : ''}`;
 }
@@ -129,9 +130,10 @@ if (typeof document !== 'undefined' && !document.documentElement.hasAttribute('d
       if(append)for(const item of data.results) {
         const li=document.createElement('li');li.dataset.notification=String(item.id);li.className=`notification${item.read ? '' : ' unread'}`;
         const p=document.createElement('p');p.textContent=notificationText(item);
-        const note=document.createElement('p');note.className='section-note';note.textContent=`${item.activity_title || '公共书架'} · ${new Date(item.created_at).toLocaleString()}`;
+        const reply = item.kind === 'reply_like';
+        const note=document.createElement('p');note.className='section-note';note.textContent=`${reply ? '找书互助' : item.activity_title || '公共书架'} · ${new Date(item.created_at).toLocaleString()}`;
         const actions=document.createElement('div');actions.className='notification-actions';
-        const a=document.createElement('a');a.className='primary notification-action';a.textContent='查看作品';a.href=item.url;a.setAttribute('data-notification-work','');
+        const a=document.createElement('a');a.className='primary notification-action';a.textContent=reply ? '查看回复' : '查看作品';a.href=item.url;a.setAttribute('data-notification-work','');
         actions.append(a);li.append(p,note,actions);
         if(!item.read){const b=document.createElement('button');b.type='button';b.dataset.read=String(item.id);b.className='reason-link notification-action';b.textContent='标为已读';actions.append(b);}
         document.querySelector('[data-notifications]').append(li);

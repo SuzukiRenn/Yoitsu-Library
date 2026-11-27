@@ -66,6 +66,7 @@ class BookQuestion(Timestamped):
     accepted = models.ForeignKey('BookCandidate', null=True, on_delete=PROTECT, related_name='+')
     version = models.PositiveIntegerField(default=1)
     hidden = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True)
 
 
 class BookClue(Timestamped):
@@ -82,3 +83,12 @@ class BookCandidate(Timestamped):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=('question', 'work'), name='course_candidate_unique')]
+
+
+class BookCandidateLike(Timestamped):
+    candidate = models.ForeignKey(BookCandidate, related_name='likes', on_delete=PROTECT)
+    actor = models.ForeignKey(Account, on_delete=PROTECT)
+    cancelled_at = models.DateTimeField(null=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=('candidate', 'actor'), name='course_candidate_like_unique')]

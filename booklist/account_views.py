@@ -140,13 +140,15 @@ def inbox_query(request):
 def unread(request, data):
     parameters(request, ('since',))
     account = accounts.require(request)
-    result = {'unread_count': inbox_query(request).filter(read_at__isnull=True).count()}
+    from .notifications import visible_inbox
+    visible = visible_inbox(account)
+    result = {'unread_count': visible.filter(read_at__isnull=True).count()}
     if 'since' in request.GET:
         value = request.GET['since']
         if not value.isascii() or not value.isdecimal() or len(value) > 19 or not 0 < int(value) < 2**63:
             raise services.DomainError('invalid_request', '消息编号无效')
         result['retracted_ids'] = list(Notification.objects.filter(recipient=account,
-            retracted_at__isnull=False, pk__gte=int(value)).order_by('-pk').values_list('pk', flat=True)[:5000])
+            pk__gte=int(value)).exclude(pk__in=visible.values('pk')).order_by('-pk').values_list('pk', flat=True)[:5000])
     return JsonResponse(result)
 
 
@@ -156,6 +158,17 @@ def notification_target(request, data, notification_id):
     note = inbox_query(request).select_related('event__work').filter(pk=notification_id).first()
     if note is None:
         raise services.DomainError('not_found', '消息不存在', 404)
+    source = safe_return(request.GET['from'], '/notifications/') if 'from' in request.GET else ''
+    if source.split('?', 1)[0] != '/notifications/':
+        source = ''
+    if note.is_reply_like:
+        from .course_reply_likes import public_replies, scope_key
+        reply = public_replies().filter(pk=note.event.subject_id, author_id=note.recipient_id).values_list('question_id', 'id').first()
+        if reply is None or note.event.scope_key != scope_key(reply[0]):
+            raise services.DomainError('not_found', '回复不存在或暂不可见', 404)
+        question_id, reply_id = reply
+        suffix = '?' + urlencode({'from': source}) if source else ''
+        return redirect(f'/book-help/{question_id}/{suffix}#reply-{reply_id}')
     work = note.event.work
     while work.merged_into_id:
         work = work.merged_into
@@ -163,10 +176,8 @@ def notification_target(request, data, notification_id):
     catalog.work_detail(work.pk, include_retired=note.event.scope_key != 'public')
     suffix = '?activity=' + note.event.scope_key.split(':')[1] if note.event.scope_key.startswith('activity:') else ''
     anchor = '#reasons' if note.event.kind == 'reason_like' else ''
-    if 'from' in request.GET:
-        source=safe_return(request.GET['from'],'/notifications/')
-        if source.startswith('/notifications/'):
-            suffix += ('&' if suffix else '?')+urlencode({'from':source})
+    if source:
+        suffix += ('&' if suffix else '?')+urlencode({'from':source})
     return redirect(f'/works/{work.pk}/{suffix}{anchor}')
 
 
@@ -184,9 +195,12 @@ def inbox(request, data):
     rows = list(selected.select_related('event__actor').order_by('-id')[offset:offset+size])
     has_more = bool(rows) and query.filter(pk__lt=rows[-1].pk).exists()
     return JsonResponse({'unread_count': query.filter(read_at__isnull=True).count(), 'total': query.count(), 'has_more': has_more,
-        'results': [{'id': row.pk, 'actor': accounts.public(row.event.actor), 'work_title': row.work_title,
+        'results': [{'id': row.pk,
+            'actor': {'display_name': row.event.actor.display_name} if row.is_reply_like else accounts.public(row.event.actor),
+            'work_title': row.work_title,
             'kind': row.event.kind,
-            'scope': row.event.scope_key, 'work_id': row.event.work_id, 'url': f'/notifications/{row.pk}/work/', 'read': row.read_at is not None,
+            'scope': row.event.scope_key, 'work_id': None if row.is_reply_like else row.event.work_id,
+            'url': f'/notifications/{row.pk}/work/', 'read': row.read_at is not None,
             'activity_title': row.activity_title, 'created_at': row.created_at.isoformat()}
             for row in rows]})
 
