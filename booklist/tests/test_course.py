@@ -11,8 +11,8 @@ from django.test import Client, TestCase, override_settings
 from django.utils import timezone
 
 from booklist import accounts, activities, public_booklist
-from booklist.course_models import BookCandidate, BookQuestion, CuratedShelf, Nomination, ReadingRoute
-from booklist.models import Activity, Admin, Tag, TagSuppression, UserWorkMetadata, Work, WorkAlias, WorkTag
+from booklist.course_models import BookCandidate, BookQuestion, CuratedEdition, CuratedShelf, Nomination, ReadingRoute
+from booklist.models import Account, Activity, Admin, Tag, TagSuppression, UserWorkMetadata, Work, WorkAlias, WorkTag
 
 
 class CourseTests(TestCase):
@@ -300,9 +300,12 @@ class CourseTests(TestCase):
         self.assertNotContains(empty, '所选作品编号')
         self.assertNotContains(member.get('/curated/'), '冬日书单')
 
-        invited = action(owner, action='invite', display_name=self.member.display_name, role='member')
+        email = 'course.member2026@qq.com'
+        Account.objects.filter(pk=self.member.pk).update(qq_email=email, email_verified_at=timezone.now())
+        invited = action(owner, action='invite', qq_email=email.upper(), role='member')
         self.assertContains(invited, '协作者已添加或更新。')
         self.assertNotContains(invited, self.member.username)
+        self.assertNotContains(invited, email)
         self.assertContains(member.get('/curated/'), '成员 · 草稿')
         self.assertContains(owner.get('/curated/'), '创建者 · 草稿')
 
@@ -310,18 +313,22 @@ class CourseTests(TestCase):
         own = shelf.nominations.get(work=self.work)
         self.assertTrue(own.approved)
         self.assertEqual((added.context['ready_count'], added.context['pending_count']), (1, 0))
-        self.assertContains(added, '作品已加入草稿。')
+        self.assertContains(added, '作品已加入书单。')
         self.assertNotContains(added, 'value="publish" disabled')
+        pending_cover = 'https://covers.example.net/pending.jpg'
+        Work.objects.filter(pk=self.second.pk).update(wenku8_cover_url=pending_cover)
         proposed = action(member, action='nominate', work=self.second.pk, reason='成员的提议理由')
         item = shelf.nominations.get(work=self.second)
         self.assertFalse(item.approved)
         self.assertContains(proposed, '提议已提交，等待创建者审核。')
         self.assertNotContains(proposed, '发布书单')
-        self.assertNotContains(proposed, '接纳作品')
+        self.assertNotContains(proposed, '>加入书单</button>')
+        self.assertContains(proposed, pending_cover)
         self.assertEqual((proposed.context['ready_count'], proposed.context['pending_count']), (1, 1))
 
         accepted = action(owner, action='review', item=item.pk, approved='on')
-        self.assertContains(accepted, '已接纳这部作品。')
+        self.assertContains(accepted, '作品已加入书单。')
+        self.assertContains(accepted, '>已加入书单</span>')
         self.assertContains(accepted, '退回待审核')
         self.assertEqual((accepted.context['ready_count'], accepted.context['pending_count']), (2, 0))
         returned = action(owner, action='review', item=item.pk)
@@ -348,10 +355,11 @@ class CourseTests(TestCase):
         item.save(update_fields=['reason'])
         Work.objects.filter(pk=item.work_id).update(hidden_at=timezone.now())
         hidden = owner.get(path)
-        self.assertContains(hidden, '请先移除不可见的已接纳作品。')
+        self.assertContains(hidden, '已加入书单的作品暂不可见，请先移除。')
         self.assertContains(hidden, 'value="publish" disabled')
         self.assertNotContains(hidden, item.reason)
         self.assertNotContains(hidden, self.second.display_title)
+        self.assertNotContains(hidden, pending_cover)
         shelf.refresh_from_db()
         self.assertEqual(self.post(owner, path, action='publish', version=shelf.version).status_code, 409)
         self.assertEqual(shelf.editions.count(), 1)
@@ -366,6 +374,63 @@ class CourseTests(TestCase):
         self.assertFalse(shelf.memberships.exists())
         self.assertEqual(self.post(owner, path, action='invite', version=1, reader_id=self.member.pk, role='member').status_code, 302)
         self.assertEqual(shelf.memberships.get().account_id, self.member.pk)
+
+    def test_curated_invite_uses_only_verified_qq_email(self):
+        owner = self.browser(self.owner_token)
+        shelf = CuratedShelf.objects.create(owner=self.owner, title='QQ 邮箱邀请')
+        path = f'/curated/{shelf.pk}/'
+        email = 'curate.member123@qq.com'
+        Account.objects.filter(pk=self.member.pk).update(qq_email=email)
+        for address in (email, 'unregistered.reader@qq.com'):
+            denied = self.post(owner, path, action='invite', version=1, qq_email=address, role='member')
+            self.assertContains(denied, '未能添加协作者，请核对邀请信息。', status_code=400)
+            self.assertNotContains(denied, address, status_code=400)
+        self.assertFalse(shelf.memberships.exists())
+        Account.objects.filter(pk=self.member.pk).update(email_verified_at=timezone.now())
+        response = self.post(owner, path, action='invite', version=1, qq_email=f' {email.upper()} ', role='member')
+        self.assertEqual(response.status_code, 302)
+        self.assertNotIn(email, response.url)
+        self.assertEqual(shelf.memberships.get().account_id, self.member.pk)
+        invited = owner.get(response.url)
+        self.assertContains(invited, self.member.display_name)
+        self.assertNotContains(invited, email)
+        self.assertContains(invited, 'name="role"', count=1)
+        self.assertContains(invited, 'value="invite"', count=1)
+        self.assertNotContains(self.client.get('/curated/'), email)
+
+    def test_curated_editions_link_whole_cards_and_use_only_visible_covers(self):
+        cover = 'https://covers.example.net/curated.jpg'
+        Work.objects.filter(pk=self.work.pk).update(wenku8_cover_url=cover)
+        long_title = '长书名没有空格' * 15
+        long_work = Work.objects.create(original_submitted_title=long_title)
+        shelf = CuratedShelf.objects.create(owner=self.owner, title='封面书单')
+        path = f'/curated/{shelf.pk}/'
+        entries = [
+            {'work_id': self.work.pk, 'title': '旧版书名', 'reason': '上一个版本的理由'},
+            {'work_id': self.second.pk, 'title': self.second.display_title, 'reason': '缺图在书单仍可见'},
+            {'work_id': long_work.pk, 'title': long_title, 'reason': '长书名条目'},
+        ]
+        for number in (1, 2):
+            CuratedEdition.objects.create(shelf=shelf, number=number, entries=entries, published_by=self.owner)
+        public = self.client.get('/curated/')
+        self.assertContains(public, f'class="course-shelf-work-title" title="{long_title}"')
+        for number in (1, 2):
+            with self.subTest(number=number):
+                edition = self.client.get(path + f'?edition={number}')
+                self.assertContains(edition, 'course-edition-link', count=3)
+                self.assertContains(edition, cover)
+                self.assertContains(edition, '暂无封面')
+                self.assertContains(edition, '旧版书名')
+                self.assertContains(edition, '上一个版本的理由')
+                detail = self.client.get(f'/works/{self.work.pk}/?from={path}%3Fedition%3D{number}')
+                self.assertContains(detail, f'data-shelf-return href="{path}?edition={number}"')
+        Work.objects.filter(pk=self.work.pk).update(hidden_at=timezone.now())
+        for url in ('/curated/', path, path+'?edition=1'):
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertNotContains(response, cover)
+                self.assertNotContains(response, '旧版书名')
+                self.assertNotContains(response, '上一个版本的理由')
 
     def test_work_page_routes_own_edits_spoilers_and_reference_visibility(self):
         owner, member = self.browser(self.owner_token), self.browser(self.member_token)

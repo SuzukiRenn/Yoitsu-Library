@@ -19,10 +19,19 @@
   {% if editions|length > 1 %}
   <nav class="course-versions" aria-label="已发布版本">{% for item in editions %}<a href="?edition={{ item.number }}"{% if item.pk == edition.pk %} aria-current="page"{% endif %}>第 {{ item.number }} 版</a>{% endfor %}</nav>
   {% endif %}
-  <ol class="course-list">
+  <ol class="course-list course-curated-snapshot">
     {% for row in snapshot %}
-    <li>{% if row.visible %}<h3><a href="/works/{{ row.work_id }}/?from=/curated/{{ shelf.pk }}/%3Fedition%3D{{ edition.number }}">{{ row.title }}</a></h3>
-      <p class="course-prose">{{ row.reason }}</p>{% else %}<p>作品暂不可见</p>{% endif %}</li>
+    {% if row.visible %}
+    <li class="course-edition-work">
+      <a class="course-cover-row course-edition-link" aria-labelledby="edition-work-{{ row.work_id }}" href="/works/{{ row.work_id }}/?from=/curated/{{ shelf.pk }}/%3Fedition%3D{{ edition.number }}">
+        <div class="book-cover" aria-hidden="true">{% include 'booklist/cover_image.html' with work=row %}</div>
+        <div class="course-cover-row-body">
+          <h3 id="edition-work-{{ row.work_id }}">{{ row.title }}</h3>
+          <p class="course-prose">{{ row.reason }}</p>
+        </div>
+      </a>
+    </li>
+    {% else %}<li><p>作品暂不可见</p></li>{% endif %}
     {% endfor %}
   </ol>
   {% if edition.number > 1 %}<details class="course-disclosure course-panel course-edition-diff"><summary>与上一版对比</summary><ul>{% for title, label in changes %}<li>{{ label }} · {{ title }}</li>{% endfor %}</ul></details>{% endif %}
@@ -42,9 +51,9 @@
       </div>
       {% if can_review %}
       <p class="section-note">
-        {% if publish_blocked %}请先移除不可见的已接纳作品。
+        {% if publish_blocked %}已加入书单的作品暂不可见，请先移除。
         {% elif unchanged %}可发布内容与最新公开版一致。
-        {% elif not ready_count %}添加或接纳作品后即可发布。
+        {% elif not ready_count %}将作品加入书单后即可发布。
         {% elif pending_count %}待审核作品会留在草稿中。{% endif %}
       </p>
       {% endif %}
@@ -63,24 +72,32 @@
       {% include 'booklist/course/version.html' with version=shelf.version %}
       {% include 'booklist/course/pick_work.html' with choose_only=True %}
       <label>{% if can_review %}收录理由{% else %}提议理由{% endif %} <textarea name="reason" maxlength="200" required></textarea></label>
-      <button class="primary" name="action" value="nominate" disabled>{% if can_review %}加入草稿{% else %}提交提议{% endif %}</button>
+      <button class="primary" name="action" value="nominate" disabled>{% if can_review %}加入书单{% else %}提交提议{% endif %}</button>
     </form>
   </details>
 
   <ol class="course-list">
     {% for row in nominations %}{% with item=row.item order=forloop.counter %}
     <li id="draft-item-{{ item.pk }}" class="course-draft-item">
-      <div class="course-row-heading">
-        <h3>{% if row.visible %}<a href="/works/{{ item.work_id }}/?from=/curated/{{ shelf.pk }}/">{{ item.work.display_title }}</a>{% else %}作品暂不可见{% endif %}</h3>
-        {% if row.visible %}<span class="course-badge{% if item.approved %} course-badge-resolved{% endif %}">{% if item.approved %}已接纳{% else %}待审核{% endif %}</span>{% endif %}
+      {% if row.visible %}
+      <div class="course-cover-row">
+        <div class="book-cover" aria-hidden="true">{% include 'booklist/cover_image.html' with work=row %}</div>
+        <div class="course-cover-row-body">
+          <div class="course-row-heading">
+            <h3><a href="/works/{{ item.work_id }}/?from=/curated/{{ shelf.pk }}/">{{ item.work.display_title }}</a></h3>
+            <span class="course-badge{% if item.approved %} course-badge-resolved{% endif %}">{% if item.approved %}已加入书单{% else %}待审核{% endif %}</span>
+          </div>
+          <p class="section-note">第 {{ order }} 位 · {{ item.author.display_name }}</p>
+          <p class="course-prose">{{ item.reason }}</p>
+        </div>
       </div>
-      {% if row.visible %}<p class="section-note">第 {{ order }} 位 · {{ item.author.display_name }}</p><p class="course-prose">{{ item.reason }}</p>{% endif %}
+      {% else %}<h3>作品暂不可见</h3>{% endif %}
       {% if can_review and row.visible and not item.approved %}
       <form method="post" action="/curated/{{ shelf.pk }}/">
         {% include 'booklist/course/version.html' with version=shelf.version %}
         <input type="hidden" name="item" value="{{ item.pk }}">
         <input type="hidden" name="approved" value="on">
-        <button name="action" value="review">接纳作品</button>
+        <button name="action" value="review">加入书单</button>
       </form>
       {% endif %}
       {% if can_edit_draft or item.author_id == current_account.id %}
@@ -122,21 +139,16 @@
       <span>{{ member.account.display_name }} · {{ member.get_role_display }}</span><button name="action" value="remove_member">移除成员</button>
     </form>
     {% endfor %}
-    <form method="post" action="/curated/{{ shelf.pk }}/" class="course-invite">
+    <form method="post" action="/curated/{{ shelf.pk }}/" class="course-invite" autocomplete="off">
       {% include 'booklist/course/version.html' with version=shelf.version %}
-      <label>对方昵称 <input name="display_name" maxlength="40" required></label>
+      <label>对方 QQ 邮箱 <input name="qq_email" type="email" maxlength="254" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
       <label>角色 <select name="role"><option value="member">成员</option><option value="editor">策展者</option></select></label>
       <button name="action" value="invite">邀请或更新</button>
+      <details class="course-disclosure">
+        <summary>按读者编号邀请旧账号</summary>
+        <label>读者编号 <input name="reader_id" inputmode="numeric" pattern="[0-9]+" maxlength="19" autocomplete="off"></label>
+      </details>
     </form>
-    <details class="course-disclosure">
-      <summary>按读者编号邀请</summary>
-      <form method="post" action="/curated/{{ shelf.pk }}/" class="course-invite">
-        {% include 'booklist/course/version.html' with version=shelf.version %}
-        <label>读者编号 <input name="reader_id" type="number" min="1" inputmode="numeric" required></label>
-        <label>角色 <select name="role"><option value="member">成员</option><option value="editor">策展者</option></select></label>
-        <button name="action" value="invite">邀请或更新</button>
-      </form>
-    </details>
   </details>
   {% endif %}
 </section>

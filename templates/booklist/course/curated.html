@@ -29,11 +29,11 @@
 <section class="course-section"><h2>公开书单</h2>
 <ul class="course-list course-shelf-grid">
   {% for card in public_shelves %}
-    <li class="course-shelf-card"><a href="/curated/{{ card.shelf.pk }}/?edition={{ card.edition }}">
-      {% if card.works %}<div class="course-shelf-works">{% for work in card.works %}
-        <div><div class="book-cover" aria-hidden="true">{% include "booklist/cover_image.html" %}</div><span>{{ work.title }}</span></div>
-      {% endfor %}</div>{% endif %}
-      <h3>{{ card.shelf.title }}</h3>
+    <li class="course-shelf-card course-public-shelf-card"><a href="/curated/{{ card.shelf.pk }}/?edition={{ card.edition }}">
+      <div class="course-shelf-works">{% for work in card.works %}
+        <div><div class="book-cover" aria-hidden="true">{% include "booklist/cover_image.html" %}</div><span class="course-shelf-work-title" title="{{ work.title }}">{{ work.title }}</span></div>
+      {% endfor %}</div>
+      <h3 title="{{ card.shelf.title }}">{{ card.shelf.title }}</h3>
       <p class="section-note">{{ card.count }} 部可见作品 · 第 {{ card.edition }} 版</p>
     </a></li>
   {% empty %}<li class="course-empty">暂无发布的书单。</li>{% endfor %}

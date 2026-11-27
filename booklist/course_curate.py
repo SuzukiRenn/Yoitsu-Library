@@ -5,16 +5,16 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect
 from django.db.models import Prefetch, Q
 
-from . import accounts, catalog, services
+from . import accounts, catalog, qq_login, services
 from .catalog_views import page
 from .course_common import bump, clean, conflict, course_page, deny, integer, require_reader, require_version, visible_work
 from .course_models import CuratedShelf, Curator, CuratedEdition, Nomination
 from .models import Account
 
 NOTICES = {
-    'added': '作品已加入草稿。',
+    'added': '作品已加入书单。',
     'proposed': '提议已提交，等待创建者审核。',
-    'accepted': '已接纳这部作品。',
+    'accepted': '作品已加入书单。',
     'returned': '作品已退回待审核。',
     'updated': '草稿已更新。',
     'removed': '作品已从草稿移除。',
@@ -86,10 +86,20 @@ def entry_diff(older, newer):
         yield work_id, '移除'
 
 
-def snapshot_rows(entries):
-    visible = set(catalog.visible_works().filter(pk__in=[e['work_id'] for e in entries]).values_list('pk', flat=True))
-    return [{**entry, 'visible': True} if entry['work_id'] in visible else
-            {'work_id': entry['work_id'], 'title': '作品暂不可见', 'visible': False} for entry in entries]
+def snapshot_rows(entries, *, with_covers=False):
+    eligible = catalog.visible_works().filter(pk__in={entry['work_id'] for entry in entries})
+    visible = eligible.in_bulk() if with_covers else set(eligible.values_list('pk', flat=True))
+    rows = []
+    for entry in entries:
+        work_id = entry['work_id']
+        if work_id not in visible:
+            rows.append({'work_id': work_id, 'title': '作品暂不可见', 'visible': False})
+            continue
+        row = {**entry, 'visible': True}
+        if with_covers:
+            row['cover_url'] = catalog.display_cover(visible[work_id])
+        rows.append(row)
+    return rows
 
 
 def edition_entries(items):
@@ -104,7 +114,10 @@ def draft_context(shelf, latest):
     blocked = any(item.approved and item.work_id not in visible for item in items)
     unchanged = bool(latest and latest.entries == edition_entries(accepted) and not blocked)
     return {
-        'nominations': [{'item': item, 'visible': item.work_id in visible} for item in items],
+        'nominations': [{
+            'item': item, 'visible': item.work_id in visible,
+            'cover_url': catalog.display_cover(item.work) if item.work_id in visible else None,
+        } for item in items],
         'order_options': range(1, len(items) + 1),
         'ready_count': len(accepted),
         'pending_count': len(waiting),
@@ -131,7 +144,7 @@ def detail(request, shelf_id):
     has_draft = bool(role and not shelf.hidden)
     show_draft = has_draft and wanted is None
     edition = get_object_or_404(editions, number=integer(wanted)) if wanted is not None else (latest if not show_draft else None)
-    snapshot = snapshot_rows(edition.entries) if edition else []
+    snapshot = snapshot_rows(edition.entries, with_covers=True) if edition else []
     changes = []
     if edition and edition.number > 1:
         before = editions.get(number=edition.number-1)
@@ -150,12 +163,17 @@ def detail(request, shelf_id):
 
 def invited_reader(post, reader):
     readers = Account.objects.filter(is_active=True).exclude(pk=reader.pk)
-    if nickname := post.get('display_name', '').strip():
+    email, reader_id, nickname = (post.get(field, '').strip() for field in ('qq_email', 'reader_id', 'display_name'))
+    if sum(bool(value) for value in (email, reader_id, nickname)) != 1:
+        raise ValidationError('请填写一种邀请信息。')
+    if email:
+        return readers.filter(qq_email=qq_login.normalize(email), email_verified_at__isnull=False).first()
+    if nickname:
         names = list(readers.filter(display_name=accounts.display_name(nickname))[:2])
         if len(names) > 1:
             conflict('有多位读者使用这个昵称，请按读者编号邀请。')
         return names[0] if names else None
-    return readers.filter(pk=integer(post.get('reader_id', ''))).first()
+    return readers.filter(pk=integer(reader_id)).first()
 
 
 def reorder(shelf, item, value):
@@ -206,7 +224,7 @@ def change(request, shelf, role):
             member = invited_reader(post, reader)
             new_role = post.get('role')
             if member is None or new_role not in ('member', 'editor'):
-                raise ValidationError('未找到可邀请的读者，请核对昵称或读者编号。')
+                raise ValidationError('未能添加协作者，请核对邀请信息。')
             if shelf.memberships.count() >= 20 and not shelf.memberships.filter(account=member).exists():
                 conflict('最多邀请 20 位成员。')
             shelf.memberships.update_or_create(account=member, defaults={'role': new_role})
@@ -255,7 +273,7 @@ def change(request, shelf, role):
 def publish(shelf, reader):
     approved = list(shelf.nominations.filter(approved=True).select_related('work').order_by('position', 'id'))
     if not approved:
-        conflict('请先审核通过至少一部作品。')
+        conflict('请先将至少一部作品加入书单。')
     visible = set(catalog.visible_works().filter(pk__in=[item.work_id for item in approved]).values_list('pk', flat=True))
     if len(visible) != len(approved):
         conflict('部分作品已不可见，请先调整草稿。')
