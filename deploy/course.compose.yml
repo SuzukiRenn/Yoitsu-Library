@@ -19,6 +19,7 @@ x-course-app: &course-app
     BOOKLIST_ALLOWED_HOSTS: course.sharedbooklist.xyz,localhost
     BOOKLIST_TRUSTED_PROXY_IPS: 172.30.31.2
     BOOKLIST_COURSE_ISOLATED_PRODUCTION: '1'
+    BOOKLIST_COURSE_ICP_DEFAULT: '鲁ICP备2026066257号-1'
   volumes:
     - course_data:/data
   networks: [course_private]
