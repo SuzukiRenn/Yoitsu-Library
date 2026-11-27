@@ -1,6 +1,6 @@
 <section id="reading-routes" class="course-routes">
   <div class="section-heading"><h2>阅读路线</h2>
-  {% if current_account %}<a class="reason-link" href="/works/{{ work.id }}/reading-route/">写或编辑我的路线</a>
+  {% if current_account %}<a class="reason-link" href="/works/{{ work.id }}/reading-route/">上传阅读路线</a>
   {% else %}<a class="reason-link" href="{{ login_url }}">登录后分享路线</a>{% endif %}</div>
   <ul class="reason-list">
   {% for item in reading_routes %}
