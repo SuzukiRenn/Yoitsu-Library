@@ -1,5 +1,5 @@
 import {accountPost} from './account.mjs?v=20261105-nickname-1';
-import {returnTo} from './navigation-context.mjs?v=20261104-rankings-1';
+import {returnTo} from './navigation-context.mjs?v=20261127-course-find-2';
 
 export function installRecentViews(doc=document,win=window,post=accountPost){
  const owner=Number(doc.body?.dataset.readerId);if(!Number.isSafeInteger(owner)||owner<=0)return;

@@ -124,6 +124,8 @@
 .course-find > :is(.course-search, .course-section) { max-width: 760px; }
 .course-page .course-search textarea { min-height: 5.5rem; }
 .course-page .course-keyword-search:hover { background: var(--wash-hover); }
+.course-find-clear[hidden] { display: none; }
+html[data-course-search-check] .course-find { visibility: hidden; }
 .course-examples {
   display: flex;
   align-items: center;
@@ -234,14 +236,23 @@
 }
 .course-shelf-works .book-cover { width: min(100%, 56px); height: 80px; }
 .course-list > .course-book-result {
+  padding: 0;
+}
+.course-result-link {
   display: grid;
   grid-template-columns: 60px minmax(0, 1fr);
   gap: .85rem;
+  padding: clamp(.875rem, 3.6vw, 1.4rem);
+  border-radius: inherit;
+  text-decoration: none;
 }
-.course-book-result > .book-cover { width: 60px; height: 86px; }
-.course-list > .course-book-result > .course-book-result-body { margin-top: 0; }
+.course-result-link > .book-cover { width: 60px; height: 86px; }
+.course-result-link:hover h3, .course-result-link:focus-visible h3 { text-decoration: underline; }
 .course-book-result-body ul { margin: .4rem 0 0; padding-inline-start: 1.2rem; }
 .course-book-result-body li { overflow-wrap: anywhere; }
+.course-find-pagination { display: flex; justify-content: center; margin-top: .85rem; }
+.course-find-pagination .page-number { width: auto; padding-inline: .65rem; }
+.detail-catalog-recommend { margin-top: .8rem; }
 .course-create-heading { position: relative; }
 .course-create-heading:has(.course-create) > h1 {
   display: flex;

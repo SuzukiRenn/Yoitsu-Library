@@ -33,10 +33,72 @@ if (examples) {
   for (const button of examples.querySelectorAll('[data-course-example]')) {
     button.addEventListener('click', () => {
       query.value = button.dataset.courseExample;
+      query.dispatchEvent(new Event('input'));
       query.focus();
     });
   }
   examples.hidden = false;
+}
+
+const search = document.querySelector('[data-course-search-form]');
+if (search) {
+  const token = search.dataset.courseSearchForm;
+  const clear = search.querySelector('.course-find-clear');
+  const query = search.elements.query;
+  const conditions = document.querySelector('[data-course-search-conditions]');
+  const fields = ['keywords', 'tags', 'exclude'];
+  const store = 'booklist:course-search-drafts';
+  const ttl = 3600000;
+  const reader = document.body.dataset.readerId || '';
+  const draftKey = token && `${reader}:${token}`;
+  let clearing = false;
+  const updateClear = () => { clear.hidden = !token && !query.value; };
+  const drafts = () => {
+    try { return JSON.parse(sessionStorage.getItem(store)) || {}; }
+    catch { return {}; }
+  };
+  const updateDrafts = draft => {
+    if (!draftKey) return;
+    try {
+      const rows = drafts();
+      if (draft) rows[draftKey] = { ...draft, at: Date.now() };
+      else delete rows[draftKey];
+      sessionStorage.setItem(store, JSON.stringify(Object.fromEntries(
+        Object.entries(rows).filter(([, row]) => Date.now() - row.at < ttl)
+          .sort(([, a], [, b]) => b.at - a.at).slice(0, 12)
+      )));
+    } catch { /* Search works even when session storage is unavailable. */ }
+  };
+  if (conditions) {
+    const draft = drafts()[draftKey];
+    if (draft && Date.now() - draft.at < ttl) {
+      conditions.open = draft.open;
+      fields.forEach((name, index) => { conditions.querySelector('form').elements[name].value = draft.values[index]; });
+    }
+    window.addEventListener('pagehide', () => {
+      if (!clearing) {
+        const form = conditions.querySelector('form');
+        updateDrafts({ open: conditions.open, values: fields.map(name => form.elements[name].value.slice(0, 100)) });
+      }
+    });
+  }
+  query.addEventListener('input', updateClear);
+  updateClear();
+  search.addEventListener('submit', event => {
+    if (event.submitter !== clear) return;
+    clearing = true;
+    query.value = '';
+    updateDrafts(null);
+  });
+  if (token) {
+    // A cached browser document may contain a cleared search or a since-hidden work.
+    // Reload only its GET. Navigation context restores a valid result viewport.
+    window.addEventListener('pageshow', event => {
+      if (!event.persisted) return;
+      document.documentElement.setAttribute('data-course-search-check', '');
+      window.location.reload();
+    });
+  }
 }
 
 for (const picker of document.querySelectorAll('[data-course-picker]')) {

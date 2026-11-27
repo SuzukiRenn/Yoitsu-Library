@@ -1,6 +1,7 @@
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.core.exceptions import ValidationError
+from urllib.parse import urlencode
 from . import catalog, services
 from .views import endpoint
 
@@ -77,9 +78,15 @@ def work_page(request, data, work_id):
     historical = period is not None and period.status == 'ended'
     work = catalog.work_detail(work_id, include_retired=historical)
     current_work = catalog.visible_works().filter(pk=work_id).first()
+    public_recommend_url = ''
+    if current_work is not None and not work['is_public']:
+        public_recommend_url = '/recommend/?' + urlencode({
+            'work': work_id, 'from': safe_return(request.get_full_path(), f'/works/{work_id}/'),
+        })
     from .course_routes import rows as reading_route_rows
     route_context = {'show_reading_routes': current_work is not None,
-                     'reading_routes': reading_route_rows(work_id, include_hidden=bool(request.admin), account=request.account) if current_work else []}
+                     'reading_routes': reading_route_rows(work_id, include_hidden=bool(request.admin), account=request.account) if current_work else [],
+                     'public_recommend_url': public_recommend_url}
     can_edit_metadata = user_metadata.editable(current_work, request.anonymous_client) if current_work else False
     if 'activity' in request.GET:
         from . import activities

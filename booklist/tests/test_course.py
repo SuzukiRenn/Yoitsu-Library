@@ -1,14 +1,18 @@
 import json
+from datetime import timedelta
+from html import escape
 from io import BytesIO
 from unittest.mock import patch
+from urllib.parse import urlencode
+from uuid import uuid4
 
 from django.conf import settings
 from django.test import Client, TestCase, override_settings
 from django.utils import timezone
 
-from booklist import accounts, public_booklist
+from booklist import accounts, activities, public_booklist
 from booklist.course_models import BookCandidate, BookQuestion, CuratedShelf, Nomination, ReadingRoute
-from booklist.models import Admin, Tag, TagSuppression, UserWorkMetadata, Work, WorkAlias, WorkTag
+from booklist.models import Activity, Admin, Tag, TagSuppression, UserWorkMetadata, Work, WorkAlias, WorkTag
 
 
 class CourseTests(TestCase):
@@ -38,9 +42,14 @@ class CourseTests(TestCase):
         data['csrfmiddlewaretoken'] = client.cookies[settings.CSRF_COOKIE_NAME].value
         return client.post(path, data)
 
+    def find(self, client, path='/find-books/', *, follow=True, **data):
+        client.get(path)
+        data['csrfmiddlewaretoken'] = client.cookies[settings.CSRF_COOKIE_NAME].value
+        return client.post(path, data, follow=follow)
+
     def test_search_requires_evidence_and_filters_eligibility(self):
         self.assertContains(self.client.get('/'), '/find-books/')
-        response = self.post(self.client, '/find-books/', mode='conditions', query='魔法和旅行', keywords='魔法,学院', tags='', exclude='恐怖')
+        response = self.find(self.client, mode='conditions', query='魔法和旅行', keywords='魔法,学院', tags='', exclude='恐怖')
         self.assertContains(response, '山间来信')
         self.assertContains(response, '旅人在庭院学习了魔、法。')
         self.assertContains(response, '未找到依据 学院')
@@ -48,7 +57,7 @@ class CourseTests(TestCase):
         self.assertContains(response, '未推荐的目录作品')
         self.assertNotContains(response, '隐藏机密')
         self.assertContains(response, '按调整后的条件查找')
-        no_match = self.post(self.client, '/find-books/', mode='conditions', query='火星', keywords='火星', tags='', exclude='')
+        no_match = self.find(self.client, mode='conditions', query='火星', keywords='火星', tags='', exclude='')
         self.assertContains(no_match, '暂无匹配作品。', count=1)
         self.assertNotContains(no_match, 'data-course-examples')
         self.assertNotContains(no_match, 'class="course-empty"')
@@ -84,22 +93,23 @@ class CourseTests(TestCase):
                 ('展示作者', '作者「展示作者」'), ('蓝色信标', '简介片段「船员循着蓝色信标回到港口。」'),
                 ('航海标签', '标签「有效航海标签」'), ('范围界标', '简介片段「这里有范围界标。」')):
             with self.subTest(word=word):
-                response = self.post(browser, path, mode='plain', query=word)
-                self.assertContains(response, f'href="{work_url}"')
+                response = self.find(browser, mode='plain', query=word)
+                result_location = urlencode({'from': response.context['search_url']})
+                self.assertContains(response, f'href="/works/{work.pk}/?{result_location.replace("%2F", "/")}"')
                 self.assertContains(response, evidence)
                 self.assertEqual([row['id'] for row in response.context['results']], [work.pk])
         for word in ('过期别名', '已覆盖书名', '已覆盖简介', '屏蔽标签', '停用标签'):
-            self.assertContains(self.post(browser, path, mode='plain', query=word), '暂无匹配作品。', count=1)
-        edited = self.post(browser, path, mode='conditions', query='调整检索词', keywords='范围界标', tags='', exclude='')
+            self.assertContains(self.find(browser, mode='plain', query=word), '暂无匹配作品。', count=1)
+        edited = self.find(browser, mode='conditions', query='调整检索词', keywords='范围界标', tags='', exclude='')
         self.assertEqual([row['id'] for row in edited.context['results']], [work.pk])
-        excluded = self.post(browser, path, mode='conditions', query='调整检索词', keywords='范围界标', tags='', exclude='星航a1')
+        excluded = self.find(browser, mode='conditions', query='调整检索词', keywords='范围界标', tags='', exclude='星航a1')
         self.assertContains(excluded, '暂无匹配作品。', count=1)
         with patch('booklist.course_find.extract', return_value={'keywords':['范围界标'], 'tags':[], 'exclude':[]}) as parse:
-            result = self.post(browser, path, mode='ai', query='有没有相似的海上故事')
+            result = self.find(browser, mode='ai', query='有没有相似的海上故事')
             parse.assert_called_once_with('有没有相似的海上故事')
             self.assertEqual([row['id'] for row in result.context['results']], [work.pk])
         with patch('booklist.course_find.extract', side_effect=TimeoutError):
-            fallback = self.post(browser, path, mode='ai', query='范围界标')
+            fallback = self.find(browser, mode='ai', query='范围界标')
             self.assertContains(fallback, '已执行普通检索')
             self.assertEqual([row['id'] for row in fallback.context['results']], [work.pk])
         self.assertContains(browser.get(work_url), '船员循着蓝色信标回到港口。')
@@ -114,27 +124,123 @@ class CourseTests(TestCase):
             return BytesIO(json.dumps(data).encode())
         with patch('booklist.course_find.build_opener') as opener:
             opener.return_value.open.return_value = payload(json.dumps({'keywords':['魔法'], 'tags':[], 'exclude':[]}))
-            response = self.post(self.client, '/find-books/', mode='ai', query='山间来信')
+            response = self.find(self.client, mode='ai', query='山间来信')
             self.assertContains(response, '简介片段')
             outbound = json.loads(opener.return_value.open.call_args.args[0].data)
             self.assertEqual(outbound['messages'][1], {'role':'user','content':'山间来信'})
             self.assertEqual(outbound['response_format'], {'type':'json_object'})
             for content in ('   ', 'bad', '{"keywords":["非法字段"]}'):
                 opener.return_value.open.return_value = payload(content)
-                response = self.post(self.client, '/find-books/', mode='ai', query='山间来信')
+                response = self.find(self.client, mode='ai', query='山间来信')
                 self.assertContains(response, '已执行普通检索')
                 self.assertContains(response, '山间来信')
             opener.return_value.open.side_effect = TimeoutError
-            self.assertContains(self.post(self.client, '/find-books/', mode='ai', query='山间来信'), '已执行普通检索')
+            self.assertContains(self.find(self.client, mode='ai', query='山间来信'), '已执行普通检索')
             opener.reset_mock()
             with override_settings(COURSE_DEEPSEEK_DAILY_CALLS=1):
-                self.assertContains(self.post(self.client, '/find-books/', mode='ai', query='山间来信'), '已执行普通检索')
+                self.assertContains(self.find(self.client, mode='ai', query='山间来信'), '已执行普通检索')
                 opener.assert_not_called()
         with override_settings(COURSE_DEEPSEEK_KEY=''):
-            self.assertContains(self.post(self.client, '/find-books/', mode='ai', query='山间来信'), '已执行普通检索')
-            fallback = self.post(self.client, '/find-books/', mode='ai', query='火星独白')
+            self.assertContains(self.find(self.client, mode='ai', query='山间来信'), '已执行普通检索')
+            fallback = self.find(self.client, mode='ai', query='火星独白')
             self.assertContains(fallback, '智能解析暂不可用，已执行普通检索。 暂无匹配作品。', count=1)
             self.assertNotContains(fallback, '调整检索条件')
+
+    @override_settings(COURSE_DEEPSEEK_KEY='fake-test-only')
+    def test_pagination_return_conditions_and_clear(self):
+        works = Work.objects.bulk_create([
+            Work(original_submitted_title=f'船票测试 {number:02d}') for number in range(17)
+        ])
+        browser = Client(enforce_csrf_checks=True)
+        with patch('booklist.course_find.extract', return_value={'keywords': ['船票测试'], 'tags': [], 'exclude': []}) as extract:
+            post = self.find(browser, mode='ai', query='想找有船票的故事', follow=False)
+            self.assertEqual(post.status_code, 303)
+            self.assertRegex(post['Location'], r'^/find-books/\?search=[0-9a-f]{32}$')
+            self.assertIn('no-store', post['Cache-Control'])
+            first_url = post['Location']
+            page = browser.get(first_url)
+            self.assertEqual(page.context['query'], '想找有船票的故事')
+            pks = [row['id'] for row in page.context['results']]
+            for number in (2, 3, 4):
+                page = browser.get(page.context['next_url'])
+                self.assertEqual(page.context['paging'].number, number)
+                pks.extend(row['id'] for row in page.context['results'])
+            self.assertEqual(pks, [work.pk for work in works])
+            self.assertContains(page, '4 / 4')
+            self.assertEqual(page.context['next_url'], '')
+            last_url = page.context['search_url']
+            detail_url = f'/works/{works[-1].pk}/?' + urlencode({'from': last_url})
+            self.assertContains(browser.get(detail_url), f'data-shelf-return href="{escape(last_url, quote=True)}"')
+            self.assertEqual(len(browser.get(last_url).context['results']), 2)
+            Work.objects.filter(pk=works[-1].pk).update(hidden_at=timezone.now())
+            self.assertEqual(len(browser.get(last_url).context['results']), 1)
+            adjusted = self.find(browser, last_url, mode='conditions', query='想找有船票的故事',
+                                 keywords='船票测试 00', tags='', exclude='')
+            self.assertNotContains(adjusted, '查找结果分页')
+            self.assertEqual(adjusted.context['paging'].number, 1)
+            self.assertEqual([row['id'] for row in adjusted.context['results']], [works[0].pk])
+
+            other = Client()
+            self.assertRedirects(other.get(last_url), '/find-books/')
+            self.assertEqual(browser.post(last_url, {'mode': 'clear'}).status_code, 403)
+            clear = self.find(browser, last_url, mode='clear')
+            self.assertNotContains(clear, '想找有船票的故事')
+            self.assertNotContains(clear, '调整检索条件')
+            self.assertContains(clear, 'data-course-examples')
+            self.assertRedirects(browser.get(first_url), '/find-books/')
+            self.assertRedirects(browser.get(last_url), '/find-books/')
+            self.assertContains(browser.get(adjusted.context['search_url']), '船票测试 00')
+            extract.assert_called_once_with('想找有船票的故事')
+
+    def test_signed_in_search_is_private_across_accounts(self):
+        owner = self.browser(self.owner_token)
+        saved = self.find(owner, mode='plain', query='山间来信').context['search_url']
+        owner.cookies[settings.ACCOUNT_COOKIE] = self.member_token
+        self.assertRedirects(owner.get(saved), '/find-books/')
+        self.find(owner, saved, mode='clear')
+        owner.cookies[settings.ACCOUNT_COOKIE] = self.owner_token
+        self.assertContains(owner.get(saved), '山间来信')
+
+    @override_settings(REQUIRE_ACCOUNT=True, QQ_EMAIL_LOGIN=False)
+    def test_unlisted_detail_recommendation_login_and_submission(self):
+        browser = Client(enforce_csrf_checks=True)
+        found = self.find(browser, mode='plain', query=self.unlisted.display_title)
+        detail = f'/works/{self.unlisted.pk}/?' + urlencode({'from': found.context['search_url']})
+        destination = '/recommend/?' + urlencode({'work': self.unlisted.pk, 'from': detail})
+        response = browser.get(detail)
+        self.assertContains(response, f'<a class="primary" href="{escape(destination, quote=True)}">推荐到公共书单</a>')
+        self.assertNotContains(browser.get(f'/works/{self.work.pk}/?from=/rankings/'), '推荐到公共书单')
+        guest = browser.get(destination)
+        self.assertRedirects(guest, '/account/login/?' + urlencode({'next': destination}))
+        browser.cookies[settings.ACCOUNT_COOKIE] = self.owner_token
+        form = browser.get(destination)
+        self.assertContains(form, 'data-success="' + escape(detail, quote=True) + '"')
+        payload = {'work_id': self.unlisted.pk, 'title': self.unlisted.display_title,
+                   'reason': '', 'confirmed_unmatched': False}
+        result = browser.post('/api/v1/public/recommendations/', payload, content_type='application/json',
+                              HTTP_X_CSRFTOKEN=browser.cookies[settings.CSRF_COOKIE_NAME].value,
+                              HTTP_IDEMPOTENCY_KEY=str(uuid4()))
+        self.assertEqual(result.status_code, 200, result.content)
+        self.assertTrue(public_booklist.recommendations().filter(work=self.unlisted).exists())
+        self.assertNotContains(browser.get(detail), '推荐到公共书单')
+        self.assertContains(browser.get(found.context['search_url']), self.unlisted.display_title)
+
+    def test_activity_public_cta_respects_current_catalog_visibility(self):
+        admin = Admin.objects.create(username='course_activity_reviewer')
+        now = timezone.now()
+        period = Activity.objects.create(title='只推荐到活动', sync_public=False, status='active',
+            created_by=admin, start_at=now-timedelta(hours=1), started_at=now-timedelta(hours=1),
+            scheduled_end_at=now+timedelta(hours=1))
+        activities.submit(period.pk, self.owner.principal, {'work_id': self.unlisted.pk,
+            'title': self.unlisted.display_title, 'reason': '独立活动理由', 'confirmed_unmatched': False})
+        path = f'/works/{self.unlisted.pk}/?activity={period.pk}'
+        self.assertContains(self.client.get(path), '推荐到公共书单')
+        self.assertFalse(public_booklist.recommendations().filter(work=self.unlisted).exists())
+        period.status, period.ended_at = 'ended', now
+        period.save(update_fields=('status', 'ended_at'))
+        self.unlisted.source_metadata = {'manual_retired_at': now.isoformat()}
+        self.unlisted.save(update_fields=['source_metadata'])
+        self.assertNotContains(self.client.get(path), '推荐到公共书单')
 
     def test_curated_permissions_versions_and_immutable_snapshots(self):
         owner, member = self.browser(self.owner_token), self.browser(self.member_token)

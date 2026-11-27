@@ -3,14 +3,18 @@ from collections import defaultdict
 import json
 import logging
 import re
+from secrets import token_hex
 from threading import BoundedSemaphore
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from django.conf import settings
+from django.core.cache import caches
 from django.core.exceptions import ValidationError
-from django.http import HttpResponseNotAllowed
+from django.core.paginator import Paginator
+from django.http import HttpResponseNotAllowed, HttpResponseRedirect
 from django.db import OperationalError
+from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_protect
 
 from . import catalog, public_booklist, services
@@ -29,6 +33,12 @@ PROMPT = (
     '例如：{"keywords":["魔法","学院"],"tags":["奇幻"],"exclude":["恐怖"]}'
 )
 PRIVATE_INPUT = re.compile(r'\S+@\S+|\d{11,}|(?:sk-|Bearer +)[A-Za-z0-9_-]{8,}', re.I)
+FIND_PATH = '/find-books/'
+SEARCH_COOKIE = 'course_booklist_find'
+SEARCH_TTL = 3600
+PER_PAGE = 5
+SEARCH_ID = re.compile('[0-9a-f]{32}')
+BROWSER_ID = re.compile('[0-9a-f]{48}')
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -106,7 +116,7 @@ def entered_intent(post):
     return intent
 
 
-def match(intent):
+def ranked_matches(intent):
     terms = {}
     for value in intent['keywords'] + intent['tags']:
         if key := catalog.search_key(value):
@@ -166,23 +176,66 @@ def match(intent):
         if score:
             ranked.append((score, work, title, author, evidence, missing))
     ranked.sort(key=lambda row: (-row[0], row[1].pk))
+    return ranked
+
+
+def result_rows(ranked):
     return [{'id': work.pk, 'title': title, 'author': author, 'cover_url': catalog.display_cover(work),
              'evidence': [f'{label}「{excerpt(value, key) if key else value}」' for label, value, key in evidence],
              'missing': missing}
-            for _, work, title, author, evidence, missing in ranked[:15]]
+            for _, work, title, author, evidence, missing in ranked]
 
 
-def ordinary(query):
-    return match({'keywords': [query], 'tags': [], 'exclude': []})
+def search_url(search_id, number=1):
+    return f'{FIND_PATH}?search={search_id}' + (f'&page={number}' if number > 1 else '')
+
+
+def redirect_to(location, status=303):
+    return HttpResponseRedirect(location, status=status)
+
+
+def cached_search(request, cache, key):
+    if key:
+        saved = cache.get(key)
+        if saved and saved['account_id'] in (None, getattr(request.account, 'pk', None)):
+            return saved
+    return None
+
+
+def display_search(request, search_id, saved):
+    ai_available = bool(settings.COURSE_DEEPSEEK_KEY)
+    if not saved:
+        if request.GET:
+            return redirect_to(FIND_PATH, status=302)
+        return page(request, 'booklist/course/find.html', {'ai_available': ai_available})
+    query, intent = saved['query'], saved['intent']
+    terms = intent or {'keywords': [query], 'tags': [], 'exclude': []}
+    raw_page = request.GET.get('page', '1')
+    number = int(raw_page) if re.fullmatch('[1-9][0-9]{0,5}', raw_page) else 1
+    current = Paginator(ranked_matches(terms), PER_PAGE).get_page(number)
+    url = search_url(search_id, current.number)
+    if request.get_full_path() != url:
+        return redirect_to(url, status=302)
+    return page(request, 'booklist/course/find.html', {
+        'ai_available': ai_available, 'query': query, 'intent': intent, 'status': saved['status'],
+        'searched': True, 'results': result_rows(current.object_list),
+        'search_id': search_id, 'search_url': url, 'paging': current,
+        'previous_url': search_url(search_id, current.previous_page_number()) if current.has_previous() else '',
+        'next_url': search_url(search_id, current.next_page_number()) if current.has_next() else '',
+    })
 
 
 @csrf_protect
+@never_cache
 def find(request):
     if request.method not in ('GET', 'POST'):
         return HttpResponseNotAllowed(['GET', 'POST'])
     try:
-        read_limit(request, search=True)
-        return search_page(request)
+        if request.method != 'POST' or request.POST.get('mode') != 'clear':
+            read_limit(request, search=True)
+        response = search_page(request)
+        response['Referrer-Policy'] = 'same-origin'
+        return response
     except services.DomainError as exc:
         return page_error(request, exc.message, exc.status)
     except OperationalError as exc:
@@ -195,32 +248,53 @@ def reserve_model_budget(request):
 
 
 def search_page(request):
+    cache = caches['course_search']
+    browser = request.COOKIES.get(SEARCH_COOKIE, '')
+    new_browser = not BROWSER_ID.fullmatch(browser)
+    if new_browser:
+        browser = token_hex(24)
+    search_id = request.GET.get('search', '')
+    key = f'{browser}:{search_id}' if SEARCH_ID.fullmatch(search_id) else ''
     if request.method == 'GET':
-        return page(request, 'booklist/course/find.html', {'ai_available': bool(settings.COURSE_DEEPSEEK_KEY)})
+        response = display_search(request, search_id, cached_search(request, cache, key))
+    elif request.POST.get('mode') == 'clear':
+        if cached_search(request, cache, key):
+            cache.delete(key)
+        response = redirect_to(FIND_PATH)
+    else:
+        response = start_search(request, cache, browser)
+    if new_browser:
+        response.set_cookie(SEARCH_COOKIE, browser, path=FIND_PATH, secure=settings.COOKIE_SECURE,
+                            httponly=True, samesite='Lax')
+    return response
+
+
+def start_search(request, cache, browser):
     try:
         query = clean(request.POST.get('query', ''), 180)
     except ValidationError as exc:
         return page_error(request, exc.messages[0], 400)
-    result = {'query': query, 'searched': True, 'ai_available': bool(settings.COURSE_DEEPSEEK_KEY)}
-    if request.POST.get('mode') == 'conditions':
+    intent, status = None, ''
+    mode = request.POST.get('mode')
+    if mode == 'conditions':
         try:
             intent = entered_intent(request.POST)
         except ValidationError as exc:
             return page_error(request, exc.messages[0], 400)
-        result.update(results=match(intent), intent=intent)
-    elif request.POST.get('mode') != 'ai':
-        result.update(results=ordinary(query))
-    elif PRIVATE_INPUT.search(query):
-        result.update(results=ordinary(query), status='输入可能包含联系方式或凭据，已改用站内检索。')
-    else:
-        try:
-            if not settings.COURSE_DEEPSEEK_KEY:
-                raise ValueError('Unavailable')
-            reserve_model_budget(request)
-            intent = extract(query)
-        except (services.DomainError, HTTPError, URLError, OSError, KeyError, IndexError, TypeError, ValueError) as exc:
-            logger.info('course_intent_fallback type=%s', type(exc).__name__)
-            result.update(results=ordinary(query), status='智能解析暂不可用，已执行普通检索。')
+    elif mode == 'ai':
+        if PRIVATE_INPUT.search(query):
+            status = '输入可能包含联系方式或凭据，已改用站内检索。'
         else:
-            result.update(results=match(intent), intent=intent)
-    return page(request, 'booklist/course/find.html', result)
+            try:
+                if not settings.COURSE_DEEPSEEK_KEY:
+                    raise ValueError('Unavailable')
+                reserve_model_budget(request)
+                intent = extract(query)
+            except (services.DomainError, HTTPError, URLError, OSError, KeyError, IndexError, TypeError, ValueError) as exc:
+                logger.info('course_intent_fallback type=%s', type(exc).__name__)
+                status = '智能解析暂不可用，已执行普通检索。'
+    search_id = token_hex(16)
+    cache.set(f'{browser}:{search_id}', {
+        'query': query, 'intent': intent, 'status': status, 'account_id': getattr(request.account, 'pk', None),
+    }, timeout=SEARCH_TTL)
+    return redirect_to(search_url(search_id))

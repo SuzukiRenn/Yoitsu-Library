@@ -3,13 +3,14 @@
 {% block course_layout %}course-find{% endblock %}
 {% block course_content %}
 <header class="course-heading"><h1>AI找书</h1></header>
-<form method="post" class="course-panel course-search">
+<form method="post" action="{{ search_url|default:'/find-books/' }}" class="course-panel course-search" data-course-search-form="{{ search_id }}" autocomplete="off">
   {% csrf_token %}
   <label for="find-query">你想找什么样的小说？</label>
   <textarea id="find-query" name="query" maxlength="180" required placeholder="搜索轻小说目录：书名、作者、标签或情节">{{ query }}</textarea>
   <div class="course-actions">
     {% if ai_available %}<button class="primary" name="mode" value="ai">智能查找</button><button class="course-keyword-search" name="mode" value="plain">按关键词查找</button>
     {% else %}<button class="primary" name="mode" value="plain">按关键词查找</button>{% endif %}
+    <button class="course-find-clear" name="mode" value="clear" formnovalidate{% if not searched %} hidden{% endif %}>清空</button>
   </div>
   {% if not searched %}
   <fieldset class="course-examples" data-course-examples hidden>
@@ -21,7 +22,7 @@
   {% endif %}
 </form>
 {% if searched %}
-<section class="course-section course-find-results" aria-label="查找结果">
+<section class="course-section course-find-results" data-course-search-results aria-label="查找结果">
   {% if status or not results %}
   <p class="course-search-feedback" role="status">{% if status %}{{ status }}{% if not results %} {% endif %}{% endif %}{% if not results %}暂无匹配作品。{% endif %}</p>
   {% endif %}
@@ -29,22 +30,33 @@
   <h2{% if status %} class="sr-only"{% endif %}>查找结果</h2>
   <ul class="course-list">
     {% for item in results %}
-    <li class="course-book-result">
+    <li class="course-book-result" data-course-result="{{ item.id }}">
+      <a class="course-result-link" href="/works/{{ item.id }}/?from={{ search_url|urlencode }}" aria-labelledby="find-result-{{ item.id }}">
       <div class="book-cover" aria-hidden="true">{% include "booklist/cover_image.html" with work=item %}</div>
       <div class="course-book-result-body">
-        <h3><a href="/works/{{ item.id }}/?from=/find-books/">{{ item.title }}</a></h3>
+        <h3 id="find-result-{{ item.id }}">{{ item.title }}</h3>
         {% if item.author %}<p class="section-note">{{ item.author }}</p>{% endif %}
         {% if item.evidence %}<ul>{% for evidence in item.evidence %}<li>{{ evidence }}</li>{% endfor %}</ul>{% endif %}
         {% if item.missing %}<p class="section-note">未找到依据 {{ item.missing|join:'、' }}</p>{% endif %}
       </div>
+      </a>
     </li>
     {% endfor %}
   </ul>
+  {% if paging.has_other_pages %}
+  <nav class="course-find-pagination" aria-label="查找结果分页">
+    <div class="page-links">
+      {% if previous_url %}<a class="page-step" href="{{ previous_url }}" rel="prev">上一页</a>{% else %}<span class="page-step" aria-disabled="true">上一页</span>{% endif %}
+      <span class="page-number" aria-current="page">{{ paging.number }} / {{ paging.paginator.num_pages }}</span>
+      {% if next_url %}<a class="page-step" href="{{ next_url }}" rel="next">下一页</a>{% else %}<span class="page-step" aria-disabled="true">下一页</span>{% endif %}
+    </div>
+  </nav>
+  {% endif %}
   {% endif %}
   {% if intent %}
-  <details class="course-disclosure course-search-conditions">
+  <details class="course-disclosure course-search-conditions" data-course-search-conditions>
     <summary>调整检索条件</summary>
-    <form method="post">
+    <form method="post" action="{{ search_url }}" autocomplete="off">
       {% csrf_token %}
       <input type="hidden" name="query" value="{{ query }}">
       <div class="course-condition-fields">

@@ -1,6 +1,6 @@
-import {returnTo} from './navigation-context.mjs?v=20261104-rankings-1';
+import {returnTo} from './navigation-context.mjs?v=20261127-course-find-2';
 import {installEmailLogin} from './email-login.mjs?v=20261105-nickname-1';
-import {finishAccountLogin} from './account-onboarding.mjs?v=20261105-nickname-1';
+import {finishAccountLogin} from './account-onboarding.mjs?v=20261127-course-find-2';
 export function safeNext(value, origin) {
   try {const url = new URL(value || '/', origin); return url.origin === origin && url.pathname.startsWith('/') ? url.pathname + url.search + url.hash : '/';}
   catch {return '/';}

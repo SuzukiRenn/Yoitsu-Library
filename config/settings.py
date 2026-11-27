@@ -38,6 +38,17 @@ if ENV == 'production' and (os.environ.get('BOOKLIST_COURSE_ISOLATED_PRODUCTION'
     raise ImproperlyConfigured('Course production requires its own marked data volume and course host')
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 COVER_CACHE_DIR = DATA_DIR / 'covers'
+# The search cache is shared by the web workers and excluded from database backups.
+CACHES = {
+    'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'},
+    'course_search': {
+        'BACKEND': ('django.core.cache.backends.locmem.LocMemCache' if ENV == 'test' else
+                    'django.core.cache.backends.filebased.FileBasedCache'),
+        'LOCATION': 'course-search-tests' if ENV == 'test' else str(
+            Path('/tmp/booklist-course-search') if ENV == 'production' else DATA_DIR / 'course-search'),
+        'OPTIONS': {'MAX_ENTRIES': 1200},
+    },
+}
 # Tests keep transaction-isolated counters by default; contention tests enable the sidecar explicitly.
 READ_RATE_LIMIT_DATABASE = None if ENV == 'test' else DATA_DIR / 'read_rate_limits.sqlite3'
 INSTALLED_APPS = ['django.contrib.staticfiles', 'booklist.apps.BooklistConfig']

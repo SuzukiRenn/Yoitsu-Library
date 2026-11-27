@@ -1,5 +1,5 @@
 const STORE='booklist:page-positions:v1',PENDING='booklist:page-return:v1',TTL=86400000;
-const page=/^\/(?:works\/[1-9]\d*\/(?:edit\/)?|activities\/(?:[1-9]\d*\/(?:recommend\/)?|history\/)?|recommend\/|catalog\/|feedback\/|notifications\/|account\/(?:settings\/|bind\/)?|rankings\/|privacy\/|guidelines\/|contact\/)?$/;
+const page=/^\/(?:works\/[1-9]\d*\/(?:edit\/)?|activities\/(?:[1-9]\d*\/(?:recommend\/)?|history\/)?|recommend\/|catalog\/|find-books\/|feedback\/|notifications\/|account\/(?:settings\/|bind\/)?|rankings\/|privacy\/|guidelines\/|contact\/)?$/;
 export function localReturn(value,origin,fallback='/') {
  try {
   if(typeof value!=='string' || value.length>8192)return fallback;
@@ -24,10 +24,12 @@ export function installNavigationContext(doc=document,win=window) {
  const headerEnd=Math.max(80,(header?.offsetTop||0)+(header?.offsetHeight||0));
  let reading=null,departing=null,readingTimer;
  const layoutTop=node=>{let top=0;for(let item=node;item;item=item.offsetParent)top+=item.offsetTop;return top;};
+ const courseResults=()=>doc.querySelector?.('[data-course-search-results]');
  function snapshot(){
   const shelf=doc.querySelector?.('[data-live-shelf]');
-  const anchors=[...shelf?.querySelectorAll('[data-shelf-work]')||[]]
-   .map(card=>({id:card.dataset.shelfWork,top:layoutTop(card)-win.scrollY}))
+  const surface=shelf||courseResults();
+  const anchors=[...surface?.querySelectorAll(shelf?'[data-shelf-work]':'[data-course-result]')||[]]
+   .map(card=>({id:card.dataset.shelfWork||card.dataset.courseResult,top:layoutTop(card)-win.scrollY}))
    .filter(anchor=>anchor.top>=-100 && anchor.top<win.innerHeight).slice(0,4);
   return {url:key(current(),win.location.origin),y:win.scrollY,anchors,at:Date.now()};
  }
@@ -47,8 +49,10 @@ export function installNavigationContext(doc=document,win=window) {
   if(doc.querySelector?.('[data-navigation-loading]'))return;
   const pending=load(PENDING),url=key(current(),win.location.origin);
   const explicit=pending?.url===url && Date.now()-pending.at<300000;
-  const back=win.performance?.getEntriesByType?.('navigation')?.[0]?.type==='back_forward';
-  if(!explicit && (!back || event?.persisted))return;
+  const type=win.performance?.getEntriesByType?.('navigation')?.[0]?.type;
+  const search=courseResults();
+  const revisit=type==='back_forward' || (search && type==='reload');
+  if(!explicit && (!revisit || event?.persisted))return;
   if(explicit)save(PENDING,null);
   if(explicit && pending.context)save('booklist:shelf-return:v1',null);
   // Existing shelf-return retains its card-anchor restoration; generic scroll
@@ -58,15 +62,22 @@ export function installNavigationContext(doc=document,win=window) {
   const snapshot=load(STORE)?.[url];
   if(!snapshot || !Number.isFinite(snapshot.y) || Date.now()-snapshot.at>TTL)return;
   doc.documentElement.setAttribute('data-shelf-position-restoring','');
-  win.requestAnimationFrame(()=>{
+  function apply(){
    let y=snapshot.y;const shelf=doc.querySelector?.('[data-live-shelf]');
+   const surface=shelf||search, attr=shelf?'data-shelf-work':'data-course-result';
    for(const anchor of snapshot.anchors||[]){
     if(!/^[1-9]\d*$/.test(anchor.id) || !Number.isFinite(anchor.top))continue;
-    const card=shelf?.querySelector(`[data-shelf-work="${anchor.id}"]`);
+    const card=surface?.querySelector(`[${attr}="${anchor.id}"]`);
     if(card){y=layoutTop(card)-anchor.top;break;}
    }
    win.scrollTo({top:Math.max(0,Math.min(y,doc.documentElement.scrollHeight-win.innerHeight)),behavior:'instant'});
-  });
+  }
+  if(search){
+   // Let the new document settle disclosure state, text layout and native history scroll first.
+   const afterLayout=()=>win.requestAnimationFrame(()=>win.requestAnimationFrame(apply));
+   if(doc.fonts?.ready)doc.fonts.ready.then(afterLayout);
+   else afterLayout();
+  }else win.requestAnimationFrame(apply);
  }
  doc.addEventListener('click',event=>{
   if(event.target.closest?.('[data-back-to-top]') && win.scrollY>headerEnd){reading=snapshot();return;}
@@ -82,13 +93,18 @@ export function installNavigationContext(doc=document,win=window) {
   if(!plain)return;
   // Reaching the header must not replace the last reading viewport with zero.
   const messages=link.hasAttribute('data-context-notifications') || win.location.pathname==='/notifications/';
-  departing=messages && win.scrollY<=headerEnd && reading?.url===key(current(),win.location.origin)?reading:null;
+  departing=messages && win.scrollY<=headerEnd && reading?.url===key(current(),win.location.origin)?reading:
+   link.matches?.('.course-result-link')?snapshot():null;
   remember(departing);
   if(link.hasAttribute('data-context-return') || link.hasAttribute('data-shelf-return'))save(PENDING,{url:key(url,win.location.origin),at:Date.now(),context:link.hasAttribute('data-context-return')});
  },true);
  doc.addEventListener('booklist:navigation-ready',()=>restore());
  win.addEventListener('scroll',trackReading,{passive:true});
- win.addEventListener('pagehide',()=>{win.clearTimeout(readingTimer);remember(departing);});
+ win.addEventListener('pagehide',()=>{
+  win.clearTimeout(readingTimer);
+  // The BFCache document is about to revalidate; its transient scroll can be zero.
+  if(!doc.documentElement.hasAttribute?.('data-course-search-check'))remember(departing);
+ });
  win.addEventListener('pageshow',event=>{departing=null;restore(event);trackReading();});
  trackReading();
  if(doc.readyState==='complete')restore();

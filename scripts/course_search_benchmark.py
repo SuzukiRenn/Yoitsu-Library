@@ -44,11 +44,11 @@ def main():
     results = []
     for query, shelf_word, shelf_tag, keywords, tags, expected in CASES:
         def search(mode):
-            response = browser.post('/find-books/', {'mode': mode, 'query': query})
+            response = browser.post('/find-books/', {'mode': mode, 'query': query}, follow=True)
             if response.status_code != 200:
                 raise RuntimeError(f'Unexpected HTTP {response.status_code}')
             html = response.content.decode()
-            titles = re.findall(r'<h3><a href="/works/[^"]+">([^<]+)</a></h3>', html)
+            titles = re.findall(r'<h3 id="find-result-[0-9]+">([^<]+)</h3>', html)
             return {'top3': [unescape(title) for title in titles[:3]],
                     'fallback': '已执行普通检索' in html}
         full_sentence = search('plain')

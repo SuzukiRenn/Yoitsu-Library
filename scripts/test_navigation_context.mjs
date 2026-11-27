@@ -4,20 +4,27 @@ const origin='http://local';
 for(const bad of ['https://evil.test/','//evil.test/','/\\evil.test/','/%5cevil.test/','javascript:alert(1)','/api/v1/csrf/','/manage/','/random-book/','/?q=%0aInjected','/account/login/'])assert.equal(localReturn(bad,origin),'/',bad);
 assert.equal(localReturn('/works/7/?from=%2F%3Ftag%3D9#reasons',origin),'/works/7/?from=%2F%3Ftag%3D9#reasons');
 const storage=new Map();
-function fixture(href,y=700,{blocked=false,back=false}={}) {
- const events={},winEvents={},frames=[],scrolls=[],assigns=[],timers=new Map();let serial=0;
- const doc={readyState:'complete',documentElement:{scrollHeight:3000,setAttribute(){}},addEventListener:(n,f)=>events[n]=f};
+function fixture(href,y=700,{blocked=false,back=false,resultTop,reload=false}={}) {
+ const events={},winEvents={},frames=[],scrolls=[],assigns=[],timers=new Map(),rootAttrs=new Set();let serial=0;
+ const doc={readyState:'complete',documentElement:{
+  scrollHeight:3000,setAttribute:name=>rootAttrs.add(name),hasAttribute:name=>rootAttrs.has(name)
+ },addEventListener:(n,f)=>events[n]=f};
+ if(resultTop!==undefined){
+  const card={offsetTop:resultTop,dataset:{courseResult:'7'}};
+  const list={querySelectorAll:()=>[card],querySelector:()=>card};
+  doc.querySelector=selector=>selector==='[data-course-search-results]'?list:null;
+ }
  const win={location:Object.assign(new URL(href),{assign:u=>assigns.push(u)}),scrollY:y,innerHeight:600,
-  performance:{getEntriesByType:()=>[{type:back?'back_forward':'navigate'}]},
+  performance:{getEntriesByType:()=>[{type:reload?'reload':back?'back_forward':'navigate'}]},
   sessionStorage:{getItem:k=>{if(blocked)throw Error();return storage.get(k);},setItem:(k,v)=>{if(blocked)throw Error();storage.set(k,v);}},
   setTimeout:f=>{timers.set(++serial,f);return serial;},clearTimeout:id=>timers.delete(id),
   addEventListener:(n,f)=>winEvents[n]=f,requestAnimationFrame:f=>frames.push(f),scrollTo:x=>{scrolls.push(x);win.scrollY=x.top;}};
  installNavigationContext(doc,win);
  function click(href,attrs=[],flags={}) {
-  const link={href,target:'',hasAttribute:k=>attrs.includes(k)};
+  const link={href,target:'',hasAttribute:k=>attrs.includes(k),matches:k=>attrs.includes(k)};
   events.click({target:{closest:selector=>selector==='[data-back-to-top]'?null:link},button:0,...flags});return new URL(link.href);
  }
- return {win,click,winEvents,frames,scrolls,assigns,settle:()=>{const callbacks=[...timers.values()];timers.clear();callbacks.forEach(f=>f());}};
+ return {doc,win,click,winEvents,frames,scrolls,assigns,settle:()=>{const callbacks=[...timers.values()];timers.clear();callbacks.forEach(f=>f());}};
 }
 const source='http://local/activities/3/?q=小说&page=2&tag=9#reasons';
 let a=fixture(source,1234);
@@ -69,3 +76,28 @@ result=fixture(origin+'/?q=different',0);result.frames.forEach(f=>f());assert.eq
 reading=fixture(source,0);const fresh=reading.click(origin+'/notifications/',['data-context-notifications']);reading.winEvents.pagehide();
 messages=fixture(fresh.href,0);messages.click(source,['data-context-return']);result=fixture(source,0);result.frames.forEach(f=>f());assert.equal(result.scrolls[0].top,0);
 console.log('Message header returns preserve settled reading positions through pagehide, stale shelf markers and changed filters.');
+
+// An AI result click captures the reading viewport even when unload resets scroll.
+storage.clear();
+const find=origin+'/find-books/?search=abcdef&page=2';
+let search=fixture(find,552,{resultTop:590});
+search.click(origin+'/works/7/?from='+encodeURIComponent(find.slice(origin.length)),['.course-result-link']);
+search.win.scrollY=0;
+search.winEvents.pagehide();
+let selected=fixture(origin+'/works/7/',30);
+selected.click(find,['data-shelf-return']);
+search=fixture(find,0,{resultTop:630});
+search.frames.shift()();
+assert.equal(search.scrolls.length,0);
+search.frames.shift()();
+assert.equal(search.scrolls[0].top,592);
+// A BFCache validation reload must not save the browser's transient zero.
+search.win.scrollY=0;
+search.winEvents.pageshow({persisted:true});
+search.doc.documentElement.setAttribute('data-course-search-check','');
+search.winEvents.pagehide();
+search=fixture(find,0,{resultTop:590,reload:true});
+search.frames.shift()();
+search.frames.shift()();
+assert.equal(search.scrolls[0].top,552);
+console.log('AI result returns and reloads restore the clicked viewport after layout, including a shifted anchor.');
